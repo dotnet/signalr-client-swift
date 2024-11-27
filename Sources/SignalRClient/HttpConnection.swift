@@ -79,7 +79,7 @@ struct AvailableTransport: Decodable {
 
 // MARK: - HttpConnection Class
 
-class HttpConnection: ConnectionProtocol, @unchecked Sendable {
+actor HttpConnection: ConnectionProtocol {
     // MARK: - Properties
     private let negotiationRedirectionLimit = 100
 
@@ -96,8 +96,8 @@ class HttpConnection: ConnectionProtocol, @unchecked Sendable {
     public var features: [String: Any] = [:]
     public var baseUrl: String
     public var connectionId: String?
-    public var onReceive: Transport.OnReceiveHandler?
-    public var onClose: Transport.OnCloseHander?
+    private var onReceive: Transport.OnReceiveHandler?
+    private var onClose: Transport.OnCloseHander?
     private let negotiateVersion = 1
 
     // MARK: - Initialization
@@ -119,9 +119,20 @@ class HttpConnection: ConnectionProtocol, @unchecked Sendable {
 
     // MARK: - Public Methods
 
+    func onReceive(_ handler: @escaping Transport.OnReceiveHandler) async {
+        onReceive = handler
+    }
+
+    func onClose(_ handler: @escaping Transport.OnCloseHander) async{
+        onClose = handler
+    }
+
     func start(transferFormat: TransferFormat = .binary) async throws {
         logger.log(level: .debug, message: "Starting connection with transfer format '\(transferFormat)'.")
 
+        // startInternalTask make this easy:
+        // - If startInternalTask is nil, start will directly stop
+        // - If startInternalTask is not nil, wait it finish and then call the stop
         guard connectionState == .disconnected else {
             throw NSError(domain: "HttpConnection", code: 0, userInfo: [NSLocalizedDescriptionKey: "Cannot start an HttpConnection that is not in the 'Disconnected' state."])
         }

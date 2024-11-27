@@ -25,6 +25,14 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
     func stop(error: Error?) async {
         stopCalled = true
     }
+
+    func onReceive(_ handler: @escaping @Sendable (SignalRClient.StringOrData) async -> Void) async {
+        onReceive = handler
+    }
+
+    func onClose(_ handler: @escaping @Sendable ((any Error)?) async -> Void) async {
+        onClose = handler
+    }
 }
 
 final class HubConnectionTests: XCTestCase {
@@ -41,6 +49,7 @@ final class HubConnectionTests: XCTestCase {
             connection: mockConnection,
             logger: Logger(logLevel: .debug, logHandler: logHandler),
             hubProtocol: hubProtocol,
+            retryPolicy: DefaultRetryPolicy(retryDelays: []), // No retry
             serverTimeout: nil,
             keepAliveInterval: nil
         )
@@ -97,7 +106,7 @@ final class HubConnectionTests: XCTestCase {
         _ = await whenTaskThrowsTimeout({ try await task.value }, timeout: 1.0) 
         // Assert
         let state = await hubConnection.state()
-        XCTAssertEqual(HubConnectionState.Disconnected, state)
+        XCTAssertEqual(HubConnectionState.stopped, state)
     }
 
     func testStart_ConnectionCloseRightAfterHandshake() async throws {
@@ -129,7 +138,7 @@ final class HubConnectionTests: XCTestCase {
         // Assert
         XCTAssertEqual(SignalRError.connectionAborted, err as? SignalRError)
         let state = await hubConnection.state()
-        XCTAssertEqual(HubConnectionState.Disconnected, state)
+        XCTAssertEqual(HubConnectionState.stopped, state)
     }
 
     func testStart_DuplicateStart() async throws {
@@ -145,15 +154,21 @@ final class HubConnectionTests: XCTestCase {
         }
 
         defer {task.cancel()}
-
+        
         // HubConnect start handshake
         await fulfillment(of: [expectation], timeout: 1.0)
 
-        do {
-            try await hubConnection.start()
-        } catch {
-            XCTAssertEqual(SignalRError.duplicatedStart, error as? SignalRError)
-        }
+
+        let err = await whenTaskThrowsTimeout({
+            try await self.hubConnection.start()
+        }, timeout: 1.0)
+
+        XCTAssertEqual(SignalRError.invalidOperation("Start client while not in a disconnected state."), err as? SignalRError)
+        // do {
+        //     try await hubConnection.start()
+        // } catch {
+        //     XCTAssertEqual(SignalRError.invalidOperation("Start client while not in a disconnected state."), error as? SignalRError)
+        // }
     }
 
     func whenTaskWithTimeout(_ task: @escaping () async throws -> Void, timeout: TimeInterval) async -> Void {
@@ -181,18 +196,19 @@ final class HubConnectionTests: XCTestCase {
         defer { wrappedTask.cancel() }
 
         await fulfillment(of: [expectation], timeout: timeout)
+
         return await returnErr.get()
     }
 
     private actor ValueContainer<T> {
         private var value: T?
 
-        func update(_ newValue: T) {
+        func update(_ newValue: T?) {
             value = newValue
         }
 
-        func get() -> T {
-            return value!
+        func get() -> T? {
+            return value
         }
     }
 }

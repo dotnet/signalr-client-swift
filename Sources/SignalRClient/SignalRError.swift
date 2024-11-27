@@ -8,12 +8,12 @@ enum SignalRError: Error, Equatable {
     case failedToDecodeResponseData
     case expectedHandshakeResponse
     case noHandshakeMessageReceived
-    case duplicatedStart
     case unsupportedHandshakeVersion
     case handshakeError(String)
     case connectionAborted
     case negotiationError(String)
     case failedToStartConnection(String)
+    case invalidOperation(String)
 
     var localizedDescription: String {
         switch self {
@@ -29,8 +29,6 @@ enum SignalRError: Error, Equatable {
             return "Expected a handshake response from the server."
         case .noHandshakeMessageReceived:
             return "No handshake message received."
-        case .duplicatedStart:
-            return "Start client while not in a disconnected state."
         case .unsupportedHandshakeVersion:
             return "Unsupported handshake version"
         case .handshakeError(let message):
@@ -41,6 +39,8 @@ enum SignalRError: Error, Equatable {
             return "Negotiation error: \(message)"
         case .failedToStartConnection(let message):
             return "Failed to start connection: \(message)"
+        case .invalidOperation(let message):
+            return "Invalid operation: \(message)"
         }
     }
 }
