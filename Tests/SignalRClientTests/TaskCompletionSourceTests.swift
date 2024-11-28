@@ -15,9 +15,9 @@ class TaskCompletionSourceTests: XCTestCase {
         let elapsed = Date().timeIntervalSince(start)
         XCTAssertTrue(value)
         XCTAssertLessThan(abs(elapsed - 1), 0.1)
-        try await t.value        
+        try await t.value
     }
-
+    
     func testSetVarBeforeWait() async throws {
         let tcs = TaskCompletionSource<Bool>()
         let set = await tcs.trySetResult(.success(true))
@@ -28,7 +28,7 @@ class TaskCompletionSourceTests: XCTestCase {
         XCTAssertTrue(value)
         XCTAssertLessThan(elapsed, 0.1)
     }
-
+    
     func testSetException() async throws {
         let tcs = TaskCompletionSource<Bool>()
         let t = Task {
@@ -48,10 +48,10 @@ class TaskCompletionSourceTests: XCTestCase {
         XCTAssertLessThan(abs(elapsed - 1), 0.1)
         try await t.value
     }
-
+    
     func testMultiSetAndMultiWait() async throws {
         let tcs = TaskCompletionSource<Bool>()
-
+        
         let t = Task {
             try await Task.sleep(for: .seconds(1))
             var set = await tcs.trySetResult(.success(true))
@@ -59,18 +59,19 @@ class TaskCompletionSourceTests: XCTestCase {
             set = await tcs.trySetResult(.success(false))
             XCTAssertFalse(set)
         }
-
+        
         let start = Date()
         let value = try await tcs.task()
         let elapsed = Date().timeIntervalSince(start)
         XCTAssertTrue(value)
         XCTAssertLessThan(abs(elapsed - 1), 0.1)
-
+        
         let start2 = Date()
         let value2 = try await tcs.task()
         let elapsed2 = Date().timeIntervalSince(start2)
         XCTAssertTrue(value2)
         XCTAssertLessThan(elapsed2, 0.1)
-
+        
         try await t.value
+    }
 }
