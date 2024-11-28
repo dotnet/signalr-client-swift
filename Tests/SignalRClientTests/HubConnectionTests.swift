@@ -106,7 +106,7 @@ final class HubConnectionTests: XCTestCase {
         _ = await whenTaskThrowsTimeout({ try await task.value }, timeout: 1.0) 
         // Assert
         let state = await hubConnection.state()
-        XCTAssertEqual(HubConnectionState.stopped, state)
+        XCTAssertEqual(HubConnectionState.Stopped, state)
     }
 
     func testStart_ConnectionCloseRightAfterHandshake() async throws {
@@ -138,7 +138,7 @@ final class HubConnectionTests: XCTestCase {
         // Assert
         XCTAssertEqual(SignalRError.connectionAborted, err as? SignalRError)
         let state = await hubConnection.state()
-        XCTAssertEqual(HubConnectionState.stopped, state)
+        XCTAssertEqual(HubConnectionState.Stopped, state)
     }
 
     func testStart_DuplicateStart() async throws {

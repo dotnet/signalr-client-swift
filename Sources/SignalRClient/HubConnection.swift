@@ -10,12 +10,13 @@ public actor HubConnection {
     private let hubProtocol: HubProtocol
     private let connection: ConnectionProtocol
     private let retryPolicy: RetryPolicy
+    private let connectionStatusLock: AsyncLock = AsyncLock()
     // private let connectionState: ConnectionState
 
     private var connectionStarted: Bool = false
     private var receivedHandshakeResponse: Bool = false
     private var invocationId: Int = 0
-    private var connectionStatus: HubConnectionState = .stopped
+    private var connectionStatus: HubConnectionState = .Stopped
     private var stopping: Bool = false
     private var stopDuringStartError: Error?
     nonisolated(unsafe) private var handshakeResolver: ((HandshakeResponseMessage) -> Void)?
@@ -41,7 +42,7 @@ public actor HubConnection {
     }
 
     public func start() async throws {
-        if (connectionStatus != .stopped) {
+        if (connectionStatus != .Stopped) {
             throw SignalRError.invalidOperation("Start client while not in a disconnected state.")
         }
 
@@ -55,7 +56,8 @@ public actor HubConnection {
                 try await startInternal()
                 connectionStatus = .Connected
             } catch {
-                connectionStatus = .stopped
+                connectionStatus = .Stopped
+                stopping = false
                 logger.log(level: .debug, message: "HubConnection start failed \(error)")
                 throw error
             }
@@ -66,7 +68,7 @@ public actor HubConnection {
 
     public func stop() async throws {
         // 1. Before the start, it should be disconnected. Just return
-        if (connectionStatus == .stopped) {
+        if (connectionStatus == .Stopped) {
             logger.log(level: .debug, message: "Connection is already stopped")
             return
         }
@@ -122,7 +124,7 @@ public actor HubConnection {
             // If start failed, already in disconnected state
         }
 
-        if (connectionStatus == .stopped) {
+        if (connectionStatus == .Stopped) {
             return
         }
 
@@ -130,10 +132,14 @@ public actor HubConnection {
     }
 
     @Sendable private func handleConnectionClose(error: Error?) async {
+        await connectionStatusLock.wait()
+        defer {
+            connectionStatusLock.release()
+        }
         logger.log(level: .information, message: "Connection closed")
         stopDuringStartError = error ?? SignalRError.connectionAborted
 
-        if (connectionStatus == .stopped) {
+        if (connectionStatus == .Stopped) {
             completeClose()
             return
         }
@@ -157,7 +163,10 @@ public actor HubConnection {
             connectionStatus = .Reconnecting
             do {
                 try await startInternal()
-                connectionStatus = .Connected
+
+                if connectionStatus == .Reconnecting {
+                    connectionStatus = .Connected
+                }
                 return
             } catch {
                 logger.log(level: .warning, message: "Connection reconnect failed: \(error)")
@@ -205,7 +214,7 @@ public actor HubConnection {
     }
 
     private func completeClose() {
-        connectionStatus = .stopped
+        connectionStatus = .Stopped
         stopping = false
     }
 
@@ -301,8 +310,9 @@ public actor HubConnection {
 
 public enum HubConnectionState {
     // The connection is disconnected. Start can only be called if the connection is in this state.
-    case stopped
+    case Stopped
     case Connecting
     case Connected
     case Reconnecting
+    case Disconnected
 }
