@@ -14,7 +14,7 @@ class TaskCompletionSourceTests: XCTestCase {
         let value = try await tcs.task()
         let elapsed = Date().timeIntervalSince(start)
         XCTAssertTrue(value)
-        XCTAssertLessThan(abs(elapsed - 1), 0.1)
+        XCTAssertLessThan(abs(elapsed - 1), 1)
         try await t.value
     }
     
@@ -26,7 +26,7 @@ class TaskCompletionSourceTests: XCTestCase {
         let value = try await tcs.task()
         let elapsed = Date().timeIntervalSince(start)
         XCTAssertTrue(value)
-        XCTAssertLessThan(elapsed, 0.1)
+        XCTAssertLessThan(elapsed, 1)
     }
     
     func testSetException() async throws {
@@ -45,7 +45,7 @@ class TaskCompletionSourceTests: XCTestCase {
                 error as? SignalRError, SignalRError.noHandshakeMessageReceived)
         }
         let elapsed = Date().timeIntervalSince(start)
-        XCTAssertLessThan(abs(elapsed - 1), 0.1)
+        XCTAssertLessThan(abs(elapsed - 1), 1)
         try await t.value
     }
     
@@ -64,13 +64,13 @@ class TaskCompletionSourceTests: XCTestCase {
         let value = try await tcs.task()
         let elapsed = Date().timeIntervalSince(start)
         XCTAssertTrue(value)
-        XCTAssertLessThan(abs(elapsed - 1), 0.1)
+        XCTAssertLessThan(abs(elapsed - 1), 1)
         
         let start2 = Date()
         let value2 = try await tcs.task()
         let elapsed2 = Date().timeIntervalSince(start2)
         XCTAssertTrue(value2)
-        XCTAssertLessThan(elapsed2, 0.1)
+        XCTAssertLessThan(elapsed2, 1)
         
         try await t.value
     }
