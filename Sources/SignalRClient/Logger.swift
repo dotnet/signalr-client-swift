@@ -70,7 +70,6 @@ struct OSLogHandler: LogHandler {
         return file.components(separatedBy: "/").last!.components(
             separatedBy: "."
         ).first!
-
     }
 }
 
