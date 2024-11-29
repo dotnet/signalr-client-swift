@@ -13,7 +13,8 @@ private enum ConnectionState: String {
 }
 
 struct IHttpConnectionOptions {
-    var logger: Logger?
+    var logHandler: LogHandler?
+    var logLevel: LogLevel?
     var accessTokenFactory: (@Sendable () async throws -> String?)?
     var httpClient: HttpClient?
     var transport: HttpTransportType?
@@ -104,7 +105,7 @@ class HttpConnection: ConnectionProtocol, @unchecked Sendable {
     init(url: String, options: IHttpConnectionOptions = IHttpConnectionOptions()) {
         precondition(!url.isEmpty, "url is required")
 
-        self.logger = options.logger ?? DefaultLogger()
+        self.logger =  Logger(logLevel: options.logLevel, logHandler: options.logHandler ?? OSLogHandler())
         self.baseUrl = HttpConnection.resolveUrl(url)
         self.options = options
 
@@ -139,12 +140,12 @@ class HttpConnection: ConnectionProtocol, @unchecked Sendable {
 
         if connectionState == .disconnecting {
             let message = "Failed to start the HttpConnection before stop() was called."
-            logger.log(level: .error, message: message)
+            logger.log(level: .error, message: "\(message)")
             await stopTask?.value
             throw NSError(domain: message, code: 0)
         } else if connectionState != .connected {
             let message = "HttpConnection.startInternal completed gracefully but didn't enter the connection into the connected state!"
-            logger.log(level: .error, message: message)
+            logger.log(level: .error, message: "\(message)")
             throw NSError(domain: message, code: 0)
         }
 
@@ -302,7 +303,7 @@ class HttpConnection: ConnectionProtocol, @unchecked Sendable {
             if let httpError = error as? HttpError, httpError.statusCode == 404 {
                 errorMessage += " Either this is not a SignalR endpoint or there is a proxy blocking the connection."
             }
-            logger.log(level: .error, message: errorMessage)
+            logger.log(level: .error, message: "\(errorMessage)")
             throw NSError(domain: errorMessage, code: 0)
         }
     }
@@ -337,7 +338,7 @@ class HttpConnection: ConnectionProtocol, @unchecked Sendable {
                     transportExceptions.append(error)
                     if connectionState != .connecting {
                         let message = "Failed to select transport before stop() was called."
-                        logger.log(level: .debug, message: message)
+                        logger.log(level: .debug, message: "\(message)")
                         throw SignalRError.failedToStartConnection(message)
                     }
                 }

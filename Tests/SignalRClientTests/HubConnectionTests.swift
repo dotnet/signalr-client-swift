@@ -29,17 +29,17 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
 
 final class HubConnectionTests: XCTestCase {
     var mockConnection: MockConnection!
-    var logger: Logger!
+    var logHandler: LogHandler!
     var hubProtocol: HubProtocol!
     var hubConnection: HubConnection!
 
     override func setUp() async throws {
         mockConnection = MockConnection()
-        logger = DefaultLogger()
+        logHandler = MockLogHandler()
         hubProtocol = JsonHubProtocol()
         hubConnection = HubConnection(
             connection: mockConnection,
-            logger: logger,
+            logger: Logger(logLevel: .debug, logHandler: logHandler),
             hubProtocol: hubProtocol,
             serverTimeout: nil,
             keepAliveInterval: nil

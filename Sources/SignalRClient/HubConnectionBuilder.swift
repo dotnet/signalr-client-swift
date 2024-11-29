@@ -2,16 +2,22 @@ import Foundation
 
 public class HubConnectionBuilder {
     private var connection: HttpConnection?
-    private var logger: Logger?
+    private var logHandler: LogHandler?
+    private var logLevel: LogLevel?
     private var hubProtocol: HubProtocol?
     private var serverTimeout: TimeInterval?
     private var keepAliveInterval: TimeInterval?
     private var url: String?
 
     public init() {}
-
-    public func withLogger(logger: Logger) -> HubConnectionBuilder {
-        self.logger = logger
+    
+    public func withLogLevel(logLevel: LogLevel) -> HubConnectionBuilder{
+        self.logLevel = logLevel
+        return self
+    }
+    
+    public func withLogHandler(logHandler: LogHandler) -> HubConnectionBuilder{
+        self.logHandler = logHandler
         return self
     }
 
@@ -41,7 +47,7 @@ public class HubConnectionBuilder {
         }
 
         let connection = connection ?? HttpConnection(url: url)
-        let logger = logger ?? DefaultLogger()
+        let logger = Logger(logLevel: logLevel, logHandler: logHandler ?? OSLogHandler())
         let hubProtocol = hubProtocol ?? JsonHubProtocol()
 
         return HubConnection(connection: connection,
