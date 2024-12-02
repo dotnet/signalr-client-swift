@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(os)
 import os
+#endif
 
 public enum LogLevel: Int {
     case debug, information, warning, error
@@ -49,6 +51,7 @@ struct Logger {
     }
 }
 
+#if canImport(os)
 struct OSLogHandler: LogHandler {
     var logger: os.Logger
     init() {
@@ -88,3 +91,21 @@ extension LogLevel {
         }
     }
 }
+#else
+struct OSLogHandler: LogHandler {
+    public func log(
+        logLevel: LogLevel, message: LogMessage, file: String, function: String,
+        line: UInt
+    ) {
+        print(
+            "[\(Date().description(with: Locale.current))] [\(String(describing:logLevel))] [\(fileNameWithoutPathAndSuffix(file)):\(function):\(line)] - \(message)"
+        )
+    }
+
+    private func fileNameWithoutPathAndSuffix(_ file: String) -> String {
+        return file.components(separatedBy: "/").last!.components(
+            separatedBy: "."
+        ).first!
+    }
+}
+#endif
