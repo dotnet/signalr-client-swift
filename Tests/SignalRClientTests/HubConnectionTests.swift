@@ -7,6 +7,7 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
     var onClose: Transport.OnCloseHander?
     var onSend: ((StringOrData) -> Void)?
     var onStart: (() -> Void)?
+    var onStop: ((Error?) -> Void)?
 
     private(set) var startCalled = false
     private(set) var sendCalled = false
@@ -26,7 +27,7 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
 
     func stop(error: Error?) async {
         stopCalled = true
-        await onClose?(error)
+        onStop?(error)
     }
 
     func onReceive(_ handler: @escaping @Sendable (SignalRClient.StringOrData) async -> Void) async {
@@ -211,7 +212,7 @@ final class HubConnectionTests: XCTestCase {
             sendExpectation.fulfill()
         }
 
-        mockConnection.onClose = { error in
+        mockConnection.onStop = { error in
             closeExpectation.fulfill()
         }
 
@@ -230,7 +231,7 @@ final class HubConnectionTests: XCTestCase {
         // 2. connection.stop called
         do {
             try await startTask.value
-            await fulfillment(of: [closeExpectation], timeout: 1.0)
+            await fulfillment(of: [closeExpectation], timeout: 1.0)    
         } catch {
             XCTAssertEqual(SignalRError.connectionAborted, error as? SignalRError)
         }
