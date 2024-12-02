@@ -163,12 +163,7 @@ final class HubConnectionTests: XCTestCase {
             try await self.hubConnection.start()
         }, timeout: 1.0)
 
-        XCTAssertEqual(SignalRError.invalidOperation("Start client while not in a disconnected state."), err as? SignalRError)
-        // do {
-        //     try await hubConnection.start()
-        // } catch {
-        //     XCTAssertEqual(SignalRError.invalidOperation("Start client while not in a disconnected state."), error as? SignalRError)
-        // }
+        XCTAssertEqual(SignalRError.invalidOperation("Start client while not in a stopped state."), err as? SignalRError)
     }
 
     func whenTaskWithTimeout(_ task: @escaping () async throws -> Void, timeout: TimeInterval) async -> Void {
