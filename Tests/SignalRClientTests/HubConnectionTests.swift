@@ -200,19 +200,19 @@ final class HubConnectionTests: XCTestCase {
             connection: mockConnection,
             logger: Logger(logLevel: .debug, logHandler: logHandler),
             hubProtocol: hubProtocol,
-            retryPolicy: DefaultRetryPolicy(retryDelays: [1, 2, 3]), // Add some retry, but in this case, it shouldn't have effect
+            retryPolicy: DefaultRetryPolicy(retryDelays: []),
             serverTimeout: nil,
             keepAliveInterval: nil
         )
 
         let sendExpectation = XCTestExpectation(description: "send() should be called")
-        let closeEcpectation = XCTestExpectation(description: "close() should be called")
+        let closeExpectation = XCTestExpectation(description: "close() should be called")
         mockConnection.onSend = { data in
             sendExpectation.fulfill()
         }
 
         mockConnection.onClose = { error in
-            closeEcpectation.fulfill()
+            closeExpectation.fulfill()
         }
 
         let startTask = Task { try await hubConnection.start() }
@@ -230,7 +230,7 @@ final class HubConnectionTests: XCTestCase {
         // 2. connection.stop called
         do {
             try await startTask.value
-            await fulfillment(of: [closeEcpectation], timeout: 1.0)
+            await fulfillment(of: [closeExpectation], timeout: 1.0)
         } catch {
             XCTAssertEqual(SignalRError.connectionAborted, error as? SignalRError)
         }
@@ -285,7 +285,6 @@ final class HubConnectionTests: XCTestCase {
         await fulfillment(of: [sendExpectation], timeout: 1.0)
 
         // Response a handshake response
-        // await hubConnection.processIncomingData(.string(successHandshakeResponse))
         await whenTaskWithTimeout(startTask, timeout: 1.0)
 
         // Simulate connection close

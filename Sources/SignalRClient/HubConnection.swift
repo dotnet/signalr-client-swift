@@ -10,8 +10,6 @@ public actor HubConnection {
     private let hubProtocol: HubProtocol
     private let connection: ConnectionProtocol
     private let retryPolicy: RetryPolicy
-    private let connectionStatusLock: AsyncLock = AsyncLock()
-    // private let connectionState: ConnectionState
 
     private var connectionStarted: Bool = false
     private var receivedHandshakeResponse: Bool = false
@@ -145,6 +143,7 @@ public actor HubConnection {
             return
         }
 
+        stopDuringStartError = SignalRError.connectionAborted
         if (handshakeResolver != nil) {
             handshakeRejector!(SignalRError.connectionAborted)
         }
