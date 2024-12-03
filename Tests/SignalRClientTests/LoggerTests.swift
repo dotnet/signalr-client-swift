@@ -2,6 +2,8 @@ import XCTest
 
 @testable import SignalRClient
 
+let dummyLogger = Logger(logLevel: nil, logHandler: MockLogHandler())
+
 final class MockLogHandler: LogHandler, @unchecked Sendable {
     private let queue: DispatchQueue
     private let innerLogHandler: LogHandler?
