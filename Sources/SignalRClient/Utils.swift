@@ -46,11 +46,11 @@ extension StringOrData {
         switch self {
         case .string(let str):
             return
-                "String data of length \(str.count)\(includeContent ? "\(str)":"")"
+                "String data of length \(str.count)\(includeContent ? ". Content: \(str)":"")"
         case .data(let data):
             // TODO: data format?
             return
-                "Binary data of length \(data.count)\(includeContent ? "\(data)":"")"
+                "Binary data of length \(data.count)\(includeContent ? ". Content: \(data)":"")"
         }
     }
 
