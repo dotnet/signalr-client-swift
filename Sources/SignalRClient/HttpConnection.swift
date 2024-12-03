@@ -12,7 +12,7 @@ private enum ConnectionState: String {
     case disconnecting = "Disconnecting"
 }
 
-struct IHttpConnectionOptions {
+struct HttpConnectionOptions {
     var logHandler: LogHandler?
     var logLevel: LogLevel?
     var accessTokenFactory: (@Sendable () async throws -> String?)?
@@ -87,7 +87,7 @@ actor HttpConnection: ConnectionProtocol {
     private var connectionStarted: Bool = false
     private let httpClient: AccessTokenHttpClient
     private let logger: Logger
-    private var options: IHttpConnectionOptions
+    private var options: HttpConnectionOptions
     private var transport: Transport?
     private var startInternalTask: Task<Void, Error>?
     private var stopTask: Task<Void, Never>?
@@ -102,7 +102,7 @@ actor HttpConnection: ConnectionProtocol {
 
     // MARK: - Initialization
 
-    init(url: String, options: IHttpConnectionOptions = IHttpConnectionOptions()) {
+    init(url: String, options: HttpConnectionOptions = HttpConnectionOptions()) {
         precondition(!url.isEmpty, "url is required")
 
         self.logger =  Logger(logLevel: options.logLevel, logHandler: options.logHandler ?? OSLogHandler())
@@ -114,7 +114,7 @@ actor HttpConnection: ConnectionProtocol {
         self.options.timeout = options.timeout ?? 100
 
         self.accessTokenFactory = options.accessTokenFactory
-        self.httpClient = AccessTokenHttpClient(innerClient: options.httpClient ?? DefaultHttpClient(), accessTokenFactory: self.accessTokenFactory)
+        self.httpClient = AccessTokenHttpClient(innerClient: options.httpClient ?? DefaultHttpClient(logger: logger), accessTokenFactory: self.accessTokenFactory)
     }
 
     // MARK: - Public Methods
@@ -196,8 +196,7 @@ actor HttpConnection: ConnectionProtocol {
 
     private func startInternal(transferFormat: TransferFormat) async throws {
         var url = baseUrl
-        accessTokenFactory = options.accessTokenFactory
-        httpClient.accessTokenFactory = accessTokenFactory
+        await httpClient.setAccessTokenFactory(factory: accessTokenFactory)
 
         do {
             if options.skipNegotiation {
@@ -227,7 +226,7 @@ actor HttpConnection: ConnectionProtocol {
                         // Replace the current access token factory with one that uses
                         // the returned access token
                         accessTokenFactory = { return accessToken }
-                        httpClient.accessTokenFactory = accessTokenFactory
+                        await httpClient.setAccessTokenFactory(factory: accessTokenFactory)
                     }
                     redirects += 1
                 } while negotiateResponse?.url != nil && redirects < negotiationRedirectionLimit
@@ -275,30 +274,19 @@ actor HttpConnection: ConnectionProtocol {
     }
 
     private func getNegotiationResponse(url: String) async throws -> NegotiateResponse {
-        var headers: [String: String] = [:]
-        let (name, value) = getUserAgentHeader()
-        headers[name] = value
-
         let negotiateUrl = resolveNegotiateUrl(url: url)
 
         do {
-            var request = URLRequest(url: URL(string: negotiateUrl)!)
-            request.httpMethod = "POST"
+            let request = HttpRequest(method: .POST, url: negotiateUrl, options: options)
             
-            let (data, response) = try await httpClient.sendAsync(request: buildURLRequest(
-                url: negotiateUrl,
-                method: "POST",
-                content: nil,
-                headers: headers.merging(options.headers ?? [:], uniquingKeysWith: { (current, _) in current }),
-                timeout: options.timeout ?? 100
-            ))
+            let (message, response) = try await httpClient.send(request: request)
 
             if response.statusCode != 200 {
                 throw NSError(domain: "Unexpected status code returned from negotiate '\(response.statusCode)'", code: 0)
             }
 
             let decoder = JSONDecoder()
-            var negotiateResponse = try decoder.decode(NegotiateResponse.self, from: data)
+            var negotiateResponse = try decoder.decode(NegotiateResponse.self, from: message.converToData())
 
             if negotiateResponse.negotiateVersion == nil || negotiateResponse.negotiateVersion! < 1 {
                 negotiateResponse.connectionToken = negotiateResponse.connectionId
@@ -365,8 +353,8 @@ actor HttpConnection: ConnectionProtocol {
     }
 
     private func startTransport(url: String, transferFormat: TransferFormat) async throws {
-        transport!.onReceive(self.onReceive)
-        transport!.onClose  { [weak self] error in
+        await transport!.onReceive(self.onReceive)
+        await transport!.onClose  { [weak self] error in
             guard let self = self else { return }
             await self.stopConnection(error: error)
         }
@@ -493,10 +481,7 @@ actor HttpConnection: ConnectionProtocol {
         return requestedTransport.contains(actualTransport)
     }
 
-    private func getUserAgentHeader() -> (String, String) {
-        // Placeholder implementation
-        return ("User-Agent", "SignalR-Client-Swift/1.0")
-    }
+
 
     private func buildURLRequest(url: String, method: String?, content: Data?, headers: [String: String]?, timeout: TimeInterval?) -> URLRequest {
         var urlRequest = URLRequest(url: URL(string: url)!)

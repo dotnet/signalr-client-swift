@@ -1,7 +1,7 @@
 import Foundation
 
 // Define error types for better error handling
-enum SignalRError: Error, Equatable {
+public enum SignalRError: Error, Equatable {
     case incompleteMessage
     case invalidDataType
     case failedToEncodeHandshakeRequest
@@ -14,6 +14,11 @@ enum SignalRError: Error, Equatable {
     case negotiationError(String)
     case failedToStartConnection(String)
     case invalidOperation(String)
+    case unexpectedResponseCode(Int)
+    case invalidTextMessageEncoding
+    case httpTimeoutError
+    case invalidResponseType
+    case cannotSentUntilTransportConnected
 
     var localizedDescription: String {
         switch self {
@@ -41,6 +46,16 @@ enum SignalRError: Error, Equatable {
             return "Failed to start connection: \(message)"
         case .invalidOperation(let message):
             return "Invalid operation: \(message)"
+        case .unexpectedResponseCode(let responseCode):
+            return "Unexpected response code:\(responseCode)"
+        case .invalidTextMessageEncoding:
+            return "Invalide text messagge"
+        case .httpTimeoutError:
+            return "Http timeout"
+        case .invalidResponseType:
+            return "Invalid response type"
+        case .cannotSentUntilTransportConnected:
+            return "Cannot send until the transport is connected"
         }
     }
 }

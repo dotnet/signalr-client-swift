@@ -30,7 +30,7 @@ public protocol HubProtocol: Sendable {
     func writeMessage(message: HubMessage) throws -> StringOrData
 }
 
-public enum StringOrData {
+public enum StringOrData: Sendable, Equatable {
     case string(String)
     case data(Data)
 }

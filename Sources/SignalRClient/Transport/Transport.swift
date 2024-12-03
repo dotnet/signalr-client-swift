@@ -15,10 +15,10 @@ protocol Transport : Sendable {
     func stop(error: Error?) async throws
 
     /// A closure that is called when data is received.
-    func onReceive(_ handler: OnReceiveHandler?)
+    func onReceive(_ handler: OnReceiveHandler?) async
 
     /// A closure that is called when the transport is closed.
-    func onClose(_ handler: OnCloseHander?)
+    func onClose(_ handler: OnCloseHander?) async
 
     typealias OnReceiveHandler = @Sendable (StringOrData) async -> Void
 
