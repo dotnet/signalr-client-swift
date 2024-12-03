@@ -1,5 +1,5 @@
 /// Defines properties common to all Hub messages.
-public protocol HubMessage: Codable {
+public protocol HubMessage: Encodable {
     /// A value indicating the type of this message.
     var type: MessageType { get }
 }
@@ -19,13 +19,37 @@ struct InvocationMessage: HubInvocationMessage {
     /// The target method name.
     let target: String
     /// The target method arguments.
-    let arguments: [AnyCodable]
+    let arguments: [Encodable]
     /// The target methods stream IDs.
     let streamIds: [String]?
     /// Headers attached to the message.
     let headers: [String: String]?
     /// The ID of the invocation relating to this message.
     let invocationId: String?
+
+     func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        
+        try container.encode(type, forKey: .type)
+        try container.encode(target, forKey: .target)
+        try container.encodeIfPresent(streamIds, forKey: .streamIds)
+        try container.encodeIfPresent(headers, forKey: .headers)
+        try container.encodeIfPresent(invocationId, forKey: .invocationId)
+
+        var argumentsContainer = container.nestedUnkeyedContainer(forKey: .arguments)
+        for argument in arguments {
+            try argumentsContainer.encode(argument)
+        }
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case type
+        case target
+        case arguments
+        case streamIds
+        case headers
+        case invocationId
+    }
 }
 
 /// A hub message representing a streaming invocation.
@@ -113,40 +137,40 @@ struct SequenceMessage: HubMessage {
 }
 
 /// A type-erased Codable value.
-struct AnyCodable: Codable {
-    let value: Any
+// struct AnyCodable: Codable {
+//     let value: Any
 
-    init(_ value: Any) {
-        self.value = value
-    }
+//     init(_ value: Any) {
+//         self.value = value
+//     }
 
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if let intValue = try? container.decode(Int.self) {
-            value = intValue
-        } else if let doubleValue = try? container.decode(Double.self) {
-            value = doubleValue
-        } else if let stringValue = try? container.decode(String.self) {
-            value = stringValue
-        } else if let boolValue = try? container.decode(Bool.self) {
-            value = boolValue
-        } else {
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported type")
-        }
-    }
+    // init(from decoder: Decoder) throws {
+    //     let container = try decoder.singleValueContainer()
+    //     if let intValue = try? container.decode(Int.self) {
+    //         value = intValue
+    //     } else if let doubleValue = try? container.decode(Double.self) {
+    //         value = doubleValue
+    //     } else if let stringValue = try? container.decode(String.self) {
+    //         value = stringValue
+    //     } else if let boolValue = try? container.decode(Bool.self) {
+    //         value = boolValue
+    //     } else {
+    //         throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported type")
+    //     }
+    // }
 
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        if let intValue = value as? Int {
-            try container.encode(intValue)
-        } else if let doubleValue = value as? Double {
-            try container.encode(doubleValue)
-        } else if let stringValue = value as? String {
-            try container.encode(stringValue)
-        } else if let boolValue = value as? Bool {
-            try container.encode(boolValue)
-        } else {
-            throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: encoder.codingPath, debugDescription: "Unsupported type"))
-        }
-    }
-}
+    // func encode(to encoder: Encoder) throws {
+    //     var container = encoder.singleValueContainer()
+    //     if let intValue = value as? Int {
+    //         try container.encode(intValue)
+    //     } else if let doubleValue = value as? Double {
+    //         try container.encode(doubleValue)
+    //     } else if let stringValue = value as? String {
+    //         try container.encode(stringValue)
+    //     } else if let boolValue = value as? Bool {
+    //         try container.encode(boolValue)
+    //     } else {
+    //         throw EncodingError.invalidValue(value, EncodingError.Context(codingPath: encoder.codingPath, debugDescription: "Unsupported type"))
+    //     }
+    // }
+// }

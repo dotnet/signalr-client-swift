@@ -17,7 +17,7 @@ public protocol HubProtocol: Sendable {
        - input: A Data containing the serialized representation.
      - Returns: An array of `HubMessage` objects.
      */
-    func parseMessages(input: StringOrData) throws -> [HubMessage]
+    func parseMessages(input: StringOrData, binder: InvocationBinder) throws -> [HubMessage]
 
     /**
      Writes the specified `HubMessage` to a String or Data and returns it.

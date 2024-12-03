@@ -30,6 +30,21 @@ final class JsonHubProtocolTests: XCTestCase {
         XCTAssertNil(msg.streamIds)
     }
 
+    func testParseInvocationMessage2() throws {
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [123]}\(TextMessageFormat.recordSeparator)" // JSON format for InvocationMessage
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages[0] is InvocationMessage)
+        let msg = messages[0] as! InvocationMessage
+        XCTAssertEqual("testTarget", msg.target)
+        XCTAssertEqual(1, msg.arguments.count)
+        XCTAssertEqual("arg1", msg.arguments[0].value as! String)
+        XCTAssertEqual(123, msg.arguments[1].value as! Int)
+        XCTAssertNil(msg.invocationId)
+        XCTAssertNil(msg.streamIds)
+    }
+
     func testParseInvocationMessageWithInvocationId() throws {
         let input = "{\"type\": 1, \"invocationId\":\"345\", \"target\": \"testTarget\", \"arguments\": [\"arg1\", 123]}\(TextMessageFormat.recordSeparator)" 
         let messages = try jsonHubProtocol.parseMessages(input: .string(input))

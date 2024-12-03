@@ -5,7 +5,7 @@ struct JsonHubProtocol: HubProtocol {
     let version = 0
     let transferFormat: TransferFormat = .text
 
-    func parseMessages(input: StringOrData) throws -> [HubMessage] {
+    func parseMessages(input: StringOrData, binder: InvocationBinder) throws -> [HubMessage] {
         let inputString: String
         switch input {
             case .string(let str):
@@ -29,7 +29,7 @@ struct JsonHubProtocol: HubProtocol {
                 let type = jsonObject["type"] as? Int {
                     switch type {
                         case 1:
-                            let result = try JSONDecoder().decode(InvocationMessage.self, from: data)
+                            let result = try DecodeInvocationMessage(jsonObject, binder: binder)
                             hubMessages.append(result)
                         case 2:
                             let result = try JSONDecoder().decode(StreamItemMessage.self, from: data)
@@ -71,5 +71,46 @@ struct JsonHubProtocol: HubProtocol {
             throw NSError(domain: "JsonHubProtocol", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert JSON data to string."])
         }
         return .string(TextMessageFormat.write(jsonString))
+    }
+
+    private func DecodeInvocationMessage(_ jsonObject: [String: Any], binder: InvocationBinder) throws -> InvocationMessage {
+        guard let target = jsonObject["target"] as? String else {
+            throw SignalRError.invalidData("'target' not found in JSON object for InvocationMessage.")
+        }
+
+        let streamIds = jsonObject["streamIds"] as? [String]
+        let headers = jsonObject["headers"] as? [String: String]
+        let invocationId = jsonObject["invocationId"] as? String
+        let typedArguments = try DecodeArguments(jsonObject, binder: binder)
+
+        return InvocationMessage(target: target, arguments: typedArguments, streamIds: streamIds, headers: headers, invocationId: invocationId)
+    }
+
+    private func DecodeArguments(_ jsonObject: [String: Any], binder: InvocationBinder) throws -> [AnyCodable] {
+        let arguments = jsonObject["arguments"] as? [Any] ?? []
+        let types = binder.GetBinderTypes()
+        guard arguments.count == types.count else {
+            throw SignalRError.invalidData("Invocation provides \(arguments.count) argument(s) but target expects \(types.count).")
+        }
+
+        return try zip(arguments, types).map { (arg, type) in
+            return try convertToType(arg, as: type)
+        }
+    }
+
+    private func convertToType(_ anyObject: Any, as targetType: Any.Type) throws -> AnyCodable {
+        guard let decodableType = targetType as? Decodable.Type else {
+            throw SignalRError.invalidData("Provided type does not conform to Decodable.")
+        }
+        
+        // Step 2: Convert dictionary to JSON data
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: anyObject) else {
+            throw SignalRError.invalidData("Failed to serialize dictionary to JSON data.")
+        }
+        
+        // Step 3: Decode JSON data into the target type
+        let decoder = JSONDecoder()
+        let decodedObject = try decoder.decode(decodableType, from: jsonData)
+        return AnyCodable(decodedObject)
     }
 }

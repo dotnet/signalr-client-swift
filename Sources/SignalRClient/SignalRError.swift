@@ -19,6 +19,7 @@ public enum SignalRError: Error, Equatable {
     case httpTimeoutError
     case invalidResponseType
     case cannotSentUntilTransportConnected
+    case invalidData(String)
 
     var localizedDescription: String {
         switch self {
@@ -56,6 +57,8 @@ public enum SignalRError: Error, Equatable {
             return "Invalid response type"
         case .cannotSentUntilTransportConnected:
             return "Cannot send until the transport is connected"
+        case .invalidData(let message):
+            return "Invalid data: \(message)"
         }
     }
 }

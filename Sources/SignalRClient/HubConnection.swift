@@ -89,7 +89,9 @@ public actor HubConnection {
     }
 
     public func send(method: String, arguments: Any...) async throws {
-        // Send a message
+        let message = InvocationMessage(target: method, arguments: arguments.map { AnyCodable($0) }, streamIds: nil, headers: nil, invocationId: nil)
+        let payload = try hubProtocol.writeMessage(message: message)
+        try await sendMessageInternal(payload)
     }
 
     public func invoke(method: String, arguments: Any...) async throws -> Any {
