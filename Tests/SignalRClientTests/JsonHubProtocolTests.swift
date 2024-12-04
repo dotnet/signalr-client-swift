@@ -107,6 +107,27 @@ final class JsonHubProtocolTests: XCTestCase {
         XCTAssertNil(msg.streamIds)
     }
 
+    func testParseInvocationMessageWithArrayCusomizedClass() throws {
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [\"arg1\", [{\"stringVal\":\"val\"}]]}\(TextMessageFormat.recordSeparator)" // JSON format for InvocationMessage
+        let binder = TestInvocationBinder(binderTypes: [String.self, [CustomizedClass].self])
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages[0] is InvocationMessage)
+        let msg = messages[0] as! InvocationMessage
+        XCTAssertEqual("testTarget", msg.target)
+        XCTAssertEqual(2, msg.arguments.value!.count)
+        XCTAssertEqual("arg1", msg.arguments.value![0] as! String)
+        guard let array = msg.arguments.value![1] as? [CustomizedClass] else {
+            XCTFail("Expected [CustomizedClass]")
+            return
+        }
+        XCTAssertEqual(1, array.count)
+        XCTAssertEqual("val", array[0].stringVal)
+        XCTAssertNil(msg.invocationId)
+        XCTAssertNil(msg.streamIds)
+    }
+
     func testParseInvocationMessageThrowsForUnmatchedParameterCount() throws {
         let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [\"arg1\", 123]}\(TextMessageFormat.recordSeparator)" // JSON format for InvocationMessage
         let binder = TestInvocationBinder(binderTypes: [String.self])
