@@ -11,7 +11,7 @@ struct JsonHubProtocol: HubProtocol {
             case .string(let str):
                 inputString = str
             case .data:
-                throw NSError(domain: "JsonHubProtocol", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid input for JSON hub protocol. Expected a string."])
+                throw SignalRError.invalidData("Invalid input for JSON hub protocol. Expected a string.")
         }
 
         if inputString.isEmpty {
@@ -23,7 +23,7 @@ struct JsonHubProtocol: HubProtocol {
 
         for message in messages {
             guard let data = message.data(using: .utf8) else {
-                throw NSError(domain: "JsonHubProtocol", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid message encoding."])
+                throw SignalRError.invalidData("Failed to convert message to data.")
             }
             if let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                 let type = jsonObject["type"] as? Int {
@@ -35,7 +35,7 @@ struct JsonHubProtocol: HubProtocol {
                             let result = try DecodeStreamItemMessage(jsonObject, binder: binder)
                             hubMessages.append(result)
                         case 3:
-                            let result = try DecodeCompletionMessage(jsonObject)
+                            let result = try DecodeCompletionMessage(jsonObject, binder: binder)
                             hubMessages.append(result)
                         case 4:
                             let result = try DecodeStreamInvocationMessage(jsonObject, binder: binder)
@@ -81,7 +81,7 @@ struct JsonHubProtocol: HubProtocol {
         let streamIds = jsonObject["streamIds"] as? [String]
         let headers = jsonObject["headers"] as? [String: String]
         let invocationId = jsonObject["invocationId"] as? String
-        let typedArguments = try DecodeArguments(jsonObject, binder: binder)
+        let typedArguments = try DecodeArguments(jsonObject, types: binder.GetParameterTypes(methodName: target))
 
         return InvocationMessage(target: target, arguments: typedArguments, streamIds: streamIds, headers: headers, invocationId: invocationId)
     }
@@ -94,7 +94,7 @@ struct JsonHubProtocol: HubProtocol {
         let streamIds = jsonObject["streamIds"] as? [String]
         let headers = jsonObject["headers"] as? [String: String]
         let invocationId = jsonObject["invocationId"] as? String
-        let typedArguments = try DecodeArguments(jsonObject, binder: binder)
+        let typedArguments = try DecodeArguments(jsonObject, types: binder.GetParameterTypes(methodName: target))
 
         return StreamInvocationMessage(invocationId: invocationId, target: target, arguments: typedArguments, streamIds: streamIds, headers: headers)
     }
@@ -105,19 +105,19 @@ struct JsonHubProtocol: HubProtocol {
         }
 
         let headers = jsonObject["headers"] as? [String: String]
-        let typedItem = try DecodeItem(jsonObject, binder: binder)
+        let typedItem = try DecodeStreamItem(jsonObject, type: binder.GetStreamItemType(streamId: invocationId))
 
         return StreamItemMessage(invocationId: invocationId, item: typedItem, headers: headers)
     }
 
-    private func DecodeCompletionMessage(_ jsonObject: [String: Any]) throws -> CompletionMessage {
+    private func DecodeCompletionMessage(_ jsonObject: [String: Any], binder: InvocationBinder) throws -> CompletionMessage {
         guard let invocationId = jsonObject["invocationId"] as? String else {
             throw SignalRError.invalidData("'invocationId' not found in JSON object for CompletionMessage.")
         }
 
-        let result = AnyEncodable(jsonObject["result"])
         let headers = jsonObject["headers"] as? [String: String]
         let error = jsonObject["error"] as? String
+        let result = try DecodeCompletionResult(jsonObject, type: binder.GetReturnType(invocationId: invocationId))
 
         return CompletionMessage(invocationId: invocationId, error: error, result: result, headers: headers)
     }
@@ -158,9 +158,8 @@ struct JsonHubProtocol: HubProtocol {
         return SequenceMessage(sequenceId: sequenceId)
     }
 
-    private func DecodeArguments(_ jsonObject: [String: Any], binder: InvocationBinder) throws -> AnyEncodableArray {
+    private func DecodeArguments(_ jsonObject: [String: Any], types: [Any.Type]) throws -> AnyEncodableArray {
         let arguments = jsonObject["arguments"] as? [Any] ?? []
-        let types = binder.GetBinderTypes()
         guard arguments.count == types.count else {
             throw SignalRError.invalidData("Invocation provides \(arguments.count) argument(s) but target expects \(types.count).")
         }
@@ -170,16 +169,26 @@ struct JsonHubProtocol: HubProtocol {
         })
     }
 
-    private func DecodeItem(_ jsonObject: [String: Any], binder: InvocationBinder) throws -> AnyEncodable {
+    private func DecodeStreamItem(_ jsonObject: [String: Any], type: Any.Type?) throws -> AnyEncodable {
         let item = jsonObject["item"]
         if item == nil {
             return AnyEncodable(nil)
         }
 
-        guard let type = binder.GetBinderTypes().first else {
+        guard type != nil else {
             throw SignalRError.invalidData("No item type found in binder.")
         }
-        return try AnyEncodable(convertToType(item!, as: type))
+
+        return try AnyEncodable(convertToType(item!, as: type!))
+    }
+
+    private func DecodeCompletionResult(_ jsonObject: [String: Any], type: Any.Type?) throws -> AnyEncodable {
+        let result = jsonObject["result"]
+        if result == nil || type == nil{
+            return AnyEncodable(nil)
+        }
+
+        return try AnyEncodable(convertToType(result!, as: type!))
     }
 
     private func convertToType(_ anyObject: Any, as targetType: Any.Type) throws -> Any {

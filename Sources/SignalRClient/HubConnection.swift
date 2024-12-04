@@ -3,6 +3,7 @@ import Foundation
 public actor HubConnection {
     private let defaultTimeout: TimeInterval = 30
     private let defaultPingInterval: TimeInterval = 15
+    private var methods: [String: InvocationEntity] = [:]
 
     private let serverTimeout: TimeInterval
     private let keepAliveInterval: TimeInterval
@@ -89,9 +90,7 @@ public actor HubConnection {
     }
 
     public func send(method: String, arguments: Any...) async throws {
-        // let message = InvocationMessage(target: method, arguments: arguments.map { AnyCodable($0) }, streamIds: nil, headers: nil, invocationId: nil)
-        // let payload = try hubProtocol.writeMessage(message: message)
-        // try await sendMessageInternal(payload)
+        // Send a message
     }
 
     public func invoke(method: String, arguments: Any...) async throws -> Any {
@@ -99,12 +98,12 @@ public actor HubConnection {
         return ""
     }
 
-    public func on(method: String, handler: @escaping ([Any]) async -> Void) {
-        // Register a handler
+    public func on(method: String, types: [Any.Type], handler: @escaping ([Any]) async -> Void) {
+        methods[method] = InvocationEntity(types: types, callback: handler)
     }
 
     public func off(method: String) {
-        // Unregister a handler
+        methods[method] = nil
     }
 
     public func onClosed(handler: @escaping (Error?) async -> Void) {
@@ -221,6 +220,8 @@ public actor HubConnection {
             return
         }
 
+
+
         // show the data now
         if case .string(let str) = data {
             logger.log(level: .debug, message: "Received data: \(str)")
@@ -327,6 +328,16 @@ public actor HubConnection {
 
         handshakeResolver!(handshakeResponse)
         return remainingData
+    }
+
+    private class InvocationEntity {
+        public let types: [Any.Type]
+        public let callback: ([Any]) async throws -> Void
+
+        init(types: [Any.Type], callback: @escaping ([Any]) async throws -> Void) {
+            self.types = types
+            self.callback = callback
+        }
     }
 }
 
