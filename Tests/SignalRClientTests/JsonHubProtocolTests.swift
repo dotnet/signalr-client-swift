@@ -2,7 +2,7 @@ import XCTest
 @testable import SignalRClient
 
 final class JsonHubProtocolTests: XCTestCase {
-    
+    let emptyBinder: InvocationBinder = InvocationBinder(binderTypes: [])
     var jsonHubProtocol: JsonHubProtocol!
 
     override func setUp() {
@@ -17,67 +17,152 @@ final class JsonHubProtocolTests: XCTestCase {
 
     func testParseInvocationMessage() throws {
         let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [\"arg1\", 123]}\(TextMessageFormat.recordSeparator)" // JSON format for InvocationMessage
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let binder = InvocationBinder(binderTypes: [String.self, Int.self])
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: binder)
         
         XCTAssertEqual(messages.count, 1)
         XCTAssertTrue(messages[0] is InvocationMessage)
         let msg = messages[0] as! InvocationMessage
         XCTAssertEqual("testTarget", msg.target)
-        XCTAssertEqual(2, msg.arguments.count)
-        XCTAssertEqual("arg1", msg.arguments[0].value as! String)
-        XCTAssertEqual(123, msg.arguments[1].value as! Int)
+        XCTAssertEqual(2, msg.arguments.value!.count)
+        XCTAssertEqual("arg1", msg.arguments.value![0] as! String)
+        XCTAssertEqual(123, msg.arguments.value![1] as! Int)
         XCTAssertNil(msg.invocationId)
         XCTAssertNil(msg.streamIds)
     }
 
-    func testParseInvocationMessage2() throws {
-        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [123]}\(TextMessageFormat.recordSeparator)" // JSON format for InvocationMessage
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+    func testParseInvocationMessageWithCustomizedClass() throws {
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [123, {\"stringVal\": \"str\", \"intVal\": 12345, \"boolVal\": true, \"doubleVal\": 3.14, \"arrayVal\": [\"str2\"], \"dictVal\": {\"key2\": \"str3\"}}]}\(TextMessageFormat.recordSeparator)" // JSON format for InvocationMessage
+        let binder = InvocationBinder(binderTypes: [Int.self, CustomizedClass.self])
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: binder)
         
         XCTAssertEqual(messages.count, 1)
         XCTAssertTrue(messages[0] is InvocationMessage)
         let msg = messages[0] as! InvocationMessage
         XCTAssertEqual("testTarget", msg.target)
-        XCTAssertEqual(1, msg.arguments.count)
-        XCTAssertEqual("arg1", msg.arguments[0].value as! String)
-        XCTAssertEqual(123, msg.arguments[1].value as! Int)
+        XCTAssertEqual(2, msg.arguments.value!.count)
+        XCTAssertEqual(123, msg.arguments.value![0] as! Int)
+        guard let customizedClass = msg.arguments.value![1] as? CustomizedClass else {
+            XCTFail("Expected CustomizedClass")
+            return
+        }
+        XCTAssertEqual("str", customizedClass.stringVal)
+        XCTAssertEqual(12345, customizedClass.intVal)
+        XCTAssertEqual(true, customizedClass.boolVal)
+        XCTAssertEqual(3.14, customizedClass.doubleVal)
+        XCTAssertEqual(1, customizedClass.arrayVal!.count)
+        XCTAssertEqual("str2", customizedClass.arrayVal![0])
+        XCTAssertEqual("str3", customizedClass.dictVal!["key2"])
         XCTAssertNil(msg.invocationId)
         XCTAssertNil(msg.streamIds)
+    }
+
+     func testParseInvocationMessageWithSomePropertyOptional() throws {
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [{\"nokey\":123, \"stringVal\":\"val\"}]}\(TextMessageFormat.recordSeparator)" // JSON format for InvocationMessage
+        let binder = InvocationBinder(binderTypes: [CustomizedClass.self])
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages[0] is InvocationMessage)
+        let msg = messages[0] as! InvocationMessage
+        XCTAssertEqual("testTarget", msg.target)
+        guard let customizedClass = msg.arguments.value![0] as? CustomizedClass else {
+            XCTFail("Expected CustomizedClass")
+            return
+        }
+        XCTAssertEqual("val", customizedClass.stringVal)
+        XCTAssertNil(msg.invocationId)
+        XCTAssertNil(msg.streamIds)
+    }
+
+    private class CustomizedClass: Codable {
+        var stringVal: String
+        var intVal: Int?
+        var boolVal: Bool?
+        var doubleVal: Double?
+        var arrayVal: [String]?
+        var dictVal: [String: String]?
+    }
+
+    func testParseInvocationMessageWithArrayElement() throws {
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [\"arg1\", [123, 345, 456]]}\(TextMessageFormat.recordSeparator)" // JSON format for InvocationMessage
+        let binder = InvocationBinder(binderTypes: [String.self, [Int].self])
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages[0] is InvocationMessage)
+        let msg = messages[0] as! InvocationMessage
+        XCTAssertEqual("testTarget", msg.target)
+        XCTAssertEqual(2, msg.arguments.value!.count)
+        XCTAssertEqual("arg1", msg.arguments.value![0] as! String)
+        guard let array = msg.arguments.value![1] as? [Int] else {
+            XCTFail("Expected [Int]")
+            return
+        }
+        XCTAssertEqual(3, array.count)
+        XCTAssertEqual(123, array[0])
+        XCTAssertEqual(345, array[1])
+        XCTAssertEqual(456, array[2])
+        XCTAssertNil(msg.invocationId)
+        XCTAssertNil(msg.streamIds)
+    }
+
+    func testParseInvocationMessageThrowsForUnmatchedParameterCount() throws {
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [\"arg1\", 123]}\(TextMessageFormat.recordSeparator)" // JSON format for InvocationMessage
+        let binder = InvocationBinder(binderTypes: [String.self])
+        XCTAssertThrowsError(try self.jsonHubProtocol.parseMessages(input: .string(input), binder: binder)) { error in
+            XCTAssertEqual(error as? SignalRError, SignalRError.invalidData("Invocation provides 2 argument(s) but target expects 1."))
+        }
+    }
+
+    func testParseInvocationMessageThrowsForNonDecodableClass() throws {
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [{\"key\":\"val\"}]}\(TextMessageFormat.recordSeparator)" // JSON format for InvocationMessage
+        let binder = InvocationBinder(binderTypes: [NonDecodableClass.self])
+        XCTAssertThrowsError(try self.jsonHubProtocol.parseMessages(input: .string(input), binder: binder)) { error in
+            XCTAssertEqual(error as? SignalRError, SignalRError.invalidData("Provided type NonDecodableClass does not conform to Decodable."))
+        }
+    }
+
+    private class NonDecodableClass {
+        var key: String = ""
     }
 
     func testParseInvocationMessageWithInvocationId() throws {
         let input = "{\"type\": 1, \"invocationId\":\"345\", \"target\": \"testTarget\", \"arguments\": [\"arg1\", 123]}\(TextMessageFormat.recordSeparator)" 
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let binder = InvocationBinder(binderTypes: [String.self, Int.self])
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: binder)
         
         XCTAssertEqual(messages.count, 1)
         XCTAssertTrue(messages[0] is InvocationMessage)
         let msg = messages[0] as! InvocationMessage
         XCTAssertEqual("testTarget", msg.target)
-        XCTAssertEqual(2, msg.arguments.count)
-        XCTAssertEqual("arg1", msg.arguments[0].value as! String)
-        XCTAssertEqual(123, msg.arguments[1].value as! Int)
+        XCTAssertEqual(2, msg.arguments.value!.count)
+        XCTAssertEqual("arg1", msg.arguments.value![0] as! String)
+        XCTAssertEqual(123, msg.arguments.value![1] as! Int)
         XCTAssertEqual("345", msg.invocationId!)
         XCTAssertNil(msg.streamIds)
     }
 
     func testParseInvocationMessageWithStream() throws {
         let input = "{\"type\": 1, \"invocationId\":\"345\", \"target\": \"testTarget\", \"arguments\": [\"arg1\", 123], \"streamIds\": [\"1\"]}\(TextMessageFormat.recordSeparator)" 
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let binder = InvocationBinder(binderTypes: [String.self, Int.self])
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: binder)
         
         XCTAssertEqual(messages.count, 1)
         XCTAssertTrue(messages[0] is InvocationMessage)
         let msg = messages[0] as! InvocationMessage
         XCTAssertEqual("testTarget", msg.target)
-        XCTAssertEqual(2, msg.arguments.count)
-        XCTAssertEqual("arg1", msg.arguments[0].value as! String)
-        XCTAssertEqual(123, msg.arguments[1].value as! Int)
+        XCTAssertEqual(2, msg.arguments.value!.count)
+        XCTAssertEqual("arg1", msg.arguments.value![0] as! String)
+        XCTAssertEqual(123, msg.arguments.value![1] as! Int)
         XCTAssertEqual("345", msg.invocationId!)
         XCTAssertEqual("1", msg.streamIds![0])
     }
 
     func testParseStreamItemMessage() throws {
         let input = "{\"type\": 2, \"invocationId\":\"345\", \"item\": \"someData\"}\(TextMessageFormat.recordSeparator)" // JSON format for StreamItemMessage
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let binder = InvocationBinder(binderTypes: [String.self])
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: binder)
         
         XCTAssertEqual(messages.count, 1)
         XCTAssertTrue(messages[0] is StreamItemMessage)
@@ -86,12 +171,12 @@ final class JsonHubProtocolTests: XCTestCase {
             return
         }
         XCTAssertEqual("345", msg.invocationId)
-        XCTAssertEqual("someData", msg.item!.value as! String)
+        XCTAssertEqual("someData", msg.item.value as! String)
     }
 
     func testParseCompletionMessage() throws {
         let input = "{\"type\": 3, \"invocationId\":\"345\", \"result\": \"completionResult\"}\(TextMessageFormat.recordSeparator)" // JSON format for CompletionMessage
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: emptyBinder)
         
         XCTAssertEqual(messages.count, 1)
         guard let msg = messages[0] as? CompletionMessage else {
@@ -99,12 +184,12 @@ final class JsonHubProtocolTests: XCTestCase {
             return
         }
         XCTAssertEqual("345", msg.invocationId)
-        XCTAssertEqual("completionResult", msg.result?.value as! String)
+        XCTAssertEqual("completionResult", msg.result.value as! String)
     }
 
     func testParseCompletionMessageError() throws {
         let input = "{\"type\": 3, \"invocationId\":\"345\", \"error\": \"Errors\"}\(TextMessageFormat.recordSeparator)" // JSON format for CompletionMessage
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: emptyBinder)
         
         XCTAssertEqual(messages.count, 1)
         guard let msg = messages[0] as? CompletionMessage else {
@@ -117,7 +202,7 @@ final class JsonHubProtocolTests: XCTestCase {
 
     func testParseCancelInvocation() throws {
         let input = "{\"type\": 5, \"invocationId\":\"345\"}\(TextMessageFormat.recordSeparator)"
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: emptyBinder)
         
         XCTAssertEqual(messages.count, 1)
         guard let msg = messages[0] as? CancelInvocationMessage else {
@@ -129,7 +214,7 @@ final class JsonHubProtocolTests: XCTestCase {
 
     func testParsePing() throws {
         let input = "{\"type\": 6}\(TextMessageFormat.recordSeparator)"
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: emptyBinder)
         
         XCTAssertEqual(messages.count, 1)
         guard let msg = messages[0] as? PingMessage else {
@@ -140,7 +225,7 @@ final class JsonHubProtocolTests: XCTestCase {
 
     func testParseCloseMessage() throws {
         let input = "{\"type\": 7, \"error\":\"Connection closed because of an error!\", \"allowReconnect\": true}\(TextMessageFormat.recordSeparator)"
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: emptyBinder)
         
         XCTAssertEqual(messages.count, 1)
         guard let msg = messages[0] as? CloseMessage else {
@@ -153,7 +238,7 @@ final class JsonHubProtocolTests: XCTestCase {
 
     func testParseAckMessage() throws {
         let input = "{\"type\": 8, \"sequenceId\":1394}\(TextMessageFormat.recordSeparator)"
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: emptyBinder)
         
         XCTAssertEqual(messages.count, 1)
         guard let msg = messages[0] as? AckMessage else {
@@ -165,7 +250,7 @@ final class JsonHubProtocolTests: XCTestCase {
 
     func testParseSequenceMessage() throws {
         let input = "{\"type\": 9, \"sequenceId\":1394}\(TextMessageFormat.recordSeparator)"
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: emptyBinder)
         
         XCTAssertEqual(messages.count, 1)
         guard let msg = messages[0] as? SequenceMessage else {
@@ -177,7 +262,7 @@ final class JsonHubProtocolTests: XCTestCase {
 
     func testParseUnknownMessageType() throws {
         let input = "{\"type\": 99}\(TextMessageFormat.recordSeparator)" // Unknown message type
-        let messages = try jsonHubProtocol.parseMessages(input: .string(input))
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: emptyBinder)
         
         XCTAssertEqual(messages.count, 0)
     }
@@ -185,7 +270,7 @@ final class JsonHubProtocolTests: XCTestCase {
     func testWriteInvocationMessage() throws {
         let message = InvocationMessage(
             target: "testTarget",
-            arguments: [AnyCodable("arg1"), AnyCodable(123)],
+            arguments: AnyEncodableArray(["arg1", 123]),
             streamIds: ["456"],
             headers: ["key1": "value1", "key2": "value2"],
             invocationId: "123"
@@ -196,11 +281,47 @@ final class JsonHubProtocolTests: XCTestCase {
         """)
     }
 
+    func testWriteInvocationMessageWithAllElement() throws {
+        let message = InvocationMessage(
+            target: "testTarget",
+            arguments: AnyEncodableArray(["arg1", //string
+                                          123, //int
+                                          3.14, //double
+                                          true, //bool
+                                          ["array1", 456], //array
+                                          ["key1": "value1", "key2": "value2"], //dictionary
+                                          CustomizedEncodingClass(stringVal: "str", intVal: 12345, doubleVal: 3.14, boolVal: true)]),
+
+            streamIds: ["456"],
+            headers: ["key1": "value1", "key2": "value2"],
+            invocationId: "123"
+        )
+        
+        try verifyWriteMessage(message: message, expectedJson: """
+        {"streamIds":["456"],"type":1,"headers":{"key2":"value2","key1":"value1"},"target":"testTarget","arguments":["arg1",123,3.14,true,["array1",456],{"key1":"value1","key2":"value2"},{"stringVal":"str","intVal":12345,"doubleVal":3.14,"boolVal":true}],"invocationId":"123"}
+        """)
+    }
+
+    private struct CustomizedEncodingClass: Encodable {
+        var stringVal: String = ""
+        var intVal: Int = 0
+        var doubleVal: Double = 0.0
+        var boolVal: Bool = false
+    }
+
     func testWriteStreamItemMessage() throws {
-        let message = StreamItemMessage(invocationId: "123", item: AnyCodable("someData"), headers: ["key1": "value1", "key2": "value2"])
+        let message = StreamItemMessage(invocationId: "123", item: AnyEncodable("someData"), headers: ["key1": "value1", "key2": "value2"])
         
         try verifyWriteMessage(message: message, expectedJson: """
         {"type":2,"item":"someData","invocationId":"123","headers":{"key2":"value2","key1":"value1"}}
+        """)
+    }
+
+    func testWriteStreamItemMessage2() throws {
+        let message = StreamItemMessage(invocationId: "123", item: AnyEncodable(["someData", 123]), headers: ["key1": "value1", "key2": "value2"])
+        
+        try verifyWriteMessage(message: message, expectedJson: """
+        {"type":2,"item":["someData",123],"invocationId":"123","headers":{"key2":"value2","key1":"value1"}}
         """)
     }
 
@@ -208,7 +329,7 @@ final class JsonHubProtocolTests: XCTestCase {
         let message = CompletionMessage(
             invocationId: "123",
             error: nil,
-            result: AnyCodable("completionResult"),
+            result: AnyEncodable("completionResult"),
             headers: ["key1": "value1", "key2": "value2"]
         )
         
@@ -221,7 +342,7 @@ final class JsonHubProtocolTests: XCTestCase {
         let message = StreamInvocationMessage(
             invocationId: "streamId123",
             target: "streamTarget",
-            arguments: [AnyCodable("arg1"), AnyCodable(456)],
+            arguments: AnyEncodableArray(["arg1", 456]),
             streamIds: ["123"],
             headers: ["key1": "value1", "key2": "value2"]
         )

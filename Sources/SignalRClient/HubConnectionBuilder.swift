@@ -22,10 +22,10 @@ public class HubConnectionBuilder {
         return self
     }
 
-    public func withHubProtocol(hubProtocol: HubProtocol) -> HubConnectionBuilder {
-        self.hubProtocol = hubProtocol
-        return self
-    }
+    // public func withHubProtocol(hubProtocol: HubProtocol) -> HubConnectionBuilder {
+    //     self.hubProtocol = hubProtocol
+    //     return self
+    // }
 
     public func withServerTimeout(serverTimeout: TimeInterval) -> HubConnectionBuilder {
         self.serverTimeout = serverTimeout
