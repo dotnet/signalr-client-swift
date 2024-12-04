@@ -3,11 +3,13 @@ import Foundation
 extension HttpRequest {
     init(
         method: HttpMethod, url: String, content: StringOrData? = nil,
+        responseType: TransferFormat? = nil,
         headers: [String: String]? = nil, timeout: TimeInterval? = nil,
         options: HttpConnectionOptions, includeUserAgent: Bool = true
     ) {
         self.init(
-            method: method, url: url, content: content, headers: headers,
+            method: method, url: url, content: content,
+            responseType: responseType, headers: headers,
             timeout: timeout)
         if includeUserAgent {
             // Placeholder implementation
@@ -62,8 +64,8 @@ extension StringOrData {
             return data.isEmpty
         }
     }
-    
-    func convertToString() -> String?{
+
+    func convertToString() -> String? {
         switch self {
         case .string(let str):
             return str
@@ -71,7 +73,7 @@ extension StringOrData {
             return String(data: data, encoding: .utf8)
         }
     }
-    
+
     func converToData() -> Data {
         switch self {
         case .string(let str):

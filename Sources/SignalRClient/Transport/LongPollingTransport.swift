@@ -9,7 +9,6 @@ actor LongPollingTransport: Transport {
     var running: Bool
     var closeError: Error?
     var receiving: Task<Void, Never>?
-    var transferFormat: TransferFormat?
     var onReceiveHandler: OnReceiveHandler?
     var onCloseHandler: OnCloseHander?
 
@@ -24,12 +23,12 @@ actor LongPollingTransport: Transport {
 
     func connect(url: String, transferFormat: TransferFormat) async throws {
         self.url = url
-        self.transferFormat = transferFormat
-
         logger.log(
             level: .debug, message: "(LongPolling transport) Connecting.")
 
-        var pollRequest = HttpRequest(method: .GET, url: url, options: options)
+        var pollRequest = HttpRequest(
+            method: .GET, url: url, responseType: transferFormat,
+            options: options)
         pollRequest.appendDateInUrl()
         logger.log(
             level: .debug,
@@ -144,7 +143,8 @@ actor LongPollingTransport: Transport {
                 "(LongPolling transport) sending data. \(requestData.getDataDetail(includeContent: options.logMessageContent ?? false))"
         )
         let request = HttpRequest(
-            method: .POST, url: self.url!, content: requestData, options: options)
+            method: .POST, url: self.url!, content: requestData,
+            options: options)
         let (_, response) = try await httpClient.send(request: request)
         logger.log(
             level: .debug,
