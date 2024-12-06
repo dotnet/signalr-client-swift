@@ -76,43 +76,46 @@ class TaskCompletionSourceTests: XCTestCase {
     }
 
     func testBench() async {
-        let queue = DispatchQueue(label: "TcsBench")
         let total = 10000
         var tcss: [TaskCompletionSource<Void>] = []
         tcss.reserveCapacity(total)
-        var count = 0
         for _ in 1...total {
             tcss.append(TaskCompletionSource<Void>())
         }
         let start = Date()
         let expectation = expectation(description: "Tcss should all complete")
-
-        Task {
-            for tcs in tcss {
-                Task {
-                    try await Task.sleep(for: .microseconds(10))
-                    try await tcs.task()
-                    queue.sync {
-                        count += 1
-                        if count == total {
-                            expectation.fulfill()
-                            print(Date().timeIntervalSince(start))
-                        }
-                    }
+        let counter = Counter(value: 0)
+        for tcs in tcss {
+            Task {
+                try await Task.sleep(for: .microseconds(10))
+                try await tcs.task()
+                let c = await counter.increase(delta: 1)
+                if c == total {
+                    expectation.fulfill()
+                    print(Date().timeIntervalSince(start))
                 }
             }
         }
 
-        Task {
-            for (i, tcs) in tcss.enumerated() {
-                Task {
-                    try await Task.sleep(
-                        for: .microseconds(i % 2 == 0 ? 5 : 15))
-                    _ = await tcs.trySetResult(.success(()))
-                }
+        for (i, tcs) in tcss.enumerated() {
+            Task {
+                try await Task.sleep(
+                    for: .microseconds(i % 2 == 0 ? 5 : 15))
+                _ = await tcs.trySetResult(.success(()))
             }
         }
 
         await fulfillment(of: [expectation], timeout: 1)
+    }
+}
+
+actor Counter {
+    var value: Int
+    init(value: Int) {
+        self.value = value
+    }
+    func increase(delta: Int) -> Int {
+        value += delta
+        return value
     }
 }
