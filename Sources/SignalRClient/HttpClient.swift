@@ -64,8 +64,9 @@ actor DefaultHttpClient: HttpClient {
     ) {
         let session = URLSession.shared
         do {
+            let urlRequest = try request.buildURLRequest()
             let (data, response) = try await session.data(
-                for: request.buildURLRequest())
+                for: urlRequest)
             guard let httpURLResponse = response as? HTTPURLResponse else {
                 throw SignalRError.invalidResponseType
             }
@@ -151,8 +152,11 @@ actor AccessTokenHttpClient: HttpClient {
 }
 
 extension HttpRequest {
-    fileprivate func buildURLRequest() -> URLRequest {
-        var urlRequest = URLRequest(url: URL(string: url)!)
+    fileprivate func buildURLRequest() throws -> URLRequest {
+        guard let url = URL(string: self.url) else {
+            throw SignalRError.invalidUrl(self.url)
+        }
+        var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = method.rawValue
         urlRequest.timeoutInterval = timeout
         for (key, value) in headers {

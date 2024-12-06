@@ -22,6 +22,7 @@ actor LongPollingTransport: Transport {
     }
 
     func connect(url: String, transferFormat: TransferFormat) async throws {
+        // MARK: Here's an assumption that the connect won't be called twice
         self.url = url
         logger.log(
             level: .debug, message: "(LongPolling transport) Connecting.")

@@ -1,5 +1,12 @@
 import Foundation
 
+class Utils {
+    static func getUserAgent() -> String{
+        // Placeholder implementation
+        return "SignalR-Client-Swift/1.0"
+    }
+}
+
 extension HttpRequest {
     init(
         method: HttpMethod, url: String, content: StringOrData? = nil,
@@ -12,8 +19,7 @@ extension HttpRequest {
             responseType: responseType, headers: headers,
             timeout: timeout)
         if includeUserAgent {
-            // Placeholder implementation
-            self.headers["User-Agent"] = "SignalR-Client-Swift/1.0"
+            self.headers["User-Agent"] = Utils.getUserAgent()
         }
         if let headers = options.headers {
             self.headers = self.headers.merging(headers) { (_, new) in new }

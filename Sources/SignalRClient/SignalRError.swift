@@ -20,6 +20,9 @@ public enum SignalRError: Error, Equatable {
     case invalidResponseType
     case cannotSentUntilTransportConnected
     case invalidData(String)
+    case eventSourceFailedToConnect
+    case eventSourceInvalidTransferFormat
+    case invalidUrl(String)
 
     var localizedDescription: String {
         switch self {
@@ -59,6 +62,16 @@ public enum SignalRError: Error, Equatable {
             return "Cannot send until the transport is connected"
         case .invalidData(let message):
             return "Invalid data: \(message)"
+        case .eventSourceFailedToConnect:
+            return """
+                    EventSource failed to connect. The connection could not be found on the server,
+                    either the connection ID is not present on the server, or a proxy is refusing/buffering the connection.
+                    If you have multiple servers check that sticky sessions are enabled.
+                    """
+        case .eventSourceInvalidTransferFormat:
+            return "The Server-Sent Events transport only supports the 'Text' transfer format"
+        case .invalidUrl(let url):
+            return "Invalid url: \(url)"
         }
     }
 }

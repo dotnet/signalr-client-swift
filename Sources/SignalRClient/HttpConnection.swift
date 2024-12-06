@@ -24,7 +24,7 @@ struct HttpConnectionOptions {
     var timeout: TimeInterval?
     var logMessageContent: Bool?
     var webSocket: AnyObject? // Placeholder for WebSocket type
-    var eventSource: AnyObject? // Placeholder for EventSource type
+    var eventSource: EventSourceAdaptor?
     var useStatefulReconnect: Bool?
 
     init() {
