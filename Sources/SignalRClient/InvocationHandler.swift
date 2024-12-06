@@ -1,7 +1,7 @@
 import Foundation
 
-protocol InvocationBinder {
-    func GetReturnType(invocationId: String) -> Any.Type?
-    func GetParameterTypes(methodName: String) -> [Any.Type]
-    func GetStreamItemType(streamId: String) -> Any.Type?
+protocol InvocationBinder: Sendable{
+    func getReturnType(invocationId: String) -> Any.Type?
+    func getParameterTypes(methodName: String) -> [Any.Type]
+    func getStreamItemType(streamId: String) -> Any.Type?
 }

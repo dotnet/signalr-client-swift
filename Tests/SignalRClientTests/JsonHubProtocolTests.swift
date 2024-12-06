@@ -431,22 +431,22 @@ final class JsonHubProtocolTests: XCTestCase {
         }
     }
 
-    private class TestInvocationBinder : InvocationBinder {
+    private class TestInvocationBinder : InvocationBinder, @unchecked Sendable {
         private let binderTypes: [Any.Type]
 
         init(binderTypes: [Any.Type]) {
             self.binderTypes = binderTypes
         }
 
-        func GetReturnType(invocationId: String) -> Any.Type? {
+        func getReturnType(invocationId: String) -> Any.Type? {
             return binderTypes.first
         }
 
-        func GetParameterTypes(methodName: String) -> [Any.Type] {
+        func getParameterTypes(methodName: String) -> [Any.Type] {
             return binderTypes
         }
 
-        func GetStreamItemType(streamId: String) -> Any.Type? {
+        func getStreamItemType(streamId: String) -> Any.Type? {
             return binderTypes.first
         }
     }

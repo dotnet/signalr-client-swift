@@ -81,7 +81,7 @@ struct JsonHubProtocol: HubProtocol {
         let streamIds = jsonObject["streamIds"] as? [String]
         let headers = jsonObject["headers"] as? [String: String]
         let invocationId = jsonObject["invocationId"] as? String
-        let typedArguments = try DecodeArguments(jsonObject, types: binder.GetParameterTypes(methodName: target))
+        let typedArguments = try DecodeArguments(jsonObject, types: binder.getParameterTypes(methodName: target))
 
         return InvocationMessage(target: target, arguments: typedArguments, streamIds: streamIds, headers: headers, invocationId: invocationId)
     }
@@ -94,7 +94,7 @@ struct JsonHubProtocol: HubProtocol {
         let streamIds = jsonObject["streamIds"] as? [String]
         let headers = jsonObject["headers"] as? [String: String]
         let invocationId = jsonObject["invocationId"] as? String
-        let typedArguments = try DecodeArguments(jsonObject, types: binder.GetParameterTypes(methodName: target))
+        let typedArguments = try DecodeArguments(jsonObject, types: binder.getParameterTypes(methodName: target))
 
         return StreamInvocationMessage(invocationId: invocationId, target: target, arguments: typedArguments, streamIds: streamIds, headers: headers)
     }
@@ -105,7 +105,7 @@ struct JsonHubProtocol: HubProtocol {
         }
 
         let headers = jsonObject["headers"] as? [String: String]
-        let typedItem = try DecodeStreamItem(jsonObject, type: binder.GetStreamItemType(streamId: invocationId))
+        let typedItem = try DecodeStreamItem(jsonObject, type: binder.getStreamItemType(streamId: invocationId))
 
         return StreamItemMessage(invocationId: invocationId, item: typedItem, headers: headers)
     }
@@ -117,7 +117,7 @@ struct JsonHubProtocol: HubProtocol {
 
         let headers = jsonObject["headers"] as? [String: String]
         let error = jsonObject["error"] as? String
-        let result = try DecodeCompletionResult(jsonObject, type: binder.GetReturnType(invocationId: invocationId))
+        let result = try DecodeCompletionResult(jsonObject, type: binder.getReturnType(invocationId: invocationId))
 
         return CompletionMessage(invocationId: invocationId, error: error, result: result, headers: headers)
     }
