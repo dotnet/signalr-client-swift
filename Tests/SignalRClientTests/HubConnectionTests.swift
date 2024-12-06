@@ -304,6 +304,92 @@ final class HubConnectionTests: XCTestCase {
         XCTAssertEqual(state, HubConnectionState.Stopped)
     }
 
+    func testInvoke_Success() async throws {
+        // Arrange
+        let expectation = XCTestExpectation(description: "send() should be called")
+        let expectedResult = "result"
+        mockConnection.onSend = { data in
+            expectation.fulfill()
+        }
+
+        let task = Task {
+            try await hubConnection.start()
+        }
+
+        // HubConnect start handshake
+        await fulfillment(of: [expectation], timeout: 1.0)
+        
+        // Response a handshake response
+        await hubConnection.processIncomingData(.string(successHandshakeResponse))
+
+        await whenTaskWithTimeout({ try await task.value }, timeout: 1.0)
+
+        // Act
+        let invokeExpectation = XCTestExpectation(description: "invoke() should be called")
+        mockConnection.onSend = { data in
+            invokeExpectation.fulfill()
+        }
+
+        let invokeTask = Task {
+            let result: String = try await hubConnection.invoke(method: "testMethod", arguments: "arg1", "arg2")
+            XCTAssertEqual(result, expectedResult)
+        }
+
+        // Simulate server response
+        let invocationId = "1"
+        let completionMessage = CompletionMessage(invocationId: invocationId, result: expectedResult, error: nil)
+        await hubConnection.processIncomingData(.string(hubProtocol.writeMessage(message: completionMessage)))
+
+        // Assert
+        await fulfillment(of: [invokeExpectation], timeout: 1.0)
+        await whenTaskWithTimeout(invokeTask, timeout: 1.0)
+    }
+
+    func testInvoke_Failure() async throws {
+        // Arrange
+        let expectation = XCTestExpectation(description: "send() should be called")
+        let expectedError = SignalRError.handshakeError("Sample error")
+        mockConnection.onSend = { data in
+            expectation.fulfill()
+        }
+
+        let task = Task {
+            try await hubConnection.start()
+        }
+
+        // HubConnect start handshake
+        await fulfillment(of: [expectation], timeout: 1.0)
+        
+        // Response a handshake response
+        await hubConnection.processIncomingData(.string(successHandshakeResponse))
+
+        await whenTaskWithTimeout({ try await task.value }, timeout: 1.0)
+
+        // Act
+        let invokeExpectation = XCTestExpectation(description: "invoke() should be called")
+        mockConnection.onSend = { data in
+            invokeExpectation.fulfill()
+        }
+
+        let invokeTask = Task {
+            do {
+                let _: String = try await hubConnection.invoke(method: "testMethod", arguments: "arg1", "arg2")
+                XCTFail("Expected error not thrown")
+            } catch {
+                XCTAssertEqual(error as? SignalRError, expectedError)
+            }
+        }
+
+        // Simulate server response
+        let invocationId = "1"
+        let completionMessage = CompletionMessage(invocationId: invocationId, result: nil, error: "Sample error")
+        await hubConnection.processIncomingData(.string(hubProtocol.writeMessage(message: completionMessage)))
+
+        // Assert
+        await fulfillment(of: [invokeExpectation], timeout: 1.0)
+        await whenTaskWithTimeout(invokeTask, timeout: 1.0)
+    }
+
     func whenTaskWithTimeout(_ task: Task<Void, Error>, timeout: TimeInterval) async -> Void {
         return await whenTaskWithTimeout({ try await task.value }, timeout: timeout)
     }

@@ -213,7 +213,7 @@ public actor HubConnection {
             retryCount += 1
 
             do {
-                try await Task.sleep(nanoseconds: UInt64(interval * 1000))
+                try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000)) // interval in seconds to ns
             } catch {
                 break
             }
@@ -272,7 +272,7 @@ public actor HubConnection {
                 // Stream item
                 break
             case let message as CompletionMessage:
-                // Completion
+                await invocationHandler.setResult(message: message)
                 break
             case let message as StreamInvocationMessage:
                 // Stream invocation
