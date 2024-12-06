@@ -17,7 +17,7 @@ class TaskCompletionSourceTests: XCTestCase {
         XCTAssertLessThan(abs(elapsed - 1), 0.5)
         try await t.value
     }
-    
+
     func testSetVarBeforeWait() async throws {
         let tcs = TaskCompletionSource<Bool>()
         let set = await tcs.trySetResult(.success(true))
@@ -28,7 +28,7 @@ class TaskCompletionSourceTests: XCTestCase {
         XCTAssertTrue(value)
         XCTAssertLessThan(elapsed, 0.1)
     }
-    
+
     func testSetException() async throws {
         let tcs = TaskCompletionSource<Bool>()
         let t = Task {
@@ -48,10 +48,10 @@ class TaskCompletionSourceTests: XCTestCase {
         XCTAssertLessThan(abs(elapsed - 1), 0.5)
         try await t.value
     }
-    
+
     func testMultiSetAndMultiWait() async throws {
         let tcs = TaskCompletionSource<Bool>()
-        
+
         let t = Task {
             try await Task.sleep(for: .seconds(1))
             var set = await tcs.trySetResult(.success(true))
@@ -59,26 +59,26 @@ class TaskCompletionSourceTests: XCTestCase {
             set = await tcs.trySetResult(.success(false))
             XCTAssertFalse(set)
         }
-        
+
         let start = Date()
         let value = try await tcs.task()
         let elapsed = Date().timeIntervalSince(start)
         XCTAssertTrue(value)
         XCTAssertLessThan(abs(elapsed - 1), 0.5)
-        
+
         let start2 = Date()
         let value2 = try await tcs.task()
         let elapsed2 = Date().timeIntervalSince(start2)
         XCTAssertTrue(value2)
         XCTAssertLessThan(elapsed2, 0.1)
-        
+
         try await t.value
     }
-    
-    func testBench() async{
+
+    func testBench() async {
         let queue = DispatchQueue(label: "TcsBench")
         let total = 10000
-        var tcss : [TaskCompletionSource<Void>] = []
+        var tcss: [TaskCompletionSource<Void>] = []
         tcss.reserveCapacity(total)
         var count = 0
         for _ in 1...total {
@@ -86,17 +86,11 @@ class TaskCompletionSourceTests: XCTestCase {
         }
         let start = Date()
         let expectation = expectation(description: "Tcss should all complete")
+
         Task {
             for tcs in tcss {
                 Task {
-                    await tcs.trySetResult(.success(()))
-                }
-            }
-        }
-        
-        Task {
-            for tcs in tcss {
-                Task {
+                    try await Task.sleep(for: .microseconds(10))
                     try await tcs.task()
                     queue.sync {
                         count += 1
@@ -108,7 +102,17 @@ class TaskCompletionSourceTests: XCTestCase {
                 }
             }
         }
-        
+
+        Task {
+            for (i, tcs) in tcss.enumerated() {
+                Task {
+                    try await Task.sleep(
+                        for: .microseconds(i % 2 == 0 ? 5 : 15))
+                    _ = await tcs.trySetResult(.success(()))
+                }
+            }
+        }
+
         await fulfillment(of: [expectation], timeout: 1)
     }
 }

@@ -1,4 +1,3 @@
-import Collections
 import EventSource
 import Foundation
 
