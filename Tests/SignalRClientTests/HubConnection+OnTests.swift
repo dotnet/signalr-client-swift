@@ -49,6 +49,18 @@ final class HubConnectionOnTests: XCTestCase {
         await fulfillment(of: [expectation], timeout: 1)
     }
 
+    func testOnAndOff() async throws {
+        let expectation = self.expectation(description: "Handler called")
+        expectation.isInverted = true
+        await hubConnection.on(methodName: "testMethod") {
+            expectation.fulfill()
+        }
+        await hubConnection.off(method: "testMethod")
+
+        await hubConnection.dispatchMessage(InvocationMessage(target: "testMethod", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil))
+        await fulfillment(of: [expectation], timeout: 1)
+    }
+
     func testOnOneArg() async throws {
         let expectation = self.expectation(description: "Handler called")
         await hubConnection.on(methodName: "testMethod") { (arg: Int) in
