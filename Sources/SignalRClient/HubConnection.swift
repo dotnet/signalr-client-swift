@@ -278,7 +278,7 @@ public actor HubConnection {
                 // Stream invocation
                 break
             case let message as CancelInvocationMessage:
-                // Cancel invocation
+                // Cancel stream
                 break
             case let message as PingMessage:
                 // Ping
@@ -477,7 +477,11 @@ public actor HubConnection {
         func setResult(message: CompletionMessage) async {
             if let tcs = invocations[message.invocationId!] {
                 invocations[message.invocationId!] = nil
-                _ = await tcs.trySetResult(.success(message))
+                if (message.error != nil) {
+                    _ = await tcs.trySetResult(.failure(SignalRError.invocationError(message.error!)))
+                } else {
+                    _ = await tcs.trySetResult(.success(message))
+                }
             }
         }
 
