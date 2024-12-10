@@ -3,7 +3,7 @@ import Foundation
 import os
 #endif
 
-public enum LogLevel: Int {
+public enum LogLevel: Int, Sendable {
     case debug, information, warning, error
 }
 
@@ -28,7 +28,7 @@ public struct LogMessage: ExpressibleByStringInterpolation,
     }
 }
 
-struct Logger {
+struct Logger: Sendable {
     private var logHandler: LogHandler
     private let logLevel: LogLevel?
 
@@ -52,7 +52,7 @@ struct Logger {
 }
 
 #if canImport(os)
-struct OSLogHandler: LogHandler {
+struct DefaultLogHandler: LogHandler {
     var logger: os.Logger
     init() {
         self.logger = os.Logger(
@@ -65,14 +65,8 @@ struct OSLogHandler: LogHandler {
     ) {
         logger.log(
             level: logLevel.toOSLogType(),
-            "[\(Date().description(with: Locale.current), privacy: .public)] [\(String(describing:logLevel), privacy: .public)] [\(fileNameWithoutPathAndSuffix(file),privacy: .public):\(function,privacy: .public):\(line,privacy: .public)] - \(message,privacy: .public)"
+            "[\(Date().description(with: Locale.current), privacy: .public)] [\(String(describing:logLevel), privacy: .public)] [\(file.fileNameWithoutPathAndSuffix(), privacy: .public):\(function, privacy: .public):\(line,privacy: .public)] - \(message,privacy: .public)"
         )
-    }
-
-    private func fileNameWithoutPathAndSuffix(_ file: String) -> String {
-        return file.components(separatedBy: "/").last!.components(
-            separatedBy: "."
-        ).first!
     }
 }
 
@@ -92,20 +86,22 @@ extension LogLevel {
     }
 }
 #else
-struct OSLogHandler: LogHandler {
+struct DefaultLogHandler: LogHandler {
     public func log(
         logLevel: LogLevel, message: LogMessage, file: String, function: String,
         line: UInt
     ) {
         print(
-            "[\(Date().description(with: Locale.current))] [\(String(describing:logLevel))] [\(fileNameWithoutPathAndSuffix(file)):\(function):\(line)] - \(message)"
+            "[\(Date().description(with: Locale.current))] [\(String(describing:logLevel))] [\(file.fileNameWithoutPathAndSuffix()):\(function):\(line)] - \(message)"
         )
     }
+}
+#endif
 
-    private func fileNameWithoutPathAndSuffix(_ file: String) -> String {
-        return file.components(separatedBy: "/").last!.components(
+extension String {
+    fileprivate func fileNameWithoutPathAndSuffix() -> String {
+        return self.components(separatedBy: "/").last!.components(
             separatedBy: "."
         ).first!
     }
 }
-#endif

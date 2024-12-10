@@ -166,6 +166,24 @@ class ServerSentEventTransportTests: XCTestCase {
         try await sse.send(.string("stringbody"))
         logHandler.verifyLogged("200")
     }
+    
+    // MARK: asyncStream
+    func testAsyncStream() async {
+        let stream: AsyncStream<Int>  = AsyncStream{ continuition in
+            Task{
+                for i in 0...99{
+                    try await Task.sleep(for: .microseconds(100))
+                    continuition.yield(i)
+                }
+                continuition.finish()
+            }
+        }
+        var count = 0
+        for await _ in stream{
+            count += 1
+        }
+        XCTAssertEqual(count, 100)
+    }
 }
 
 extension ServerSentEventTransport {

@@ -13,7 +13,7 @@ final class MockLogHandler: LogHandler, @unchecked Sendable {
     init(showLog: Bool = false) {
         queue = DispatchQueue(label: "MockLogHandler")
         logs = []
-        innerLogHandler = showLog ? OSLogHandler() : nil
+        innerLogHandler = showLog ? DefaultLogHandler() : nil
     }
 
     func log(
@@ -69,7 +69,7 @@ extension MockLogHandler {
 
 class LoggerTests: XCTestCase {
     func testOSLogHandler() {
-        let logger = Logger(logLevel: .debug, logHandler: OSLogHandler())
+        let logger = Logger(logLevel: .debug, logHandler: DefaultLogHandler())
         logger.log(level: .debug, message: "Hello world")
         logger.log(level: .information, message: "Hello world \(true)")
     }

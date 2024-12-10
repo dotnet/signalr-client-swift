@@ -26,7 +26,7 @@ actor ServerSentEventTransport: Transport {
 
     func connect(url: String, transferFormat: TransferFormat) async throws {
         // MARK: Here's an assumption that the connect won't be called twice
-        if transferFormat != .text {
+        guard transferFormat == .text else {
             throw SignalRError.eventSourceInvalidTransferFormat
         }
 
@@ -40,12 +40,7 @@ actor ServerSentEventTransport: Transport {
                 "\(url)\(url.contains("?") ? "&" : "?")access_token=\(accessToken.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
         }
 
-        var eventSource: EventSourceAdaptor
-        if let adaptor = options.eventSource {
-            eventSource = adaptor
-        } else {
-            eventSource = DefaultEventSourceAdaptor(logger: logger)
-        }
+        let eventSource = options.eventSource ?? DefaultEventSourceAdaptor(logger: logger)
 
         await eventSource.onClose(closeHandler: self.close)
 
@@ -122,14 +117,11 @@ final class DefaultEventSourceAdaptor: EventSourceAdaptor, @unchecked Sendable {
 
     private var eventSource: EventSource?
     private var dispatchQueue: DispatchQueue
-    private var messageBuffer: [String]
-    private var messageTcs: TaskCompletionSource<Void>
     private var messageTask: Task<Void, Never>?
+    private var messageStream: AsyncStream<String>?
 
     init(logger: Logger) {
         self.logger = logger
-        self.messageBuffer = []
-        self.messageTcs = TaskCompletionSource<Void>()
         self.dispatchQueue = DispatchQueue(label: "DefaultEventSourceAdaptor")
     }
 
@@ -147,29 +139,27 @@ final class DefaultEventSourceAdaptor: EventSourceAdaptor, @unchecked Sendable {
                 self.eventSource = eventSource
             }
         }
-        eventSource.onComplete { statusCode, _, err in
-            Task {
-                let connectFail = await openTcs.trySetResult(
-                    .failure(SignalRError.eventSourceFailedToConnect))
-                self.logger.log(
-                    level: .debug,
-                    message:
-                        "(Event Source) \(connectFail ? "Failed to open.": "Disconnected.").\(statusCode == nil ? "" : " StatusCode: \(statusCode!).") \(err == nil ? "": " Error: \(err!).")"
-                )
-                await self.close(err: err)
+        
+        messageStream = AsyncStream{ continuation in
+            eventSource.onComplete { statusCode, _, err in
+                Task {
+                    let connectFail = await openTcs.trySetResult(
+                        .failure(SignalRError.eventSourceFailedToConnect))
+                    self.logger.log(
+                        level: .debug,
+                        message:
+                            "(Event Source) \(connectFail ? "Failed to open.": "Disconnected.").\(statusCode == nil ? "" : " StatusCode: \(statusCode!).") \(err == nil ? "": " Error: \(err!).")"
+                    )
+                    continuation.finish()
+                    await self.close(err: err)
+                }
             }
-        }
-        eventSource.onMessage { _, _, data in
-            guard let data = data else {
-                return
-            }
-            let messageTcs = self.messageTcs
-            self.dispatchQueue.sync {
-                self.messageBuffer.append(data)
-                self.messageTcs = TaskCompletionSource<Void>()
-            }
-            Task {
-                await messageTcs.trySetResult(.success(()))
+            
+            eventSource.onMessage { _, _, data in
+                guard let data = data else {
+                    return
+                }
+                continuation.yield(data)
             }
         }
 
@@ -177,7 +167,9 @@ final class DefaultEventSourceAdaptor: EventSourceAdaptor, @unchecked Sendable {
         try await openTcs.task()
 
         messageTask = Task {
-            await messageLoop()
+            for await message in messageStream! {
+                await self.messageHandler?(message)
+            }
         }
     }
 
@@ -193,20 +185,6 @@ final class DefaultEventSourceAdaptor: EventSourceAdaptor, @unchecked Sendable {
         self.messageHandler = messageHandler
     }
 
-    func messageLoop() async {
-        while !Task.isCancelled {
-            try? await self.messageTcs.task()
-            var messages: [String] = []
-            dispatchQueue.sync {
-                messages = self.messageBuffer
-                self.messageBuffer = []
-            }
-            for message in messages {
-                await self.messageHandler?(message)
-            }
-        }
-    }
-
     private func close(err: Error?) async {
         var eventSource: EventSource?
         dispatchQueue.sync {
@@ -217,7 +195,6 @@ final class DefaultEventSourceAdaptor: EventSourceAdaptor, @unchecked Sendable {
             return
         }
         eventSource.disconnect()
-        messageTask?.cancel()
         await messageTask?.value
         await self.closeHandler?(err)
     }

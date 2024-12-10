@@ -56,7 +56,7 @@ public class HubConnectionBuilder {
         }
 
         let connection = connection ?? HttpConnection(url: url)
-        let logger = Logger(logLevel: logLevel, logHandler: logHandler ?? OSLogHandler())
+        let logger = Logger(logLevel: logLevel, logHandler: logHandler ?? DefaultLogHandler())
         let hubProtocol = hubProtocol ?? JsonHubProtocol()
         let retryPolicy = retryPolicy ?? DefaultRetryPolicy(retryDelays: [0, 1, 2])
 

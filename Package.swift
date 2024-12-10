@@ -11,7 +11,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/inaka/EventSource.git", .branch("master")
+            url: "https://github.com/inaka/EventSource.git", revision: "78934b3"
         )
     ],
     targets: [
@@ -22,6 +22,10 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "SignalRClientTests", dependencies: ["SignalRClient"]),
+            name: "SignalRClientTests", dependencies: ["SignalRClient"],
+            swiftSettings: [
+//                .enableExperimentalFeature("StrictConcurrency")
+              ]
+        ),
     ]
 )

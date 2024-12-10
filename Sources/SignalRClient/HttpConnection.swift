@@ -105,7 +105,7 @@ actor HttpConnection: ConnectionProtocol {
     init(url: String, options: HttpConnectionOptions = HttpConnectionOptions()) {
         precondition(!url.isEmpty, "url is required")
 
-        self.logger =  Logger(logLevel: options.logLevel, logHandler: options.logHandler ?? OSLogHandler())
+        self.logger =  Logger(logLevel: options.logLevel, logHandler: options.logHandler ?? DefaultLogHandler())
         self.baseUrl = HttpConnection.resolveUrl(url)
         self.options = options
 
@@ -201,7 +201,7 @@ actor HttpConnection: ConnectionProtocol {
         do {
             if options.skipNegotiation {
                 if options.transport == .webSockets {
-                    transport = try constructTransport(transport: .webSockets)
+                    transport = try await constructTransport(transport: .webSockets)
                     try await startTransport(url: url, transferFormat: transferFormat)
                 } else {
                     throw SignalRError.negotiationError("Negotiation can only be skipped when using the WebSocket transport directly.")
@@ -432,7 +432,7 @@ actor HttpConnection: ConnectionProtocol {
         return urlComponents.url!.absoluteString
     }
 
-    private func constructTransport(transport: HttpTransportType) throws -> Transport {
+    private func constructTransport(transport: HttpTransportType) async throws -> Transport {
         switch transport {
             case .webSockets:
                 return WebSocketTransport(
@@ -442,9 +442,10 @@ actor HttpConnection: ConnectionProtocol {
                     headers: options.headers ?? [:]
                 )
             case .serverSentEvents:
-                throw NSError(domain: "HttpConnection", code: 0, userInfo: [NSLocalizedDescriptionKey: "Server-Sent Events transport is not supported."])
+                let accessToken = await self.httpClient.accessToken
+                return  ServerSentEventTransport(httpClient: self.httpClient, accessToken: accessToken, logger: logger, options: options)
             case .longPolling:
-                throw NSError(domain: "HttpConnection", code: 0, userInfo: [NSLocalizedDescriptionKey: "Long polling transport is not supported."])
+                 return LongPollingTransport(httpClient: httpClient, logger: logger, options: options)
             default:
                 throw NSError(domain: "HttpConnection", code:0, userInfo:  [NSLocalizedDescriptionKey: "Unknown transport: \(transport)."])
         }
@@ -461,7 +462,7 @@ actor HttpConnection: ConnectionProtocol {
             if transferFormats.contains(requestedTransferFormat) {
                 do {
                     features["reconnect"] = (transportType == .webSockets && useStatefulReconnect) ? true : nil
-                    let constructedTransport = try constructTransport(transport: transportType)
+                    let constructedTransport = try await constructTransport(transport: transportType)
                     return constructedTransport
                 } catch {
                     return error
