@@ -18,7 +18,7 @@ let package = Package(
         .target(
             name: "SignalRClient",
             dependencies: [
-                .product(name: "EventSource", package: "EventSource")
+                .product(name: "EventSource", package: "EventSource", condition: .when(platforms: [.macOS, .iOS, .tvOS, .visionOS, .watchOS]))
             ]
         ),
         .testTarget(

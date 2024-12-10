@@ -1,3 +1,4 @@
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
 import XCTest
 
 @testable import SignalRClient
@@ -202,3 +203,4 @@ extension ServerSentEventTransport {
         self.options.headers![mockKey] = mockId
     }
 }
+#endif

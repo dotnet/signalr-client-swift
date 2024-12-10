@@ -24,6 +24,7 @@ public enum SignalRError: Error, Equatable {
     case eventSourceInvalidTransferFormat
     case invalidUrl(String)
     case invocationError(String)
+    case unsupportedTransport
 
     var localizedDescription: String {
         switch self {
@@ -75,6 +76,8 @@ public enum SignalRError: Error, Equatable {
             return "Invalid url: \(url)"
         case .invocationError(let errorMessage):
             return "Invocation error: \(errorMessage)"
+        case .unsupportedTransport:
+            return "The transport is not supported."
         }
     }
 }

@@ -1,3 +1,4 @@
+#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
 import EventSource
 import Foundation
 
@@ -101,13 +102,6 @@ actor ServerSentEventTransport: Transport {
         await eventSource.stop(err: err)
         await closeHandler?(err)
     }
-}
-
-public protocol EventSourceAdaptor: Sendable {
-    func start(url: String, headers: [String: String]) async throws
-    func stop(err: Error?) async
-    func onClose(closeHandler: @escaping (Error?) async -> Void) async
-    func onMessage(messageHandler: @escaping (String) async -> Void) async
 }
 
 final class DefaultEventSourceAdaptor: EventSourceAdaptor, @unchecked Sendable {
@@ -215,4 +209,12 @@ extension EventSourceAdaptor {
         }
         try await start(url: url, headers: headers)
     }
+}
+#endif
+
+public protocol EventSourceAdaptor: Sendable {
+    func start(url: String, headers: [String: String]) async throws
+    func stop(err: Error?) async
+    func onClose(closeHandler: @escaping (Error?) async -> Void) async
+    func onMessage(messageHandler: @escaping (String) async -> Void) async
 }
