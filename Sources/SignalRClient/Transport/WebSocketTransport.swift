@@ -10,12 +10,14 @@ final class WebSocketTransport: NSObject, Transport, URLSessionWebSocketDelegate
     private let logMessageContent: Bool
     private let headers: [String: String]
     private let stopped: AtomicState<Bool> = AtomicState(initialState: false)
+    private let openTcs: TaskCompletionSource<Void> = TaskCompletionSource()
 
     private var transferFormat: TransferFormat = .text
     private var websocket: URLSessionWebSocketTask?
     private var urlSession: URLSession?
     private var onReceive: OnReceiveHandler?
     private var onClose: OnCloseHander?
+    private var receiveTask: Task<Void, Never>?
 
     init(accessTokenFactory: (@Sendable () async throws -> String?)?,
          logger: Logger,
@@ -40,8 +42,7 @@ final class WebSocketTransport: NSObject, Transport, URLSessionWebSocketDelegate
     func connect(url: String, transferFormat: TransferFormat) async throws {
         self.logger.log(level: .debug, message: "(WebSockets transport) Connecting.")
 
-        // self.urlSession = self.urlSession ?? URLSession(configuration: .default, delegate: self, delegateQueue: OperationQueue())
-        self.urlSession = URLSession.shared
+        self.urlSession = self.urlSession ?? URLSession(configuration: .default, delegate: self, delegateQueue: OperationQueue())
         self.transferFormat = transferFormat
 
         var urlComponents = URLComponents(url: URL(string: url)!, resolvingAgainstBaseURL: false)!
@@ -54,7 +55,6 @@ final class WebSocketTransport: NSObject, Transport, URLSessionWebSocketDelegate
 
         var request = URLRequest(url: urlComponents.url!)
         
-
         // Add token to query
         if accessTokenFactory != nil {
             let token = try await accessTokenFactory!()
@@ -66,39 +66,27 @@ final class WebSocketTransport: NSObject, Transport, URLSessionWebSocketDelegate
             request.addValue(value, forHTTPHeaderField: key)
         }
 
-        logger.log(level: .debug, message: "Connecting to \(String(describing: urlComponents))")
-
         websocket = urlSession!.webSocketTask(with: URL(string: urlComponents.string!)!)
 
         guard websocket != nil else {
-            logger.log(level: .error, message: "(WebSockets transport) WebSocket is nil")
-            return
+            throw SignalRError.failedToStartConnection("(WebSockets transport) WebSocket is nil")
         }
 
-        logger.log(level: .debug, message: "(WebSockets transport) Before resume")
-        websocket!.resume()
-        logger.log(level: .debug, message: "(WebSockets transport) After resume")
+        websocket!.resume() // connect but it won't throw even failure
 
-        do {
-            let message = try await websocket!.receive()
-            logger.log(level: .debug, message: "(WebSockets transport) Connecting to \(String(describing: message))")
-        } catch {
-            if let nsError = error as? URLError {
-                logger.log(level: .error, message: "(WebSockets transport Error) \(nsError.userInfo)")
-            }
-            logger.log(level: .error, message: "(WebSockets transport Error) \(error)")
-        }
-
-        Task {
+        receiveTask = Task { [weak self] in
+            guard let self = self else { return }
             await receiveMessage()
         }
+
+        // wait for startTcs to be completed before returning from connect
+        // this is to ensure that the connection is truely established
+        try await openTcs.task();
     }
 
     func send(_ data: StringOrData) async throws {
-        guard let ws = self.websocket else {
-            throw NSError(domain: "WebSocketTransport",
-                          code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "WebSocket is not in the OPEN state"])
+        guard let ws = self.websocket, ws.state == .running else {
+            throw SignalRError.invalidOperation("(WebSockets transport) Cannot send until the transport is connected")
         }
 
         switch data {
@@ -115,8 +103,10 @@ final class WebSocketTransport: NSObject, Transport, URLSessionWebSocketDelegate
             return
         }
 
+        receiveTask?.cancel()
         websocket?.cancel()
         urlSession?.finishTasksAndInvalidate()
+        await receiveTask?.value
         await onClose?(nil)
     }
 
@@ -125,7 +115,11 @@ final class WebSocketTransport: NSObject, Transport, URLSessionWebSocketDelegate
         logger.log(level: .debug, message: "(WebSockets transport) URLSession didCompleteWithError: \(String(describing: error))")
 
         Task {
-            try await stop(error: error)
+            if await openTcs.trySetResult(.failure(error ?? SignalRError.connectionAborted)) == true {
+                logger.log(level: .debug, message: "(WebSockets transport) WebSocket connection closed")
+            } else {
+                try await stop(error: error)
+            }
         }
     }
 
@@ -134,12 +128,22 @@ final class WebSocketTransport: NSObject, Transport, URLSessionWebSocketDelegate
         logger.log(level: .debug, message: "(WebSockets transport) URLSession didCloseWith: \(closeCode)")
 
         Task {
-            try await stop(error: nil)
+            if await openTcs.trySetResult(.failure(SignalRError.connectionAborted)) == true {
+                logger.log(level: .debug, message: "(WebSockets transport) WebSocket connection with code \(closeCode))")
+            } else {
+                try await stop(error: nil)
+            }
         }
     }
 
     public func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
         logger.log(level: .debug, message: "(WebSockets transport) urlSession didOpenWithProtocol invoked. WebSocket open")
+
+        Task {
+            if await openTcs.trySetResult(.success(())) == true {
+                logger.log(level: .debug, message: "(WebSockets transport) WebSocket connected")
+            }
+        }
     }
 
     private func receiveMessage() async {
@@ -148,10 +152,8 @@ final class WebSocketTransport: NSObject, Transport, URLSessionWebSocketDelegate
             return 
         }
         
-        logger.log(level: .error, message: "(WebSockets transport) Start receiving messages")
-
         do {
-            while true {
+            while !Task.isCancelled {
                 let message = try await websocket.receive()
 
                 switch message {
