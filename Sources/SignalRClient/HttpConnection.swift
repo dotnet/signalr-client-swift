@@ -442,7 +442,7 @@ actor HttpConnection: ConnectionProtocol {
                     headers: options.headers ?? [:]
                 )
             case .serverSentEvents:
-#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+#if canImport(EventSource)
                 let accessToken = await self.httpClient.accessToken
                 return ServerSentEventTransport(httpClient: self.httpClient, accessToken: accessToken, logger: logger, options: options)
 #else

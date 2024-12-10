@@ -1,4 +1,4 @@
-#if os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS)
+#if canImport(EventSource)
 import XCTest
 
 @testable import SignalRClient
