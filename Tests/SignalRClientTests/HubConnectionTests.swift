@@ -381,6 +381,47 @@ final class HubConnectionTests: XCTestCase {
         await whenTaskWithTimeout(invokeTask, timeout: 1.0)
     }
 
+    func testInvokeWithWrongReturnType() async throws {
+        let expectation = XCTestExpectation(description: "send() should be called")
+        let expectedResult = "result"
+        mockConnection.onSend = { data in
+            expectation.fulfill()
+        }
+
+        let task = Task {
+            try await hubConnection.start()
+        }
+
+        // HubConnect start handshake
+        await fulfillment(of: [expectation], timeout: 1.0)
+        
+        // Response a handshake response
+        await hubConnection.processIncomingData(.string(successHandshakeResponse))
+
+        await whenTaskWithTimeout({ try await task.value }, timeout: 1.0)
+
+        // Act
+        let invokeExpectation = XCTestExpectation(description: "invoke() should be called")
+        mockConnection.onSend = { data in
+            invokeExpectation.fulfill()
+        }
+
+        let invokeTask = Task {
+            let s: Int = try await self.hubConnection.invoke(method: "testMethod", arguments: "arg1", "arg2")
+        }
+
+        await fulfillment(of: [invokeExpectation], timeout: 1.0)
+
+        // Simulate server response
+        let invocationId = "1"
+        let completionMessage = CompletionMessage(invocationId: invocationId, error: nil, result: AnyEncodable(expectedResult), headers: nil)
+        await hubConnection.processIncomingData(try hubProtocol.writeMessage(message: completionMessage))
+
+        // Assert
+        let error = await whenTaskThrowsTimeout(invokeTask, timeout: 1.0)
+        XCTAssertEqual(error as? SignalRError, SignalRError.invalidOperation("Cannot convert the result of the invocation to the specified type."))
+    }
+
     func testInvoke_Failure() async throws {
         // Arrange
         let expectation = XCTestExpectation(description: "send() should be called")

@@ -105,7 +105,7 @@ actor HttpConnection: ConnectionProtocol {
     init(url: String, options: HttpConnectionOptions = HttpConnectionOptions()) {
         precondition(!url.isEmpty, "url is required")
 
-        self.logger =  Logger(logLevel: options.logLevel, logHandler: options.logHandler ?? DefaultLogHandler())
+        self.logger = Logger(logLevel: options.logLevel, logHandler: options.logHandler ?? DefaultLogHandler())
         self.baseUrl = HttpConnection.resolveUrl(url)
         self.options = options
 

@@ -1,10 +1,10 @@
 import Foundation
 
 public actor HubConnection {
-    private let defaultTimeout: TimeInterval = 30
-    private let defaultPingInterval: TimeInterval = 15
-    nonisolated(unsafe) private var invocationBinder: DefaultInvocationBinder
-    nonisolated(unsafe) private var invocationHandler: InvocationHandler
+    private static let defaultTimeout: TimeInterval = 30
+    private static let defaultPingInterval: TimeInterval = 15
+    private var invocationBinder: DefaultInvocationBinder
+    private var invocationHandler: InvocationHandler
 
     private let serverTimeout: TimeInterval
     private let keepAliveInterval: TimeInterval
@@ -31,8 +31,8 @@ public actor HubConnection {
                 retryPolicy: RetryPolicy,
                 serverTimeout: TimeInterval?,
                 keepAliveInterval: TimeInterval?) {
-        self.serverTimeout = serverTimeout ?? defaultTimeout
-        self.keepAliveInterval = keepAliveInterval ?? defaultPingInterval
+        self.serverTimeout = serverTimeout ?? HubConnection.defaultTimeout
+        self.keepAliveInterval = keepAliveInterval ?? HubConnection.defaultPingInterval
         self.logger = logger
         self.retryPolicy = retryPolicy
 
@@ -114,7 +114,11 @@ public actor HubConnection {
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil, invocationId: invocationId)
         let data = try hubProtocol.writeMessage(message: invocationMessage)
         try await sendMessageInternal(data)
-        return try await tcs.task().result.value as! TReturn
+        if let returnVal = try await tcs.task().result.value as? TReturn {
+            return returnVal
+        } else {
+            throw SignalRError.invalidOperation("Cannot convert the result of the invocation to the specified type.")
+        }
     }
 
     internal func on(method: String, types: [Any.Type], handler: @escaping ([Any]) async throws -> Void) {
@@ -268,28 +272,28 @@ public actor HubConnection {
                     }
                 }
                 break
-            case let message as StreamItemMessage:
+            case _ as StreamItemMessage:
                 // Stream item
                 break
             case let message as CompletionMessage:
                 await invocationHandler.setResult(message: message)
                 break
-            case let message as StreamInvocationMessage:
+            case _ as StreamInvocationMessage:
                 // Stream invocation
                 break
-            case let message as CancelInvocationMessage:
+            case _ as CancelInvocationMessage:
                 // Cancel stream
                 break
-            case let message as PingMessage:
+            case _ as PingMessage:
                 // Ping
                 break
-            case let message as CloseMessage:
+            case _ as CloseMessage:
                 // Close
                 break
-            case let message as AckMessage:
+            case _ as AckMessage:
                 // Ack
                 break
-            case let message as SequenceMessage:
+            case _ as SequenceMessage:
                 // Sequence
                 break
             default:
@@ -462,16 +466,14 @@ public actor HubConnection {
     }
 
     private actor InvocationHandler {
-        private let lock = DispatchSemaphore(value: 1)
         private var invocations: [String: TaskCompletionSource<CompletionMessage>] = [:]
         private var id = 0
 
         func create() async -> (String, TaskCompletionSource<CompletionMessage>) {
-            let newId = id + 1
-            id = newId
+            id = id + 1
             let tcs = TaskCompletionSource<CompletionMessage>()
-            invocations[String(newId)] = tcs
-            return (String(newId), tcs)
+            invocations[String(id)] = tcs
+            return (String(id), tcs)
         }
 
         func setResult(message: CompletionMessage) async {
