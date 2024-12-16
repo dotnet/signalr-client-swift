@@ -26,6 +26,8 @@ public class HubConnectionBuilder {
         switch hubProtocol {
             case .json:
                 self.hubProtocol = JsonHubProtocol()
+        case .messagePack:
+            self.hubProtocol = MessagePackHubProtocol()
         }
         return self
     }
@@ -71,4 +73,5 @@ public class HubConnectionBuilder {
 
 public enum HubProtocolType {
     case json
+    case messagePack
 }

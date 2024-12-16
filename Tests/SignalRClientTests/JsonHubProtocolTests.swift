@@ -430,24 +430,24 @@ final class JsonHubProtocolTests: XCTestCase {
             XCTFail("Expected output to be a string")
         }
     }
+}
 
-    private class TestInvocationBinder : InvocationBinder, @unchecked Sendable {
-        private let binderTypes: [Any.Type]
+class TestInvocationBinder : InvocationBinder, @unchecked Sendable {
+    private let binderTypes: [Any.Type]
 
-        init(binderTypes: [Any.Type]) {
-            self.binderTypes = binderTypes
-        }
+    init(binderTypes: [Any.Type]) {
+        self.binderTypes = binderTypes
+    }
 
-        func getReturnType(invocationId: String) -> Any.Type? {
-            return binderTypes.first
-        }
+    func getReturnType(invocationId: String) -> Any.Type? {
+        return binderTypes.first
+    }
 
-        func getParameterTypes(methodName: String) -> [Any.Type] {
-            return binderTypes
-        }
+    func getParameterTypes(methodName: String) -> [Any.Type] {
+        return binderTypes
+    }
 
-        func getStreamItemType(streamId: String) -> Any.Type? {
-            return binderTypes.first
-        }
+    func getStreamItemType(streamId: String) -> Any.Type? {
+        return binderTypes.first
     }
 }

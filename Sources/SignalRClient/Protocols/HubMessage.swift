@@ -101,7 +101,7 @@ struct AckMessage: HubMessage {
     /// The type of this message.
     let type: MessageType = .ack
     /// The sequence ID.
-    let sequenceId: Int
+    let sequenceId: Int64
 }
 
 /// A hub message representing a sequence.
@@ -109,7 +109,7 @@ struct SequenceMessage: HubMessage {
     /// The type of this message.
     let type: MessageType = .sequence
     /// The sequence ID.
-    let sequenceId: Int
+    let sequenceId: Int64
 }
 
 /// A type-erased Codable value.
@@ -152,9 +152,9 @@ struct AnyEncodable: Encodable {
 }
 
 struct AnyEncodableArray: Encodable {
-    public let value: [Any]?
+    public let value: [Any?]?
 
-    init(_ array: [Any]?) {
+    init(_ array: [Any?]?) {
         self.value = array
     }
 

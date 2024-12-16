@@ -12,13 +12,15 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/inaka/EventSource.git", revision: "78934b3"
-        )
+        ),
+        .package(url: "https://github.com/hirotakan/MessagePacker.git", .exact("0.4.7"))
     ],
     targets: [
         .target(
             name: "SignalRClient",
             dependencies: [
-                .product(name: "EventSource", package: "EventSource", condition: .when(platforms: [.macOS, .iOS, .tvOS, .visionOS, .watchOS]))
+                .product(name: "EventSource", package: "EventSource", condition: .when(platforms: [.macOS, .iOS, .tvOS, .visionOS, .watchOS])),
+                .product(name: "MessagePacker", package: "MessagePacker")
             ]
         ),
         .testTarget(

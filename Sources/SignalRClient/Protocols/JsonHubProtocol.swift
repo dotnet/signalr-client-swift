@@ -143,7 +143,7 @@ struct JsonHubProtocol: HubProtocol {
     }
 
     private func DecodeAckMessage(_ jsonObject: [String: Any]) throws -> AckMessage {
-        guard let sequenceId = jsonObject["sequenceId"] as? Int else {
+        guard let sequenceId = jsonObject["sequenceId"] as? Int64 else {
             throw SignalRError.invalidData("'sequenceId' not found in JSON object for AckMessage.")
         }
 
@@ -151,7 +151,7 @@ struct JsonHubProtocol: HubProtocol {
     }
 
     private func DecodeSequenceMessage(_ jsonObject: [String: Any]) throws -> SequenceMessage {
-        guard let sequenceId = jsonObject["sequenceId"] as? Int else {
+        guard let sequenceId = jsonObject["sequenceId"] as? Int64 else {
             throw SignalRError.invalidData("'sequenceId' not found in JSON object for SequenceMessage.")
         }
 

@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 // Define error types for better error handling
 public enum SignalRError: Error, Equatable {
@@ -25,6 +26,8 @@ public enum SignalRError: Error, Equatable {
     case invalidUrl(String)
     case invocationError(String)
     case unsupportedTransport
+    case messageBiggerThan2GB
+    case unexpectedMessageType(String)
 
     var localizedDescription: String {
         switch self {
@@ -78,6 +81,10 @@ public enum SignalRError: Error, Equatable {
             return "Invocation error: \(errorMessage)"
         case .unsupportedTransport:
             return "The transport is not supported."
+        case .messageBiggerThan2GB:
+            return "Messages bigger than 2GB are not supported."
+        case .unexpectedMessageType(let messageType):
+            return "Unexpected message type: \(messageType)."
         }
     }
 }
