@@ -4,125 +4,86 @@ import FoundationNetworking
 import XCTest
 @testable import SignalRClient
 
-final class WebSocketTransportTests: XCTestCase {
+class WebSocketTransportTests: XCTestCase {
+    private var logger: Logger!
+    private var mockWebSocketConnection: MockWebSocketConnection!
     private var webSocketTransport: WebSocketTransport!
-    private var mockURLSession: MockURLSession!
-    private var mockWebSocketTask: MockWebSocketTask!
-    private var accessTokenFactory: (() async throws -> String?)?
 
     override func setUp() {
         super.setUp()
-        mockURLSession = MockURLSession(configuration: .default)
-        mockWebSocketTask = MockWebSocketTask()
-        accessTokenFactory = { return "mockAccessToken" }
-        webSocketTransport = WebSocketTransport(
-            accessTokenFactory: accessTokenFactory,
-            logger: Logger(logLevel: .debug, logHandler: OSLogHandler()),
-            logMessageContent: true,
-            headers: ["headerKey": "headerValue"],
-            urlSession: mockURLSession
-        )
-    }
-
-    override func tearDown() {
-        webSocketTransport = nil
-        mockURLSession = nil
-        mockWebSocketTask = nil
-        accessTokenFactory = nil
-        super.tearDown()
+        logger = Logger(logLevel: .debug, logHandler: DefaultLogHandler())
+        mockWebSocketConnection = MockWebSocketConnection()
+        webSocketTransport = WebSocketTransport(accessTokenFactory: nil, logger: logger, headers: [:], websocket: mockWebSocketConnection)
     }
 
     func testConnect() async throws {
-        mockURLSession.mockWebSocketTask = mockWebSocketTask
-        try await webSocketTransport.connect(url: "http://example.com", transferFormat: .text)
-        
-        XCTAssertEqual(mockWebSocketTask.resumeCallCount, 1)
-        XCTAssertEqual(mockWebSocketTask.state, .running)
+        let url = "http://example.com"
+        try await webSocketTransport.connect(url: url, transferFormat: .text)
+        XCTAssertTrue(mockWebSocketConnection.connectCalled)
     }
 
-    // func testSendString() async throws {
-    //     mockURLSession.mockWebSocketTask = mockWebSocketTask
-    //     try await webSocketTransport.connect(url: "http://example.com", transferFormat: .text)
-        
-    //     try await webSocketTransport.send(.string("testMessage"))
-        
-    //     XCTAssertEqual(mockWebSocketTask.sentMessages.count, 1)
-    //     if case .string(let message) = mockWebSocketTask.sentMessages.first {
-    //         XCTAssertEqual(message, "testMessage")
-    //     } else {
-    //         XCTFail("Expected string message")
-    //     }
-    // }
-
-    // func testSendData() async throws {
-    //     mockURLSession.mockWebSocketTask = mockWebSocketTask
-    //     try await webSocketTransport.connect(url: "http://example.com", transferFormat: .text)
-        
-    //     let testData = "testData".data(using: .utf8)!
-    //     try await webSocketTransport.send(.data(testData))
-        
-    //     XCTAssertEqual(mockWebSocketTask.sentMessages.count, 1)
-    //     if case .data(let data) = mockWebSocketTask.sentMessages.first {
-    //         XCTAssertEqual(data, testData)
-    //     } else {
-    //         XCTFail("Expected data message")
-    //     }
-    // }
-
-    // func testStop() async throws {
-    //     mockURLSession.mockWebSocketTask = mockWebSocketTask
-    //     try await webSocketTransport.connect(url: "http://example.com", transferFormat: .text)
-        
-    //     try await webSocketTransport.stop(error: nil)
-        
-    //     XCTAssertEqual(mockWebSocketTask.cancelCallCount, 1)
-    //     XCTAssertEqual(mockURLSession.finishTasksAndInvalidateCallCount, 1)
-    // }
-
-    // func testReceiveMessage() async throws {
-    //     mockURLSession.mockWebSocketTask = mockWebSocketTask
-    //     try await webSocketTransport.connect(url: "http://example.com", transferFormat: .text)
-        
-    //     let receiveExpectation = expectation(description: "Receive message")
-    //     webSocketTransport.onReceive { message in
-    //         if case .string(let text) = message {
-    //             XCTAssertEqual(text, "testMessage")
-    //             receiveExpectation.fulfill()
-    //         }
-    //     }
-        
-    //     mockWebSocketTask.mockReceiveMessage = .string("testMessage")
-    //     await webSocketTransport.receiveMessage()
-        
-    //     wait(for: [receiveExpectation], timeout: 1.0)
-    // }
-}
-
-
-final class MockURLSession: URLSession, @unchecked Sendable {
-    var mockWebSocketTask: MockWebSocketTask?
-    var finishTasksAndInvalidateCallCount = 0
-
-    override func webSocketTask(with url: URL) -> URLSessionWebSocketTask {
-        return mockWebSocketTask ?? MockWebSocketTask()
+    func testSend() async throws {
+        let data = StringOrData.string("test message")
+        try await webSocketTransport.send(data)
+        XCTAssertEqual(mockWebSocketConnection.sentData, data)
     }
 
-    override func finishTasksAndInvalidate() {
-        finishTasksAndInvalidateCallCount += 1
+    func testStop() async throws {
+        try await webSocketTransport.stop(error: nil)
+        XCTAssertTrue(mockWebSocketConnection.stopCalled)
+    }
+
+    func testOnReceive() async {
+        let expectation = XCTestExpectation(description: "onReceive handler called")
+        await webSocketTransport.onReceive { data in
+            expectation.fulfill()
+        }
+        await mockWebSocketConnection.triggerReceive(.string("test message"))
+        await fulfillment(of: [expectation], timeout: 1.0)
+    }
+
+    func testOnClose() async {
+        let expectation = XCTestExpectation(description: "onClose handler called")
+        await webSocketTransport.onClose { error in
+            expectation.fulfill()
+        }
+        await mockWebSocketConnection.triggerClose(nil)
+        await fulfillment(of: [expectation], timeout: 1.0)
     }
 }
 
-final class MockWebSocketTask: URLSessionWebSocketTask, @unchecked Sendable {
-    var resumeCallCount = 0
-    var cancelCallCount = 0
-    var sentMessages: [URLSessionWebSocketTask.Message] = []
-    var mockReceiveMessage: URLSessionWebSocketTask.Message?
+class MockWebSocketConnection: WebSocketTransport.WebSocketConnection {
+    var connectCalled = false
+    var sentData: StringOrData?
+    var stopCalled = false
+    var onReceiveHandler: Transport.OnReceiveHandler?
+    var onCloseHandler: Transport.OnCloseHander?
 
-    override func resume() {
-        resumeCallCount += 1
+    func connect(request: URLRequest, transferFormat: TransferFormat) async throws {
+        connectCalled = true
     }
 
-    override func cancel(with closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        cancelCallCount += 1
+    func send(_ data: StringOrData) async throws {
+        sentData = data
+    }
+
+    func stop(error: Error?) async {
+        stopCalled = true
+    }
+
+    func onReceive(_ handler: Transport.OnReceiveHandler?) async {
+        onReceiveHandler = handler
+    }
+
+    func onClose(_ handler: Transport.OnCloseHander?) async {
+        onCloseHandler = handler
+    }
+
+    func triggerReceive(_ data: StringOrData) async {
+        await onReceiveHandler?(data)
+    }
+
+    func triggerClose(_ error: Error?) async {
+        await onCloseHandler?(error)
     }
 }

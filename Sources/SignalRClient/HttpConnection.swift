@@ -438,7 +438,6 @@ actor HttpConnection: ConnectionProtocol {
                 return WebSocketTransport(
                     accessTokenFactory: accessTokenFactory,
                     logger: logger,
-                    logMessageContent: options.logMessageContent ?? false,
                     headers: options.headers ?? [:]
                 )
             case .serverSentEvents:
