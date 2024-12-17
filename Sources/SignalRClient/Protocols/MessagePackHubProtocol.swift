@@ -175,13 +175,18 @@ final class MessagePackHubProtocol: HubProtocol {
                 break
             case 3:
                 guard
-                    let concreteType = binder.getReturnType(
-                        invocationId: invocationId) as? Decodable.Type
+                    let returnType = binder.getReturnType(
+                        invocationId: invocationId)
+                else {
+                    break
+                }
+                guard
+                    let returnType = returnType as? Decodable.Type
                 else {
                     throw SignalRError.invalidData(
-                        "No return type found in binder.")
+                        "Provided type \(returnType) does not conform to Decodable.")
                 }
-                result = try container.decode(concreteType)
+                result = try container.decode(returnType)
             default:
                 // new result type. Ignore
                 break

@@ -147,6 +147,36 @@ class MessagePackHubProtocolTests: XCTestCase {
         }
     }
 
+    func testCompletionMessageResultNoBinder() throws {
+        let data = Data([
+            0x95, 0x03, 0x80, 0xa3, 0x78, 0x79, 0x7a, 0x03, 0x2a,
+        ])
+        let binder = TestInvocationBinder(binderTypes: [])
+        let msgpack = MessagePackHubProtocol()
+        let message =
+            try msgpack.parseMessage(message: data, binder: binder)
+            as! CompletionMessage
+        XCTAssertEqual(message.headers, [:])
+        XCTAssertEqual(message.invocationId, "xyz")
+        XCTAssertNil(message.error)
+        XCTAssertNil(message.result.value)
+    }
+
+    func testCompletionMessageResultNotDecodable() throws {
+        let data = Data([
+            0x95, 0x03, 0x80, 0xa3, 0x78, 0x79, 0x7a, 0x03, 0x2a,
+        ])
+        let binder = TestInvocationBinder(binderTypes: [LogHandler.self])
+        let msgpack = MessagePackHubProtocol()
+
+        do {
+            try msgpack.parseMessage(message: data, binder: binder)
+            XCTFail("Should throw when paring not decodable")
+        }catch SignalRError.invalidData(let errmsg){
+            XCTAssertTrue(errmsg.contains("Decodable"))
+        }
+    }
+
     func testCancelInvocationMessage() throws {
         let data = Data([
             0x93, 0x05, 0x80, 0xa3, 0x78, 0x79, 0x7a,
