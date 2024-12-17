@@ -39,13 +39,14 @@ actor WebSocketTransport: Transport {
         } else if urlComponents.scheme == "https" {
             urlComponents.scheme = "wss"
         }
-        var request = URLRequest(url: urlComponents.url!)
         
         // Add token to query
-        if accessTokenFactory != nil {
-            let token = try await accessTokenFactory!()
+        if let factory = accessTokenFactory {
+            let token = try await factory()
             urlComponents.queryItems = [URLQueryItem(name: "access_token", value: token)]
         }
+
+        var request = URLRequest(url: urlComponents.url!)
 
         // Add headeres
         for (key, value) in headers {
@@ -71,31 +72,30 @@ actor WebSocketTransport: Transport {
         func onClose(_ handler: OnCloseHander?) async
     }
 
-    // private actor DefaultWebSocketConnection : WebSocketConnection {
-    //     func connect(request: URLRequest, transferFormat: TransferFormat) async throws {
-            
-    //     }
+#if os(Linux)
+    private actor DefaultWebSocketConnection: WebSocketConnection {
+        func connect(request: URLRequest, transferFormat: TransferFormat) async throws {
+            throw SignalRError.unsupportedTransport
+        }
 
-    //     func send(_ data: StringOrData) async throws {
-            
-    //     }
+        func send(_ data: StringOrData) async throws {
+            throw SignalRError.unsupportedTransport
+        }
 
-    //     func stop(error: (any Error)?) async throws {
-            
-    //     }
+        func stop(error: (any Error)?) async throws {
+            throw SignalRError.unsupportedTransport
+        }
 
-    //     func onReceive(_ handler: WebSocketTransport.OnReceiveHandler?) async {
-            
-    //     }
+        func onReceive(_ handler: WebSocketTransport.OnReceiveHandler?) async {
+        }
 
-    //     func onClose(_ handler: WebSocketTransport.OnCloseHander?) async {
-            
-    //     }
+        func onClose(_ handler: WebSocketTransport.OnCloseHander?) async {
+        }
 
-    //     init(logger: Logger) {
-    //     }
-    // }
-
+        init(logger: Logger) {
+        }
+    }
+#else
     private actor DefaultWebSocketConnection: NSObject, WebSocketConnection, URLSessionWebSocketDelegate {
         private let logger: Logger
         private let openTcs: TaskCompletionSource<Void> = TaskCompletionSource()
@@ -220,4 +220,5 @@ actor WebSocketTransport: Transport {
             }
         }
     }
+#endif
 }

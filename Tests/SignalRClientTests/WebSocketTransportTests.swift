@@ -50,6 +50,38 @@ class WebSocketTransportTests: XCTestCase {
         await mockWebSocketConnection.triggerClose(nil)
         await fulfillment(of: [expectation], timeout: 1.0)
     }
+
+    func testConnectWithHttpUrl() async throws {
+        let url = "http://example.com"
+        try await webSocketTransport.connect(url: url, transferFormat: .text)
+        XCTAssertTrue(mockWebSocketConnection.connectCalled)
+        XCTAssertEqual(mockWebSocketConnection.request?.url?.scheme, "ws")
+    }
+
+    func testConnectWithHttpsUrl() async throws {
+        let url = "https://example.com"
+        try await webSocketTransport.connect(url: url, transferFormat: .text)
+        XCTAssertTrue(mockWebSocketConnection.connectCalled)
+        XCTAssertEqual(mockWebSocketConnection.request?.url?.scheme, "wss")
+    }
+
+    func testConnectWithHeaders() async throws {
+        let headers = ["Authorization": "Bearer token"]
+        webSocketTransport = WebSocketTransport(accessTokenFactory: nil, logger: logger, headers: headers, websocket: mockWebSocketConnection)
+        let url = "http://example.com"
+        try await webSocketTransport.connect(url: url, transferFormat: .text)
+        XCTAssertTrue(mockWebSocketConnection.connectCalled)
+        XCTAssertEqual(mockWebSocketConnection.request?.allHTTPHeaderFields?["Authorization"], "Bearer token")
+    }
+
+    func testConnectWithAccessToken() async throws {
+        let accessTokenFactory: @Sendable () async throws -> String? = { return "test_token" }
+        webSocketTransport = WebSocketTransport(accessTokenFactory: accessTokenFactory, logger: logger, headers: [:], websocket: mockWebSocketConnection)
+        let url = "http://example.com"
+        try await webSocketTransport.connect(url: url, transferFormat: .text)
+        XCTAssertTrue(mockWebSocketConnection.connectCalled)
+        XCTAssertEqual(mockWebSocketConnection.request?.url?.query, "access_token=test_token")
+    }
 }
 
 class MockWebSocketConnection: WebSocketTransport.WebSocketConnection {
@@ -58,8 +90,10 @@ class MockWebSocketConnection: WebSocketTransport.WebSocketConnection {
     var stopCalled = false
     var onReceiveHandler: Transport.OnReceiveHandler?
     var onCloseHandler: Transport.OnCloseHander?
+    var request: URLRequest?
 
     func connect(request: URLRequest, transferFormat: TransferFormat) async throws {
+        self.request = request
         connectCalled = true
     }
 
