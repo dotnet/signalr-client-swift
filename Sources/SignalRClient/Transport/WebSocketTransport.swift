@@ -216,7 +216,7 @@ actor WebSocketTransport: Transport {
                     }
                 }
             } catch {
-                logger.log(level: .error, message: "Failed to receive message: \(error)")
+                logger.log(level: .debug, message: "Websocket receive error : \(error)")
             }
         }
     }
