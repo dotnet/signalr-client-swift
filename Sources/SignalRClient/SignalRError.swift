@@ -1,5 +1,4 @@
 import Foundation
-import os
 
 // Define error types for better error handling
 public enum SignalRError: Error, Equatable {
