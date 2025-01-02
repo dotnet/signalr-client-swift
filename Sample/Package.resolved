@@ -1,0 +1,24 @@
+{
+  "originHash" : "f7e7b7b4ae2809875a0feb4a5faf90213865363cd555001d858319eac79381c2",
+  "pins" : [
+    {
+      "identity" : "eventsource",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/inaka/EventSource.git",
+      "state" : {
+        "branch" : "78934b3",
+        "revision" : "78934b361891c7d0fa3d399d128e959f0c94d267"
+      }
+    },
+    {
+      "identity" : "messagepacker",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/hirotakan/MessagePacker.git",
+      "state" : {
+        "revision" : "4d8346c6bc579347e4df0429493760691c5aeca2",
+        "version" : "0.4.7"
+      }
+    }
+  ],
+  "version" : 3
+}

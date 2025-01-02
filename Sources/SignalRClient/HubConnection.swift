@@ -121,6 +121,10 @@ public actor HubConnection {
         }
     }
 
+    public func stream<Element>(method: String, arguments: Any...) async throws -> any StreamResult<Element> {
+        return StreamResult<Element>()
+    }
+
     internal func on(method: String, types: [Any.Type], handler: @escaping ([Any]) async throws -> Void) {
         invocationBinder.registerSubscription(methodName: method, types: types, handler: handler)
     }
@@ -492,6 +496,12 @@ public actor HubConnection {
                 invocations[invocationId] = nil
                 _ = await tcs.trySetResult(.failure(error))
             }
+        }
+    }
+
+    private struct DefaultStreamResult<Element> : StreamResult {
+        func subscribe(subscriber: any StreamSubscriber<Element>) async {
+            
         }
     }
 }
