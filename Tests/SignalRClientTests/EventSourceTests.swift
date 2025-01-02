@@ -1,4 +1,3 @@
-import EventSource
 import Foundation
 import XCTest
 

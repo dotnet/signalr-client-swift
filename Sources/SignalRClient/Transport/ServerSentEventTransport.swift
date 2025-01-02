@@ -1,5 +1,3 @@
-#if canImport(EventSource)
-import EventSource
 import Foundation
 
 actor ServerSentEventTransport: Transport {
@@ -206,7 +204,6 @@ extension EventSourceAdaptor {
         try await start(url: url, headers: headers)
     }
 }
-#endif
 
 public protocol EventSourceAdaptor: Sendable {
     func start(url: String, headers: [String: String]) async throws
