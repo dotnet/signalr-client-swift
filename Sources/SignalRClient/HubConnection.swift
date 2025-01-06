@@ -122,7 +122,12 @@ public actor HubConnection {
     }
 
     public func stream<Element>(method: String, arguments: Any...) async throws -> any StreamResult<Element> {
-        return StreamResult<Element>()
+        let (invocationId, stream): (String, AsyncThrowingStream<Element, Error>) = await invocationHandler.createStream()
+        invocationBinder.registerInvocation(invocationId: invocationId, types: Element.self)
+        let StreamInvocationMessage = StreamInvocationMessage(invocationId: invocationId, target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil)
+        let data = try hubProtocol.writeMessage(message: StreamInvocationMessage)
+        try await sendMessageInternal(data)
+        return stream
     }
 
     internal func on(method: String, types: [Any.Type], handler: @escaping ([Any]) async throws -> Void) {
@@ -276,17 +281,17 @@ public actor HubConnection {
                     }
                 }
                 break
-            case _ as StreamItemMessage:
-                // Stream item
+            case let message as StreamItemMessage:
+                await invocationHandler.setStreamItem(message: message)
                 break
             case let message as CompletionMessage:
                 await invocationHandler.setResult(message: message)
                 break
             case _ as StreamInvocationMessage:
-                // Stream invocation
+                // Never happened in client
                 break
             case _ as CancelInvocationMessage:
-                // Cancel stream
+                // Never happened in client
                 break
             case _ as PingMessage:
                 // Ping
@@ -465,12 +470,13 @@ public actor HubConnection {
         func getStreamItemType(streamId: String) -> (any Any.Type)? {
             lock.wait()
             defer {lock.signal()}
-            return nil // not implemented
+            return returnValueHandler[streamId] 
         }   
     }
 
     private actor InvocationHandler {
         private var invocations: [String: TaskCompletionSource<CompletionMessage>] = [:]
+        private var streams: [String: AsyncThrowingStream<Any, Error>.Continuation] = [:]
         private var id = 0
 
         func create() async -> (String, TaskCompletionSource<CompletionMessage>) {
@@ -478,6 +484,14 @@ public actor HubConnection {
             let tcs = TaskCompletionSource<CompletionMessage>()
             invocations[String(id)] = tcs
             return (String(id), tcs)
+        }
+
+        func createStream<Element>() async -> (String, AsyncThrowingStream<Element, Error>) {
+            id = id + 1
+            let stream = AsyncThrowingStream<Element, Error> { continuation in
+                streams[String(id)] = continuation as! AsyncThrowingStream<Any, Error>.Continuation
+            }
+            return (String(id), stream)
         }
 
         func setResult(message: CompletionMessage) async {
@@ -488,6 +502,19 @@ public actor HubConnection {
                 } else {
                     _ = await tcs.trySetResult(.success(message))
                 }
+            } else if let continuation = streams[message.invocationId!] {
+                streams[message.invocationId!] = nil
+                if (message.error != nil) {
+                    continuation.finish(throwing: SignalRError.invocationError(message.error!))
+                } else {
+                    continuation.finish()
+                }
+            }
+        }
+
+        func setStreamItem(message: StreamItemMessage) async {
+            if let continuation = streams[message.invocationId!] {
+                continuation.yield(message.item.value!)
             }
         }
 
@@ -499,9 +526,15 @@ public actor HubConnection {
         }
     }
 
-    private struct DefaultStreamResult<Element> : StreamResult {
-        func subscribe(subscriber: any StreamSubscriber<Element>) async {
-            
+    private class DefaultStreamResult<Element>: StreamResult {
+        public var stream: AsyncStream<Element>
+
+        init(invocationId: String,  stream: AsyncStream<Element>) {
+            self.stream = stream
+        }
+
+        func cancel() {
+            let cancelInvocationMessage = CancelInvocationMessage(invocationId: nil, headers: nil)
         }
     }
 }
