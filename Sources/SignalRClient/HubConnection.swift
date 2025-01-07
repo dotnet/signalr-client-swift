@@ -515,20 +515,20 @@ public actor HubConnection {
     }
 
     private actor InvocationHandler {
-        private var invocations: [String: InvocationEntity] = [:]
+        private var invocations: [String: InvocationType] = [:]
         private var id = 0
 
         func create() async -> (String, TaskCompletionSource<Any?>) {
             let id = nextId()
             let tcs = TaskCompletionSource<Any?>()
-            invocations[id] = InvocationEntity(invocationData: .Invocation(tcs))
+            invocations[id] = .Invocation(tcs)
             return (id, tcs)
         }
 
         func createStream() async -> (String, AsyncThrowingStream<Any, Error>) {
             let id = nextId()
             let stream = AsyncThrowingStream<Any, Error> { continuation in
-                invocations[id] = InvocationEntity(invocationData: .Stream(continuation))
+                invocations[id] = .Stream(continuation)
             }
             return (id, stream)
         }
@@ -537,14 +537,13 @@ public actor HubConnection {
             if let invocation = invocations[message.invocationId!] {
                 invocations[message.invocationId!] = nil
 
-                // Normal invocation
-                if case .Invocation(let tcs) = invocation.invocationData {
+                if case .Invocation(let tcs) = invocation {
                     if (message.error != nil) {
                         _ = await tcs.trySetResult(.failure(SignalRError.invocationError(message.error!)))
                     } else {
                         _ = await tcs.trySetResult(.success(message.result.value))
                     }
-                } else if case .Stream(let continuation) = invocation.invocationData {
+                } else if case .Stream(let continuation) = invocation {
                     if (message.error != nil) {
                         continuation.finish(throwing: SignalRError.invocationError(message.error!))
                     } else {
@@ -559,7 +558,7 @@ public actor HubConnection {
 
         func setStreamItem(message: StreamItemMessage) async {
             if let invocation = invocations[message.invocationId!] {
-                if case .Stream(let continuation) = invocation.invocationData {
+                if case .Stream(let continuation) = invocation {
                     continuation.yield(message.item.value!)
                 }
             }
@@ -568,9 +567,9 @@ public actor HubConnection {
         func cancel(invocationId: String, error: Error) async {
             if let invocation = invocations[invocationId] {
                 invocations[invocationId] = nil
-                if case .Invocation(let tcs) = invocation.invocationData {
+                if case .Invocation(let tcs) = invocation {
                     _ = await tcs.trySetResult(.failure(error))
-                } else if case .Stream(let continuation) = invocation.invocationData {
+                } else if case .Stream(let continuation) = invocation {
                     continuation.finish(throwing: error)
                 }
             } 
@@ -579,10 +578,6 @@ public actor HubConnection {
         private func nextId() -> String {
             id = id + 1
             return String(id)
-        }
-
-        private struct InvocationEntity {
-            let invocationData: InvocationType
         }
 
         private enum InvocationType {
