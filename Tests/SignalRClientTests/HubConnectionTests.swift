@@ -510,7 +510,7 @@ final class HubConnectionTests: XCTestCase {
     func testStream_Success() async throws {
         // Arrange
         let expectation = XCTestExpectation(description: "send() should be called")
-        var expectedResults = ["result1", "result2", "result3", "result4"]
+        let expectedResults = ["result1", "result2", "result3", "result4"]
         mockConnection.onSend = { data in
             expectation.fulfill()
         }
@@ -535,8 +535,10 @@ final class HubConnectionTests: XCTestCase {
 
         let invokeTask = Task {
             let stream: any StreamResult<String> = try await hubConnection.stream(method: "testMethod", arguments: "arg1", "arg2")
+            var i = 0
             for try await element in stream.stream {
-                XCTAssertEqual(element, expectedResults.removeFirst())
+                XCTAssertEqual(element, expectedResults[i])
+                i += 1
             }
         }
 
