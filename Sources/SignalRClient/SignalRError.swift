@@ -27,6 +27,7 @@ public enum SignalRError: Error, Equatable {
     case unsupportedTransport
     case messageBiggerThan2GB
     case unexpectedMessageType(String)
+    case streamCancelled
 
     var localizedDescription: String {
         switch self {
@@ -84,6 +85,8 @@ public enum SignalRError: Error, Equatable {
             return "Messages bigger than 2GB are not supported."
         case .unexpectedMessageType(let messageType):
             return "Unexpected message type: \(messageType)."
+        case .streamCancelled:
+            return "Stream cancelled."
         }
     }
 }

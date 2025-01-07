@@ -109,12 +109,18 @@ public actor HubConnection {
 
     public func invoke<TReturn>(method: String, arguments: Any...) async throws -> TReturn {
         let (invocationId, tcs) = await invocationHandler.create()
-        invocationBinder.registerInvocation(invocationId: invocationId, types: TReturn.self)
-        defer {invocationBinder.removeInvocation(invocationId: invocationId)}
+        invocationBinder.registerReturnValueType(invocationId: invocationId, types: TReturn.self)
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil, invocationId: invocationId)
-        let data = try hubProtocol.writeMessage(message: invocationMessage)
-        try await sendMessageInternal(data)
-        if let returnVal = try await tcs.task().result.value as? TReturn {
+        do {
+            let data = try hubProtocol.writeMessage(message: invocationMessage)
+            try await sendMessageInternal(data)
+        } catch {
+            await invocationHandler.cancel(invocationId: invocationId, error: error)
+            invocationBinder.removeReturnValueType(invocationId: invocationId)
+            throw error
+        }
+        
+        if let returnVal =  (try await tcs.task()) as? TReturn {
             return returnVal
         } else {
             throw SignalRError.invalidOperation("Cannot convert the result of the invocation to the specified type.")
@@ -122,12 +128,45 @@ public actor HubConnection {
     }
 
     public func stream<Element>(method: String, arguments: Any...) async throws -> any StreamResult<Element> {
-        let (invocationId, stream): (String, AsyncThrowingStream<Element, Error>) = await invocationHandler.createStream()
-        invocationBinder.registerInvocation(invocationId: invocationId, types: Element.self)
+        let (invocationId, stream) = await invocationHandler.createStream()
+        invocationBinder.registerReturnValueType(invocationId: invocationId, types: Element.self)
         let StreamInvocationMessage = StreamInvocationMessage(invocationId: invocationId, target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil)
-        let data = try hubProtocol.writeMessage(message: StreamInvocationMessage)
-        try await sendMessageInternal(data)
-        return stream
+        do {
+            let data = try hubProtocol.writeMessage(message: StreamInvocationMessage)
+            try await sendMessageInternal(data)
+        } catch {
+            await invocationHandler.cancel(invocationId: invocationId, error: error)
+            invocationBinder.removeReturnValueType(invocationId: invocationId)
+            throw error
+        }
+
+        let typedStream = AsyncThrowingStream<Element, Error> { continuation in
+            Task {
+                do {
+                    for try await item in stream {
+                        if let returnVal =  item as? Element {
+                            continuation.yield(returnVal)
+                        } else {
+                            throw SignalRError.invalidOperation("Cannot convert the result of the invocation to the specified type.")
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+        let streamResult = DefaultStreamResult(stream: typedStream)
+        streamResult.onCancel = {
+            do {
+                let cancelInvocation = CancelInvocationMessage(invocationId: invocationId, headers: nil)
+                let data = try self.hubProtocol.writeMessage(message: cancelInvocation)
+                await self.invocationHandler.cancel(invocationId: invocationId, error: SignalRError.streamCancelled)
+                try await self.sendMessageInternal(data)
+            } catch {}
+        }
+        
+        return streamResult
     }
 
     internal func on(method: String, types: [Any.Type], handler: @escaping ([Any]) async throws -> Void) {
@@ -286,6 +325,7 @@ public actor HubConnection {
                 break
             case let message as CompletionMessage:
                 await invocationHandler.setResult(message: message)
+                invocationBinder.removeReturnValueType(invocationId: message.invocationId!)
                 break
             case _ as StreamInvocationMessage:
                 // Never happened in client
@@ -410,7 +450,7 @@ public actor HubConnection {
         return remainingData
     }
 
-    private class InvocationEntity {
+    private class SubscriptionEntity {
         public let types: [Any.Type]
         public let callback: ([Any]) async throws -> Void
 
@@ -422,13 +462,13 @@ public actor HubConnection {
 
     private struct DefaultInvocationBinder : InvocationBinder, @unchecked Sendable {
         private let lock = DispatchSemaphore(value: 1)
-        private var subscriptionHandlers: [String: InvocationEntity] = [:]
+        private var subscriptionHandlers: [String: SubscriptionEntity] = [:]
         private var returnValueHandler: [String: Any.Type] = [:]
 
         mutating func registerSubscription(methodName: String, types: [Any.Type], handler: @escaping ([Any]) async throws -> Void) {
             lock.wait()
             defer {lock.signal()}
-            subscriptionHandlers[methodName] = InvocationEntity(types: types, callback: handler)
+            subscriptionHandlers[methodName] = SubscriptionEntity(types: types, callback: handler)
         }
 
         mutating func removeSubscrioption(methodName: String) {
@@ -437,13 +477,13 @@ public actor HubConnection {
             subscriptionHandlers[methodName] = nil
         }
 
-        mutating func registerInvocation(invocationId: String, types: Any.Type) {
+        mutating func registerReturnValueType(invocationId: String, types: Any.Type) {
             lock.wait()
             defer {lock.signal()}
             returnValueHandler[invocationId] = types
         }
 
-        mutating func removeInvocation(invocationId: String) {
+        mutating func removeReturnValueType(invocationId: String) {
             lock.wait()
             defer {lock.signal()}
             returnValueHandler[invocationId] = nil
@@ -475,66 +515,92 @@ public actor HubConnection {
     }
 
     private actor InvocationHandler {
-        private var invocations: [String: TaskCompletionSource<CompletionMessage>] = [:]
-        private var streams: [String: AsyncThrowingStream<Any, Error>.Continuation] = [:]
+        private var invocations: [String: InvocationEntity] = [:]
         private var id = 0
 
-        func create() async -> (String, TaskCompletionSource<CompletionMessage>) {
-            id = id + 1
-            let tcs = TaskCompletionSource<CompletionMessage>()
-            invocations[String(id)] = tcs
-            return (String(id), tcs)
+        func create() async -> (String, TaskCompletionSource<Any?>) {
+            let id = nextId()
+            let tcs = TaskCompletionSource<Any?>()
+            invocations[id] = InvocationEntity(invocationData: .Invocation(tcs))
+            return (id, tcs)
         }
 
-        func createStream<Element>() async -> (String, AsyncThrowingStream<Element, Error>) {
-            id = id + 1
-            let stream = AsyncThrowingStream<Element, Error> { continuation in
-                streams[String(id)] = continuation as! AsyncThrowingStream<Any, Error>.Continuation
+        func createStream() async -> (String, AsyncThrowingStream<Any, Error>) {
+            let id = nextId()
+            let stream = AsyncThrowingStream<Any, Error> { continuation in
+                invocations[id] = InvocationEntity(invocationData: .Stream(continuation))
             }
-            return (String(id), stream)
+            return (id, stream)
         }
 
         func setResult(message: CompletionMessage) async {
-            if let tcs = invocations[message.invocationId!] {
+            if let invocation = invocations[message.invocationId!] {
                 invocations[message.invocationId!] = nil
-                if (message.error != nil) {
-                    _ = await tcs.trySetResult(.failure(SignalRError.invocationError(message.error!)))
-                } else {
-                    _ = await tcs.trySetResult(.success(message))
-                }
-            } else if let continuation = streams[message.invocationId!] {
-                streams[message.invocationId!] = nil
-                if (message.error != nil) {
-                    continuation.finish(throwing: SignalRError.invocationError(message.error!))
-                } else {
-                    continuation.finish()
+
+                // Normal invocation
+                if case .Invocation(let tcs) = invocation.invocationData {
+                    if (message.error != nil) {
+                        _ = await tcs.trySetResult(.failure(SignalRError.invocationError(message.error!)))
+                    } else {
+                        _ = await tcs.trySetResult(.success(message.result.value))
+                    }
+                } else if case .Stream(let continuation) = invocation.invocationData {
+                    if (message.error != nil) {
+                        continuation.finish(throwing: SignalRError.invocationError(message.error!))
+                    } else {
+                        if (message.result.value != nil) {
+                            continuation.yield(message.result.value!)
+                        }
+                        continuation.finish()
+                    }
                 }
             }
         }
 
         func setStreamItem(message: StreamItemMessage) async {
-            if let continuation = streams[message.invocationId!] {
-                continuation.yield(message.item.value!)
+            if let invocation = invocations[message.invocationId!] {
+                if case .Stream(let continuation) = invocation.invocationData {
+                    continuation.yield(message.item.value!)
+                }
             }
         }
 
-        func remove(invocationId: String, error: Error) async {
-            if let tcs = invocations[invocationId] {
+        func cancel(invocationId: String, error: Error) async {
+            if let invocation = invocations[invocationId] {
                 invocations[invocationId] = nil
-                _ = await tcs.trySetResult(.failure(error))
-            }
+                if case .Invocation(let tcs) = invocation.invocationData {
+                    _ = await tcs.trySetResult(.failure(error))
+                } else if case .Stream(let continuation) = invocation.invocationData {
+                    continuation.finish(throwing: error)
+                }
+            } 
+        }
+
+        private func nextId() -> String {
+            id = id + 1
+            return String(id)
+        }
+
+        private struct InvocationEntity {
+            let invocationData: InvocationType
+        }
+
+        private enum InvocationType {
+            case Invocation(TaskCompletionSource<Any?>)
+            case Stream(AsyncThrowingStream<Any, Error>.Continuation)
         }
     }
 
     private class DefaultStreamResult<Element>: StreamResult {
-        public var stream: AsyncStream<Element>
+        internal var onCancel: (() async -> Void)?
+        public var stream: AsyncThrowingStream<Element, Error>
 
-        init(invocationId: String,  stream: AsyncStream<Element>) {
+        init(stream: AsyncThrowingStream<Element, Error>) {
             self.stream = stream
         }
 
-        func cancel() {
-            let cancelInvocationMessage = CancelInvocationMessage(invocationId: nil, headers: nil)
+        func cancel() async {
+            await onCancel?()
         }
     }
 }

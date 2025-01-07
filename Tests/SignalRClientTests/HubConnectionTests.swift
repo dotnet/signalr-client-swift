@@ -381,6 +381,46 @@ final class HubConnectionTests: XCTestCase {
         await whenTaskWithTimeout(invokeTask, timeout: 1.0)
     }
 
+    func testInvoke_Success_Void() async throws {
+        // Arrange
+        let expectation = XCTestExpectation(description: "send() should be called")
+        mockConnection.onSend = { data in
+            expectation.fulfill()
+        }
+
+        let task = Task {
+            try await hubConnection.start()
+        }
+
+        // HubConnect start handshake
+        await fulfillment(of: [expectation], timeout: 1.0)
+        
+        // Response a handshake response
+        await hubConnection.processIncomingData(.string(successHandshakeResponse))
+
+        await whenTaskWithTimeout({ try await task.value }, timeout: 1.0)
+
+        // Act
+        let invokeExpectation = XCTestExpectation(description: "invoke() should be called")
+        mockConnection.onSend = { data in
+            invokeExpectation.fulfill()
+        }
+
+        let invokeTask = Task {
+            try await hubConnection.invoke(method: "testMethod", arguments: "arg1", "arg2")
+        }
+
+        await fulfillment(of: [invokeExpectation], timeout: 1.0)
+
+        // Simulate server response
+        let invocationId = "1"
+        let completionMessage = CompletionMessage(invocationId: invocationId, error: nil, result: AnyEncodable(nil), headers: nil)
+        await hubConnection.processIncomingData(try hubProtocol.writeMessage(message: completionMessage))
+
+        // Assert
+        await whenTaskWithTimeout(invokeTask, timeout: 1.0)
+    }
+
     func testInvokeWithWrongReturnType() async throws {
         let expectation = XCTestExpectation(description: "send() should be called")
         let expectedResult = "result"
@@ -465,6 +505,141 @@ final class HubConnectionTests: XCTestCase {
 
         // Assert
         await whenTaskWithTimeout(invokeTask, timeout: 1.0)
+    }
+
+    func testStream_Success() async throws {
+        // Arrange
+        let expectation = XCTestExpectation(description: "send() should be called")
+        var expectedResults = ["result1", "result2", "result3", "result4"]
+        mockConnection.onSend = { data in
+            expectation.fulfill()
+        }
+
+        let task = Task {
+            try await hubConnection.start()
+        }
+
+        // HubConnect start handshake
+        await fulfillment(of: [expectation], timeout: 1.0)
+        
+        // Response a handshake response
+        await hubConnection.processIncomingData(.string(successHandshakeResponse))
+
+        await whenTaskWithTimeout({ try await task.value }, timeout: 1.0)
+
+        // Act
+        let invokeExpectation = XCTestExpectation(description: "stream() should be called")
+        mockConnection.onSend = { data in
+            invokeExpectation.fulfill()
+        }
+
+        let invokeTask = Task {
+            let stream: any StreamResult<String> = try await hubConnection.stream(method: "testMethod", arguments: "arg1", "arg2")
+            for try await element in stream.stream {
+                XCTAssertEqual(element, expectedResults.removeFirst())
+            }
+        }
+
+        await fulfillment(of: [invokeExpectation], timeout: 1.0)
+
+        // Simulate server stream back
+        let invocationId = "1"
+        let streamItemMessage1 = StreamItemMessage(invocationId: invocationId, item: AnyEncodable("result1"), headers: nil)
+        await hubConnection.processIncomingData(try hubProtocol.writeMessage(message: streamItemMessage1))
+        let streamItemMessage2 = StreamItemMessage(invocationId: invocationId, item: AnyEncodable("result2"), headers: nil)
+        await hubConnection.processIncomingData(try hubProtocol.writeMessage(message: streamItemMessage2))
+        let streamItemMessage3 = StreamItemMessage(invocationId: invocationId, item: AnyEncodable("result3"), headers: nil)
+        await hubConnection.processIncomingData(try hubProtocol.writeMessage(message: streamItemMessage3))
+        let completionMessage = CompletionMessage(invocationId: invocationId, error: nil, result: AnyEncodable("result4"), headers: nil)
+        await hubConnection.processIncomingData(try hubProtocol.writeMessage(message: completionMessage))
+
+        // Assert
+        await whenTaskWithTimeout(invokeTask, timeout: 1.0)
+    }
+
+    func testStream_Failed_WrongType() async throws {
+        // Arrange
+        let expectation = XCTestExpectation(description: "send() should be called")
+        mockConnection.onSend = { data in
+            expectation.fulfill()
+        }
+
+        let task = Task {
+            try await hubConnection.start()
+        }
+
+        // HubConnect start handshake
+        await fulfillment(of: [expectation], timeout: 1.0)
+        
+        // Response a handshake response
+        await hubConnection.processIncomingData(.string(successHandshakeResponse))
+
+        await whenTaskWithTimeout({ try await task.value }, timeout: 1.0)
+
+        // Act
+        let invokeExpectation = XCTestExpectation(description: "stream() should be called")
+        mockConnection.onSend = { data in
+            invokeExpectation.fulfill()
+        }
+
+        let invokeTask = Task {
+            let stream: any StreamResult<String> = try await hubConnection.stream(method: "testMethod", arguments: "arg1", "arg2")
+            for try await _ in stream.stream {
+            }
+        }
+
+        await fulfillment(of: [invokeExpectation], timeout: 1.0)
+
+        // Simulate server stream back
+        let invocationId = "1"
+        let streamItemMessage1 = StreamItemMessage(invocationId: invocationId, item: AnyEncodable(123), headers: nil)
+        await hubConnection.processIncomingData(try hubProtocol.writeMessage(message: streamItemMessage1))
+        
+        // Assert
+        let error = await whenTaskThrowsTimeout(invokeTask, timeout: 1.0)
+        XCTAssertEqual(error as? SignalRError, SignalRError.invalidOperation("Cannot convert the result of the invocation to the specified type."))
+    }
+
+    func testStream_Cancel() async throws {
+        // Arrange
+        let expectation = XCTestExpectation(description: "send() should be called")
+        mockConnection.onSend = { data in
+            expectation.fulfill()
+        }
+
+        let task = Task {
+            try await hubConnection.start()
+        }
+
+        // HubConnect start handshake
+        await fulfillment(of: [expectation], timeout: 1.0)
+        
+        // Response a handshake response
+        await hubConnection.processIncomingData(.string(successHandshakeResponse))
+
+        await whenTaskWithTimeout({ try await task.value }, timeout: 1.0)
+
+        // Act
+        let invokeExpectation = XCTestExpectation(description: "stream() should be called")
+        mockConnection.onSend = { data in
+            invokeExpectation.fulfill()
+        }
+
+        let stream: any StreamResult<String> = try await hubConnection.stream(method: "testMethod", arguments: "arg1", "arg2")
+        await fulfillment(of: [invokeExpectation], timeout: 1.0)
+
+        let cancelExpectation = XCTestExpectation(description: "send() should be called to send cancel")
+        mockConnection.onSend = { data in
+            cancelExpectation.fulfill()
+        }
+
+        await stream.cancel()
+        await fulfillment(of: [cancelExpectation], timeout: 1.0)
+
+        // After cancel, more data to the stream should be ignored
+        let invocationId = "1"
+        let streamItemMessage1 = StreamItemMessage(invocationId: invocationId, item: AnyEncodable(123), headers: nil)
+        await hubConnection.processIncomingData(try hubProtocol.writeMessage(message: streamItemMessage1))
     }
 
     func whenTaskWithTimeout(_ task: Task<Void, Error>, timeout: TimeInterval) async -> Void {

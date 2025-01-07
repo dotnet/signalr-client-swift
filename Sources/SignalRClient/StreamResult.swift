@@ -1,5 +1,5 @@
 public protocol StreamResult<Element> {
     associatedtype Element
-    var stream: AsyncStream<Element> { get }
-    func cancel()
+    var stream: AsyncThrowingStream<Element, Error> { get }
+    func cancel() async
 }
