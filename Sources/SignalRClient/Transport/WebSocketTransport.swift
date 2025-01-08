@@ -75,15 +75,15 @@ actor WebSocketTransport: Transport {
 #if os(Linux)
     private actor DefaultWebSocketConnection: WebSocketConnection {
         func connect(request: URLRequest, transferFormat: TransferFormat) async throws {
-            throw SignalRError.unsupportedTransport
+            throw SignalRError.unsupportedTransport("WebSockets transport is not supported on Linux")
         }
 
         func send(_ data: StringOrData) async throws {
-            throw SignalRError.unsupportedTransport
+            throw SignalRError.unsupportedTransport("WebSockets transport is not supported on Linux")
         }
 
         func stop(error: (any Error)?) async throws {
-            throw SignalRError.unsupportedTransport
+            throw SignalRError.unsupportedTransport("WebSockets transport is not supported on Linux")
         }
 
         func onReceive(_ handler: WebSocketTransport.OnReceiveHandler?) async {

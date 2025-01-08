@@ -134,7 +134,7 @@ actor HttpConnection: ConnectionProtocol {
         // - If startInternalTask is nil, start will directly stop
         // - If startInternalTask is not nil, wait it finish and then call the stop
         guard connectionState == .disconnected else {
-            throw NSError(domain: "HttpConnection", code: 0, userInfo: [NSLocalizedDescriptionKey: "Cannot start an HttpConnection that is not in the 'Disconnected' state."])
+            throw SignalRError.invalidOperation("Cannot start an HttpConnection that is not in the 'Disconnected' state.")
         }
 
         connectionState = .connecting
@@ -146,6 +146,7 @@ actor HttpConnection: ConnectionProtocol {
         do {
             try await startInternalTask?.value
         } catch {
+            connectionState = .disconnected
             throw error
         }
 
@@ -153,11 +154,11 @@ actor HttpConnection: ConnectionProtocol {
             let message = "Failed to start the HttpConnection before stop() was called."
             logger.log(level: .error, message: "\(message)")
             await stopTask?.value
-            throw NSError(domain: message, code: 0)
+            throw SignalRError.failedToStartConnection(message)
         } else if connectionState != .connected {
             let message = "HttpConnection.startInternal completed gracefully but didn't enter the connection into the connected state!"
             logger.log(level: .error, message: "\(message)")
-            throw NSError(domain: message, code: 0)
+            throw SignalRError.failedToStartConnection(message)
         }
 
         connectionStarted = true
@@ -165,7 +166,7 @@ actor HttpConnection: ConnectionProtocol {
 
     func send(_ data: StringOrData) async throws {
         guard connectionState == .connected else {
-            throw NSError(domain: "Cannot send data if the connection is not in the 'Connected' State.", code: 0)
+            throw SignalRError.invalidOperation("Cannot send data if the connection is not in the 'Connected' State.")
         }
 
         try await transport?.send(data)
@@ -282,7 +283,7 @@ actor HttpConnection: ConnectionProtocol {
             let (message, response) = try await httpClient.send(request: request)
 
             if response.statusCode != 200 {
-                throw NSError(domain: "Unexpected status code returned from negotiate '\(response.statusCode)'", code: 0)
+                throw SignalRError.negotiationError("Unexpected status code returned from negotiate '\(response.statusCode)'")
             }
 
             let decoder = JSONDecoder()
@@ -293,7 +294,7 @@ actor HttpConnection: ConnectionProtocol {
             }
 
             if negotiateResponse.useStatefulReconnect == true && options.useStatefulReconnect != true {
-                throw NSError(domain: "Client didn't negotiate Stateful Reconnect but the server did.", code: 0)
+                throw SignalRError.negotiationError("Client didn't negotiate Stateful Reconnect but the server did.")
             }
 
             return negotiateResponse
@@ -303,14 +304,12 @@ actor HttpConnection: ConnectionProtocol {
                 errorMessage += " Either this is not a SignalR endpoint or there is a proxy blocking the connection."
             }
             logger.log(level: .error, message: "\(errorMessage)")
-            throw NSError(domain: errorMessage, code: 0)
+            throw SignalRError.negotiationError(errorMessage)
         }
     }
 
     private func createTransport(url: String, requestedTransport: HttpTransportType?, negotiateResponse: NegotiateResponse?, requestedTransferFormat: TransferFormat) async throws {
         var connectUrl = createConnectUrl(url: url, connectionToken: negotiateResponse?.connectionToken)
-
-        // TODO: Create websocket directly, add other protocols later
 
         var transportExceptions: [Error] = []
         let transports = negotiateResponse?.availableTransports ?? []
@@ -444,16 +443,16 @@ actor HttpConnection: ConnectionProtocol {
                 let accessToken = await self.httpClient.accessToken
                 return ServerSentEventTransport(httpClient: self.httpClient, accessToken: accessToken, logger: logger, options: options)
             case .longPolling:
-                 return LongPollingTransport(httpClient: httpClient, logger: logger, options: options)
+                return LongPollingTransport(httpClient: httpClient, logger: logger, options: options)
             default:
-                throw NSError(domain: "HttpConnection", code:0, userInfo:  [NSLocalizedDescriptionKey: "Unknown transport: \(transport)."])
+                throw SignalRError.unsupportedTransport("Unkonwn transport type '\(transport)'.")
         }
     }
 
     private func resolveTransportOrError(endpoint: AvailableTransport, requestedTransport: HttpTransportType?, requestedTransferFormat: TransferFormat, useStatefulReconnect: Bool) async -> Any {
         guard let transportType = HttpTransportType.from(endpoint.transport) else {
             logger.log(level: .debug, message: "Skipping transport '\(endpoint.transport)' because it is not supported by this client.")
-            return NSError(domain: "Skipping transport '\(endpoint.transport)' because it is not supported by this client.", code: 0)
+            return SignalRError.unsupportedTransport("Skipping transport '\(endpoint.transport)' because it is not supported by this client.")
         }
 
         if transportMatches(requestedTransport: requestedTransport, actualTransport: transportType) {
@@ -468,11 +467,11 @@ actor HttpConnection: ConnectionProtocol {
                 }
             } else {
                 logger.log(level: .debug, message: "Skipping transport '\(transportType)' because it does not support the requested transfer format '\(requestedTransferFormat)'.")
-                return NSError(domain: "'\(transportType)' does not support \(requestedTransferFormat).", code: 0)
+                return SignalRError.unsupportedTransport("'\(transportType)' does not support \(requestedTransferFormat).")
             }
         } else {
             logger.log(level: .debug, message: "Skipping transport '\(transportType)' because it was disabled by the client.")
-            return NSError(domain: "'\(transportType)' is disabled by the client.", code: 0)
+            return SignalRError.unsupportedTransport("'\(transportType)' is disabled by the client.")
         }
     }
 
@@ -480,8 +479,6 @@ actor HttpConnection: ConnectionProtocol {
         guard let requestedTransport = requestedTransport else { return true } // Allow any the transport if options is not set
         return requestedTransport.contains(actualTransport)
     }
-
-
 
     private func buildURLRequest(url: String, method: String?, content: Data?, headers: [String: String]?, timeout: TimeInterval?) -> URLRequest {
         var urlRequest = URLRequest(url: URL(string: url)!)

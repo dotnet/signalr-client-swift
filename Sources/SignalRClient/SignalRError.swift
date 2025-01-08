@@ -24,7 +24,7 @@ public enum SignalRError: Error, Equatable {
     case eventSourceInvalidTransferFormat
     case invalidUrl(String)
     case invocationError(String)
-    case unsupportedTransport
+    case unsupportedTransport(String)
     case messageBiggerThan2GB
     case unexpectedMessageType(String)
     case streamCancelled
@@ -79,8 +79,8 @@ public enum SignalRError: Error, Equatable {
             return "Invalid url: \(url)"
         case .invocationError(let errorMessage):
             return "Invocation error: \(errorMessage)"
-        case .unsupportedTransport:
-            return "The transport is not supported."
+        case .unsupportedTransport(let message):
+            return "The transport is not supported: \(message)"
         case .messageBiggerThan2GB:
             return "Messages bigger than 2GB are not supported."
         case .unexpectedMessageType(let messageType):
