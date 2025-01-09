@@ -226,8 +226,11 @@ actor LongPollingTransport: Transport {
 }
 
 extension HttpRequest {
-    mutating fileprivate func appendDateInUrl() {
+    mutating func appendDateInUrl() {
+        if self.url.last != Character("&"){
+            self.url.append("&")
+        }
         self.url = self.url.components(separatedBy: "_=").first!.appending(
-            "_=\(Date())")
+            "_=\(Int64((Date().timeIntervalSince1970*1000)))")
     }
 }
