@@ -9,11 +9,13 @@ public class HubConnectionBuilder {
     private var keepAliveInterval: TimeInterval?
     private var url: String?
     private var retryPolicy: RetryPolicy?
+    private var httpConnectionOptions: HttpConnectionOptions = HttpConnectionOptions()
 
     public init() {}
     
     public func withLogLevel(logLevel: LogLevel) -> HubConnectionBuilder{
         self.logLevel = logLevel
+        self.httpConnectionOptions.logLevel = logLevel
         return self
     }
     
@@ -47,6 +49,12 @@ public class HubConnectionBuilder {
         return self
     }
 
+    public func withUrl(url: String, transport: HttpTransportType) -> HubConnectionBuilder {
+        self.url = url
+        self.httpConnectionOptions.transport = transport
+        return self
+    }
+
     public func withRetryPolicy(retryPolicy: RetryPolicy) -> HubConnectionBuilder {
         self.retryPolicy = retryPolicy
         return self
@@ -57,7 +65,7 @@ public class HubConnectionBuilder {
             fatalError("url must be set with .withUrl(String:)")
         }
 
-        let connection = connection ?? HttpConnection(url: url)
+        let connection = connection ?? HttpConnection(url: url, options: httpConnectionOptions)
         let logger = Logger(logLevel: logLevel, logHandler: logHandler ?? DefaultLogHandler())
         let hubProtocol = hubProtocol ?? JsonHubProtocol()
         let retryPolicy = retryPolicy ?? DefaultRetryPolicy(retryDelays: [0, 1, 2])

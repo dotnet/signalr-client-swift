@@ -1,13 +1,17 @@
 import Foundation
 
 /// Specifies a specific HTTP transport type.
-struct HttpTransportType: OptionSet {
-    let rawValue: Int
+public struct HttpTransportType: OptionSet {
+    public let rawValue: Int
 
     static let none = HttpTransportType([])
     static let webSockets = HttpTransportType(rawValue: 1 << 0)
     static let serverSentEvents = HttpTransportType(rawValue: 1 << 1)
     static let longPolling = HttpTransportType(rawValue: 1 << 2)
+
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
 
     static func from(_ transportString: String) -> HttpTransportType? {
         switch transportString.lowercased() {

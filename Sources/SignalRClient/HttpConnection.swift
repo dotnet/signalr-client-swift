@@ -14,7 +14,7 @@ private enum ConnectionState: String {
 
 struct HttpConnectionOptions {
     var logHandler: LogHandler?
-    var logLevel: LogLevel?
+    var logLevel: LogLevel = .information
     var accessTokenFactory: (@Sendable () async throws -> String?)?
     var httpClient: HttpClient?
     var transport: HttpTransportType?
@@ -276,7 +276,7 @@ actor HttpConnection: ConnectionProtocol {
 
     private func getNegotiationResponse(url: String) async throws -> NegotiateResponse {
         let negotiateUrl = resolveNegotiateUrl(url: url)
-
+        logger.log(level: .debug, message: "Sending negotiation request: \(negotiateUrl)")
         do {
             let request = HttpRequest(method: .POST, url: negotiateUrl, options: options)
             
