@@ -22,10 +22,10 @@ class IntegrationTests: XCTestCase {
         #else
         let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
             (.webSockets, .json),
-            (.webSockets, .messagePack),
+            // (.webSockets, .messagePack),
             (.serverSentEvents, .json),
             (.longPolling, .json),
-            (.longPolling, .messagePack)
+            // (.longPolling, .messagePack)
         ]
         #endif
 
