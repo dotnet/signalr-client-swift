@@ -31,7 +31,6 @@ jobs:
   integrationTest:
     name: Integration Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    needs: build
     strategy:
       matrix:
         os: [macos-latest]
@@ -52,7 +51,7 @@ jobs:
     - name: Start IntegrationTestServer
       working-directory: ./Tests/IntegrationTestServer
       run: |
-        dotnet run
+        dotnet run &
       continue-on-error: false
     - name: Wait for server to start
       run: sleep 5
