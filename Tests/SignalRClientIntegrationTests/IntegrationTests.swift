@@ -14,15 +14,27 @@ class IntegrationTests: XCTestCase {
     }
 
     func testConnect() async throws {
-#if os(Linux)
-        let transports: [HttpTransportType] = [.longPolling]
-#else
-        let transports: [HttpTransportType] = [.webSockets, .serverSentEvents, .longPolling]
-#endif
-        let hubProtocols: [HubProtocolType] = [.json, .messagePack]
+        #if os(Linux)
+        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
+            // (.serverSentEvents, .json),
+            (.longPolling, .json),
+        ]
+        #else
+        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
+            (.webSockets, .json),
+            (.webSockets, .messagePack),
+            (.serverSentEvents, .json),
+            (.longPolling, .json),
+            (.longPolling, .messagePack)
+        ]
+        #endif
 
-        for (transport, hubProtocol) in zip(transports, hubProtocols) {
-            try await testConnectCore(transport: transport, hubProtocol: hubProtocol)
+        for (transport, hubProtocol) in testCombinations {
+            do {
+                try await testConnectCore(transport: transport, hubProtocol: hubProtocol)
+            } catch {
+                XCTFail("Failed to connect with transport: \(transport) and hubProtocol: \(hubProtocol)")
+            }
         }
     }
 

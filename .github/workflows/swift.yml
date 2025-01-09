@@ -26,7 +26,7 @@ jobs:
     - name: Build
       run: swift build -v
     - name: Run tests
-      run: swift test --filter SignalRClientTests -v
+      run: swift test --filter SignalRClientTests
 
   integrationTest:
     name: Integration Test on ${{ matrix.os }}
@@ -60,4 +60,4 @@ jobs:
     - name: Run integration tests
       env:
         SIGNALR_INTEGRATION_TEST_URL: http://localhost:8080/test
-      run: swift test --filter SignalRClientIntegrationTests -v
+      run: swift test --filter SignalRClientIntegrationTests
