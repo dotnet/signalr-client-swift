@@ -23,7 +23,10 @@ let package = Package(
             name: "SignalRClientTests", dependencies: ["SignalRClient"],
             swiftSettings: [
 //                .enableExperimentalFeature("StrictConcurrency")
-              ]
+            ]
+        ),
+        .testTarget(
+            name: "SignalRClientIntegrationTests", dependencies: ["SignalRClient"]
         ),
     ]
 )

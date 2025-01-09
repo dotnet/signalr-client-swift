@@ -26,4 +26,39 @@ jobs:
     - name: Build
       run: swift build -v
     - name: Run tests
-      run: swift test -v
+      run: swift test --filter SignalRClientTests -v
+
+  integrationTest:
+    name: Integration Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: build
+    strategy:
+      matrix:
+        os: [macos-latest]
+    steps:
+    - uses: actions/checkout@v4
+    - uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "5.10"
+    - name: Get swift version
+      run: swift --version
+    - name: Install .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.x'
+    - name: Build .NET server
+      working-directory: ./Tests/IntegrationTestServer
+      run: dotnet build
+    - name: Start IntegrationTestServer
+      working-directory: ./Tests/IntegrationTestServer
+      run: |
+        dotnet run
+      continue-on-error: false
+    - name: Wait for server to start
+      run: sleep 5
+    - name: Build Swift
+      run: swift build -v
+    - name: Run integration tests
+      env:
+        SIGNALR_INTEGRATION_TEST_URL: http://localhost:8080/test
+      run: swift test --filter SignalRClientIntegrationTests -v
