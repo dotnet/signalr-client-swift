@@ -45,7 +45,11 @@ class IntegrationTests: XCTestCase {
             .withLogLevel(logLevel: .information)
             .build()
 
-        try await connection.start()
+        try await run({
+            try await connection.start()
+        }, defer: {
+            await connection.stop()
+        })
     }
 
     func testSendAndOn() async throws {
@@ -92,14 +96,18 @@ class IntegrationTests: XCTestCase {
             expectation.fulfill()
         }
 
-        do {
-            try await connection.start()
-            try await connection.send(method: "Echo", arguments: message1, item)
-        } catch {
-            XCTFail("Failed to send and receive messages with transport: \(transport) and hubProtocol: \(hubProtocol)")
+        try await connection.start()
+        try await run() {
+            do {
+                try await connection.send(method: "Echo", arguments: message1, item)
+            } catch {
+                XCTFail("Failed to send and receive messages with transport: \(transport) and hubProtocol: \(hubProtocol)")
+            }
+            
+            await fulfillment(of: [expectation], timeout: 1)
+        } defer: {
+            await connection.stop()
         }
-        
-        await fulfillment(of: [expectation], timeout: 1)
     }
 
     func testInvoke() async throws {
@@ -139,9 +147,13 @@ class IntegrationTests: XCTestCase {
         
         try await connection.start()
 
-        let message1 = "Hello, World!"
-        let result: T = try await connection.invoke(method: "Invoke", arguments: message1, item)
-        XCTAssertEqual(result, item)
+        try await run() {
+            let message1 = "Hello, World!"
+            let result: T = try await connection.invoke(method: "Invoke", arguments: message1, item)
+            XCTAssertEqual(result, item)
+        } defer: {
+            await connection.stop()
+        }
     }
 
     func testStream() async throws {
@@ -175,12 +187,16 @@ class IntegrationTests: XCTestCase {
 
         try await connection.start()
 
-        let messages: [String] = ["a", "b", "c"]
-        let stream: any StreamResult<String> = try await connection.stream(method: "Stream")
-        var i = 0
-        for try await item in stream.stream {
-            XCTAssertEqual(item, messages[i])
-            i = i + 1
+        try await run() {
+            let messages: [String] = ["a", "b", "c"]
+            let stream: any StreamResult<String> = try await connection.stream(method: "Stream")
+            var i = 0
+            for try await item in stream.stream {
+                XCTAssertEqual(item, messages[i])
+                i = i + 1
+            }
+        } defer: {
+            await connection.stop()
         }
     }
 
@@ -207,5 +223,17 @@ class IntegrationTests: XCTestCase {
         defer { wrappedTask.cancel() }
 
         await fulfillment(of: [expectation], timeout: timeout)
+    }
+
+    func run<T>(_ operation: () async throws -> T,
+            defer deferredOperation: () async throws -> Void) async throws -> T {
+        do {
+            let result = try await operation()
+            try await deferredOperation()
+            return result
+        } catch {
+            try await deferredOperation()
+            throw error
+        }
     }
 }
