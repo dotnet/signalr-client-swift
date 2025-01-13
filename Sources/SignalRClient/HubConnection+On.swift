@@ -1,11 +1,11 @@
 extension HubConnection {
-    public func on(methodName: String, handler: @escaping () async -> Void) {
+    public func on(_ methodName: String, handler: @escaping () async -> Void) {
         self.on(method: methodName, types: [],  handler: { _ in
             await handler()
         })
     }
 
-    public func on<T>(methodName: String, handler: @escaping (T) async -> Void) {
+    public func on<T>(_ methodName: String, handler: @escaping (T) async -> Void) {
         self.on(method: methodName, types: [T.self], handler: { args in
             guard let arg = args.first as? T else {
                 throw SignalRError.invalidOperation("Failed to convert arguments to type \(T.self)")
@@ -14,7 +14,7 @@ extension HubConnection {
         })
     }
 
-    public func on<T1, T2>(methodName: String, handler: @escaping (T1, T2) async -> Void) {
+    public func on<T1, T2>(_ methodName: String, handler: @escaping (T1, T2) async -> Void) {
         self.on(method: methodName, types: [T1.self, T2.self], handler: { args in
             guard let arg1 = args.first as? T1 else {
                 throw SignalRError.invalidOperation("Failed to convert first argument to type \(T1.self)")
@@ -26,7 +26,7 @@ extension HubConnection {
         })
     }
 
-    public func on<T1, T2, T3>(methodName: String, handler: @escaping (T1, T2, T3) async -> Void) {
+    public func on<T1, T2, T3>(_ methodName: String, handler: @escaping (T1, T2, T3) async -> Void) {
         self.on(method: methodName, types: [T1.self, T2.self, T3.self], handler: { args in
             guard let arg1 = args[0] as? T1 else {
                 throw SignalRError.invalidOperation("Failed to convert first argument to type \(T1.self)")
@@ -41,7 +41,7 @@ extension HubConnection {
         })
     }
 
-    public func on<T1, T2, T3, T4>(methodName: String, handler: @escaping (T1, T2, T3, T4) async -> Void) {
+    public func on<T1, T2, T3, T4>(_ methodName: String, handler: @escaping (T1, T2, T3, T4) async -> Void) {
         self.on(method: methodName, types: [T1.self, T2.self, T3.self, T4.self], handler: { args in
             guard let arg1 = args[0] as? T1 else {
                 throw SignalRError.invalidOperation("Failed to convert first argument to type \(T1.self)")
@@ -59,7 +59,7 @@ extension HubConnection {
         })
     }
 
-    public func on<T1, T2, T3, T4, T5>(methodName: String, handler: @escaping (T1, T2, T3, T4, T5) async -> Void) {
+    public func on<T1, T2, T3, T4, T5>(_ methodName: String, handler: @escaping (T1, T2, T3, T4, T5) async -> Void) {
         self.on(method: methodName, types: [T1.self, T2.self, T3.self, T4.self, T5.self], handler: { args in
             guard let arg1 = args[0] as? T1 else {
                 throw SignalRError.invalidOperation("Failed to convert first argument to type \(T1.self)")
@@ -80,7 +80,7 @@ extension HubConnection {
         })
     }
 
-    public func on<T1, T2, T3, T4, T5, T6>(methodName: String, handler: @escaping (T1, T2, T3, T4, T5, T6) async -> Void) {
+    public func on<T1, T2, T3, T4, T5, T6>(_ methodName: String, handler: @escaping (T1, T2, T3, T4, T5, T6) async -> Void) {
         self.on(method: methodName, types: [T1.self, T2.self, T3.self, T4.self, T5.self, T6.self], handler: { args in
             guard let arg1 = args[0] as? T1 else {
                 throw SignalRError.invalidOperation("Failed to convert first argument to type \(T1.self)")
@@ -104,7 +104,7 @@ extension HubConnection {
         })
     }
 
-    public func on<T1, T2, T3, T4, T5, T6, T7>(methodName: String, handler: @escaping (T1, T2, T3, T4, T5, T6, T7) async -> Void) {
+    public func on<T1, T2, T3, T4, T5, T6, T7>(_ methodName: String, handler: @escaping (T1, T2, T3, T4, T5, T6, T7) async -> Void) {
         self.on(method: methodName, types: [T1.self, T2.self, T3.self, T4.self, T5.self, T6.self, T7.self], handler: { args in
             guard let arg1 = args[0] as? T1 else {
                 throw SignalRError.invalidOperation("Failed to convert first argument to type \(T1.self)")
@@ -131,7 +131,7 @@ extension HubConnection {
         })
     }
 
-    public func on<T1, T2, T3, T4, T5, T6, T7, T8>(methodName: String, handler: @escaping (T1, T2, T3, T4, T5, T6, T7, T8) async -> Void) {
+    public func on<T1, T2, T3, T4, T5, T6, T7, T8>(_ methodName: String, handler: @escaping (T1, T2, T3, T4, T5, T6, T7, T8) async -> Void) {
         self.on(method: methodName, types: [T1.self, T2.self, T3.self, T4.self, T5.self, T6.self, T7.self, T8.self], handler: { args in
             guard let arg1 = args[0] as? T1 else {
                 throw SignalRError.invalidOperation("Failed to convert first argument to type \(T1.self)")
@@ -161,7 +161,7 @@ extension HubConnection {
         })
     }
 
-    public func on<T1, T2, T3, T4, T5, T6, T7, T8, T9>(methodName: String, handler: @escaping (T1, T2, T3, T4, T5, T6, T7, T8, T9) async -> Void) {
+    public func on<T1, T2, T3, T4, T5, T6, T7, T8, T9>(_ methodName: String, handler: @escaping (T1, T2, T3, T4, T5, T6, T7, T8, T9) async -> Void) {
         self.on(method: methodName, types: [T1.self, T2.self, T3.self, T4.self, T5.self, T6.self, T7.self, T8.self, T9.self], handler: { args in
             guard let arg1 = args[0] as? T1 else {
                 throw SignalRError.invalidOperation("Failed to convert first argument to type \(T1.self)")

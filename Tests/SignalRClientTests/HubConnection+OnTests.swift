@@ -41,7 +41,7 @@ final class HubConnectionOnTests: XCTestCase {
 
     func testOnNoArgs() async throws {
         let expectation = self.expectation(description: "Handler called")
-        await hubConnection.on(methodName: "testMethod") {
+        await hubConnection.on("testMethod") {
             expectation.fulfill()
         }
 
@@ -52,7 +52,7 @@ final class HubConnectionOnTests: XCTestCase {
     func testOnAndOff() async throws {
         let expectation = self.expectation(description: "Handler called")
         expectation.isInverted = true
-        await hubConnection.on(methodName: "testMethod") {
+        await hubConnection.on("testMethod") {
             expectation.fulfill()
         }
         await hubConnection.off(method: "testMethod")
@@ -63,7 +63,7 @@ final class HubConnectionOnTests: XCTestCase {
 
     func testOnOneArg() async throws {
         let expectation = self.expectation(description: "Handler called")
-        await hubConnection.on(methodName: "testMethod") { (arg: Int) in
+        await hubConnection.on("testMethod") { (arg: Int) in
             XCTAssertEqual(arg, 42)
             expectation.fulfill()
         }
@@ -74,7 +74,7 @@ final class HubConnectionOnTests: XCTestCase {
     func testOnOneArg_WrongType() async throws {
         let expectation = self.expectation(description: "Handler called")
         expectation.isInverted = true
-        await hubConnection.on(methodName: "testMethod") { (arg: Int) in
+        await hubConnection.on("testMethod") { (arg: Int) in
             XCTAssertEqual(arg, 42)
             expectation.fulfill()
         }
@@ -85,7 +85,7 @@ final class HubConnectionOnTests: XCTestCase {
 
     func testOnTwoArgs() async throws {
         let expectation = self.expectation(description: "Handler called")
-        await hubConnection.on(methodName: "testMethod") { (arg1: Int, arg2: String) in
+        await hubConnection.on("testMethod") { (arg1: Int, arg2: String) in
             XCTAssertEqual(arg1, 42)
             XCTAssertEqual(arg2, "test")
             expectation.fulfill()
@@ -96,7 +96,7 @@ final class HubConnectionOnTests: XCTestCase {
 
     func testOnThreeArgs() async throws {
         let expectation = self.expectation(description: "Handler called")
-        await hubConnection.on(methodName: "testMethod") { (arg1: Int, arg2: String, arg3: Bool) in
+        await hubConnection.on("testMethod") { (arg1: Int, arg2: String, arg3: Bool) in
             XCTAssertEqual(arg1, 42)
             XCTAssertEqual(arg2, "test")
             XCTAssertEqual(arg3, true)
@@ -108,7 +108,7 @@ final class HubConnectionOnTests: XCTestCase {
 
     func testOnFourArgs() async throws {
         let expectation = self.expectation(description: "Handler called")
-        await hubConnection.on(methodName: "testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double) in
+        await hubConnection.on("testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double) in
             XCTAssertEqual(arg1, 42)
             XCTAssertEqual(arg2, "test")
             XCTAssertEqual(arg3, true)
@@ -121,7 +121,7 @@ final class HubConnectionOnTests: XCTestCase {
 
     func testOnFiveArgs() async throws {
         let expectation = self.expectation(description: "Handler called")
-        await hubConnection.on(methodName: "testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double, arg5: Double) in
+        await hubConnection.on("testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double, arg5: Double) in
             XCTAssertEqual(arg1, 42)
             XCTAssertEqual(arg2, "test")
             XCTAssertEqual(arg3, true)
@@ -135,7 +135,7 @@ final class HubConnectionOnTests: XCTestCase {
 
     func testOnSixArgs() async throws {
         let expectation = self.expectation(description: "Handler called")
-        await hubConnection.on(methodName: "testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double, arg5: Double, arg6: Int) in
+        await hubConnection.on("testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double, arg5: Double, arg6: Int) in
             XCTAssertEqual(arg1, 42)
             XCTAssertEqual(arg2, "test")
             XCTAssertEqual(arg3, true)
@@ -150,7 +150,7 @@ final class HubConnectionOnTests: XCTestCase {
 
     func testOnSevenArgs() async throws {
         let expectation = self.expectation(description: "Handler called")
-        await hubConnection.on(methodName: "testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double, arg5: Double, arg6: Int, arg7: String) in
+        await hubConnection.on("testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double, arg5: Double, arg6: Int, arg7: String) in
             XCTAssertEqual(arg1, 42)
             XCTAssertEqual(arg2, "test")
             XCTAssertEqual(arg3, true)
@@ -166,7 +166,7 @@ final class HubConnectionOnTests: XCTestCase {
 
     func testOnEightArgs() async throws {
         let expectation = self.expectation(description: "Handler called")
-        await hubConnection.on(methodName: "testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double, arg5: Double, arg6: Int, arg7: String, arg8: Bool) in
+        await hubConnection.on("testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double, arg5: Double, arg6: Int, arg7: String, arg8: Bool) in
             XCTAssertEqual(arg1, 42)
             XCTAssertEqual(arg2, "test")
             XCTAssertEqual(arg3, true)
@@ -183,7 +183,7 @@ final class HubConnectionOnTests: XCTestCase {
 
     func testOnNineArgs() async throws {
         let expectation = self.expectation(description: "Handler called")
-        await hubConnection.on(methodName: "testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double, arg5: Double, arg6: Int, arg7: String, arg8: Bool, arg9: Int) in
+        await hubConnection.on("testMethod") { (arg1: Int, arg2: String, arg3: Bool, arg4: Double, arg5: Double, arg6: Int, arg7: String, arg8: Bool, arg9: Int) in
             XCTAssertEqual(arg1, 42)
             XCTAssertEqual(arg2, "test")
             XCTAssertEqual(arg3, true)
