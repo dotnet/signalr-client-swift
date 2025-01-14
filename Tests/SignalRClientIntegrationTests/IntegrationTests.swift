@@ -4,6 +4,7 @@ import XCTest
 
 class IntegrationTests: XCTestCase {
     private var url: String?
+    private let logLevel: LogLevel = .debug
 
     override func setUpWithError() throws {
         guard let url = ProcessInfo.processInfo.environment["SIGNALR_INTEGRATION_TEST_URL"] else {
@@ -42,7 +43,7 @@ class IntegrationTests: XCTestCase {
         let connection = HubConnectionBuilder()
             .withUrl(url: url!, transport: transport)
             .withHubProtocol(hubProtocol: hubProtocol)
-            .withLogLevel(logLevel: .information)
+            .withLogLevel(logLevel: logLevel)
             .build()
 
         try await run({
@@ -84,7 +85,7 @@ class IntegrationTests: XCTestCase {
         let connection = HubConnectionBuilder()
             .withUrl(url: url!, transport: transport)
             .withHubProtocol(hubProtocol: hubProtocol)
-            .withLogLevel(logLevel: .information)
+            .withLogLevel(logLevel: logLevel)
             .build()
 
         let expectation = expectation(description: "Message received")
@@ -142,7 +143,7 @@ class IntegrationTests: XCTestCase {
         let connection = HubConnectionBuilder()
             .withUrl(url: url!, transport: transport)
             .withHubProtocol(hubProtocol: hubProtocol)
-            .withLogLevel(logLevel: .information)
+            .withLogLevel(logLevel: logLevel)
             .build()
         
         try await connection.start()
@@ -182,7 +183,7 @@ class IntegrationTests: XCTestCase {
         let connection = HubConnectionBuilder()
             .withUrl(url: url!, transport: transport)
             .withHubProtocol(hubProtocol: hubProtocol)
-            .withLogLevel(logLevel: .information)
+            .withLogLevel(logLevel: logLevel)
             .build()
 
         try await connection.start()
