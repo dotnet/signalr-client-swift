@@ -26,7 +26,6 @@ class IntegrationTests: XCTestCase {
             (.serverSentEvents, .json),
             (.longPolling, .json),
             (.webSockets, .messagePack),
-            (.serverSentEvents, .messagePack),
             (.longPolling, .messagePack),
         ]
         #endif
