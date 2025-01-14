@@ -218,22 +218,13 @@ class IntegrationTests: XCTestCase {
 
     func whenTaskTimeout(_ task: @escaping () async throws -> Void, timeout: TimeInterval) async throws -> Void {
         let expectation = XCTestExpectation(description: "Task should finish")
-        var err: Error?
         let wrappedTask = Task {
-            do {
-                try await task()
-                expectation.fulfill()
-            } catch {
-                err = error
-            }
+            try await task()
+            expectation.fulfill()
         }
         defer { wrappedTask.cancel() }
 
         await fulfillment(of: [expectation], timeout: timeout)
-        wrappedTask.cancel()
-        if err != nil {
-            throw err!
-        }
     }
 
     func run<T>(_ operation: () async throws -> T,
