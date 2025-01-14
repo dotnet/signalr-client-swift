@@ -41,6 +41,7 @@ class IntegrationTests: XCTestCase {
     }
 
     private func testConnectCore(transport: HttpTransportType, hubProtocol: HubProtocolType) async throws {
+        print("testConnectCore with transport: \(transport) and hubProtocol: \(hubProtocol)")
         let connection = HubConnectionBuilder()
             .withUrl(url: url!, transport: transport)
             .withHubProtocol(hubProtocol: hubProtocol)
