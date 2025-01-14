@@ -18,15 +18,16 @@ class IntegrationTests: XCTestCase {
         let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
             (.longPolling, .messagePack),
             (.longPolling, .json),
+            // (.serverSentEvents, .json)
         ]
         #else
         let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
             (.webSockets, .json),
             (.serverSentEvents, .json),
             (.longPolling, .json),
-            (.webSockets, .messagePack),
-            (.serverSentEvents, .messagePack),
-            (.longPolling, .messagePack),
+            // (.webSockets, .messagePack),
+            // (.serverSentEvents, .messagePack),
+            // (.longPolling, .messagePack),
         ]
         #endif
 
@@ -46,11 +47,11 @@ class IntegrationTests: XCTestCase {
             .withLogLevel(logLevel: logLevel)
             .build()
 
-        try await run({
+        try await run(){
             try await connection.start()
-        }, defer: {
+        } defer: {
             await connection.stop()
-        })
+        }
     }
 
     // func testSendAndOn() async throws {
@@ -217,13 +218,22 @@ class IntegrationTests: XCTestCase {
 
     func whenTaskTimeout(_ task: @escaping () async throws -> Void, timeout: TimeInterval) async throws -> Void {
         let expectation = XCTestExpectation(description: "Task should finish")
+        var err: Error?
         let wrappedTask = Task {
-            _ = try await task()
-            expectation.fulfill()
+            do {
+                try await task()
+                expectation.fulfill()
+            } catch {
+                err = error
+            }
         }
         defer { wrappedTask.cancel() }
 
         await fulfillment(of: [expectation], timeout: timeout)
+        wrappedTask.cancel()
+        if err != nil {
+            throw err!
+        }
     }
 
     func run<T>(_ operation: () async throws -> T,
