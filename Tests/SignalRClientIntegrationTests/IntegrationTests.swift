@@ -155,6 +155,44 @@ class IntegrationTests: XCTestCase {
         }
     }
 
+    func testInvokeWithoutReturn() async throws {
+        #if os(Linux)
+        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
+            (.longPolling, .messagePack),
+            (.longPolling, .json),
+        ]
+        #else
+        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
+            (.webSockets, .json),
+            (.serverSentEvents, .json),
+            (.longPolling, .json),
+            (.webSockets, .messagePack),
+            (.longPolling, .messagePack),
+        ]
+        #endif
+
+        for (transport, hubProtocol) in testCombinations {
+            try await whenTaskTimeout({ try await self.testInvokeWithoutReturnCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
+        }
+    }
+
+    private func testInvokeWithoutReturnCore(transport: HttpTransportType, hubProtocol: HubProtocolType) async throws {
+        let connection = HubConnectionBuilder()
+            .withUrl(url: url!, transport: transport)
+            .withHubProtocol(hubProtocol: hubProtocol)
+            .withLogLevel(logLevel: logLevel)
+            .build()
+        
+        try await connection.start()
+
+        try await run() {
+            let message1 = "Hello, World!"
+            try await connection.invoke(method: "InvokeWithoutReturn", arguments: message1)
+        } defer: {
+            await connection.stop()
+        }
+    }
+
     func testStream() async throws {
         #if os(Linux)
         let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [

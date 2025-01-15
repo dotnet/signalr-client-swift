@@ -9,6 +9,10 @@ public class TestHub : Hub
     
     public object Invoke(string message1, object message2) => message2;
 
+    public void InvokeWithoutReturn(string message1)
+    {
+    }
+
     public async IAsyncEnumerable<string> Stream()
     {
         yield return "a";
