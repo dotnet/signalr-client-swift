@@ -231,17 +231,25 @@ public actor HubConnection {
 
         if (connectionStatus == .Connected) {
             do {
-                try await reconnect()
+                try await reconnect(error: error)
             } catch {
                 logger.log(level: .warning, message: "Connection reconnect failed: \(error)")
             }
         }
     }
 
-    private func reconnect() async throws {
+    internal func reconnect(error: Error?) async throws {
         var retryCount = 0
+        let startTime = DispatchTime.now()
+        var elapsed: TimeInterval = 0.0
+        var lastError: Error? = error
+
         // reconnect
-        while let interval = retryPolicy.nextRetryInterval(retryCount: retryCount) {
+        while let interval = retryPolicy.nextRetryInterval(retryContext: RetryContext(
+                retryCount: retryCount,
+                elapsed: elapsed,
+                retryReason: lastError
+            )) {
             try Task.checkCancellation()
             if (stopping) {
                 break
@@ -255,6 +263,7 @@ public actor HubConnection {
                 connectionStatus = .Connected
                 return
             } catch {
+                lastError = error
                 logger.log(level: .warning, message: "Connection reconnect failed: \(error)")
             }
 
@@ -262,13 +271,14 @@ public actor HubConnection {
                 break
             }
 
-            retryCount += 1
-
             do {
                 try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000)) // interval in seconds to ns
             } catch {
                 break
             }
+
+            retryCount += 1
+            elapsed = Double(DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds) / 1_000_000_000
         }
 
         logger.log(level: .warning, message: "Connection reconnect exceeded retry policy")

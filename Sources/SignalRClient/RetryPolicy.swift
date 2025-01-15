@@ -1,8 +1,14 @@
 import Foundation
 
 public protocol RetryPolicy: Sendable {
-    // Nil means no more retry
-    func nextRetryInterval(retryCount: Int) -> TimeInterval?
+    // Return TimeInterval in seconds, and Nil means no more retry
+    func nextRetryInterval(retryContext: RetryContext) -> TimeInterval?
+}
+
+public struct RetryContext {
+    public let retryCount: Int
+    public let elapsed: TimeInterval
+    public let retryReason: Error?
 }
 
 final class DefaultRetryPolicy: RetryPolicy, @unchecked Sendable {
@@ -13,9 +19,9 @@ final class DefaultRetryPolicy: RetryPolicy, @unchecked Sendable {
         self.retryDelays = retryDelays
     }
 
-    func nextRetryInterval(retryCount: Int) -> TimeInterval? {
-        if retryCount < retryDelays.count {
-            return retryDelays[retryCount]
+    func nextRetryInterval(retryContext: RetryContext) -> TimeInterval? {
+        if retryContext.retryCount < retryDelays.count {
+            return retryDelays[retryContext.retryCount]
         }
 
         return nil
