@@ -104,11 +104,16 @@ let connection = HubConnectionBuilder()
 For more control over the timing and number of automatic reconnect attempts, withAutomaticReconnect accepts an object implementing the `RetryPolicy` protocol, which has a single method named `nextRetryInterval`. The `nextRetryInterval` takes a single argument with the type `RetryContext`. The RetryContext has three properties: `retryCount`,` elapsed` and `retryReason` which are a Int, a TimeInterval and an Error respectively. Before the first reconnect attempt, both `retryCount` and `elapsed` will be zero, and the `retryReason` will be the Error that caused the connection to be lost. After each failed retry attempt, `retryCount` will be incremented by one, `elapsed` will be updated to reflect the amount of time spent reconnecting so far in seconds, and the `retryReason` will be the Error that caused the last reconnect attempt to fail.
 
 ```swift
+// Define a customized retry policy
+struct CustomRetryPolicy: RetryPolicy {
+    func nextRetryInterval(retryContext: RetryContext) -> TimeInterval? {
+        return 1 // unlimited retry with 1 second
+    }
+}
+
 let connection = HubConnectionBuilder()
     .withUrl(url: "https://your-signalr-server")
-    .withAtuomaticReconnect({
-        
-    })
+    .withAtuomaticReconnect(CustomRetryPolicy())
     .build()
 ```
 
