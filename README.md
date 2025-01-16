@@ -89,10 +89,10 @@ let connection = HubConnectionBuilder()
 
 Without any parameters, `WithAutomaticReconnect` configures the client to wait 0, 2, 10, and 30 seconds respectively before trying each reconnect attempt. After four failed attempts, it stops trying to reconnect.
 
-Before starting any reconnect attampts, the `HubConnection` transitions to the `Reconnecting` state and fires its `onReconnecting` callbacks.
+Before starting any reconnect attempts, the `HubConnection` transitions to the `Reconnecting` state and fires its `onReconnecting` callbacks.
 
 ### Configure strategy in automatic reconnect
-In order to configure a custom number of reconnect attempts before disconnecting or change the reconnect timing, `withAutomaticReconnect` accepts an array of numbers representing the delay in milliseconds to wait before starting each reconnect attempt. 
+In order to configure a custom number of reconnect attempts before disconnecting or change the reconnect timing, `withAutomaticReconnect` accepts an array of numbers representing the delay in seconds to wait before starting each reconnect attempt. 
 
 ```swift
 let connection = HubConnectionBuilder()

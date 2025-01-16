@@ -55,6 +55,11 @@ public class HubConnectionBuilder {
         return self
     }
 
+    public func withAtuomaticReconnect() -> HubConnectionBuilder {
+        self.retryPolicy = DefaultRetryPolicy(retryDelays: [0, 2, 10, 30])
+        return self
+    }
+
     public func withAtuomaticReconnect(retryPolicy: RetryPolicy) -> HubConnectionBuilder {
         self.retryPolicy = retryPolicy
         return self
