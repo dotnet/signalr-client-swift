@@ -34,9 +34,10 @@ final class HubConnectionOnTests: XCTestCase {
         try await hubConnection.start()
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
+        await hubConnection.stop()
         hubConnection = nil
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testOnNoArgs() async throws {
