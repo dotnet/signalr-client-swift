@@ -11,11 +11,11 @@ class TimeSchedulerrTests: XCTestCase {
         sendActionCalled = false
     }
     
-    override func tearDown() {
-        scheduler.stop()
+    override func tearDown() async throws {
+        await scheduler.stop()
         scheduler = nil
         sendActionCalled = nil
-        super.tearDown()
+        try await super.tearDown()
     }
     
     func testStart() async {
@@ -26,7 +26,7 @@ class TimeSchedulerrTests: XCTestCase {
         ]
         
         var counter = 0
-        scheduler.start {
+        await scheduler.start {
             if counter <= 2 {
                 expectations[counter].fulfill()
             }
@@ -40,11 +40,11 @@ class TimeSchedulerrTests: XCTestCase {
         let stopExpectation = self.expectation(description: "sendAction not called")
         stopExpectation.isInverted = true
         
-        scheduler.start {
+        await scheduler.start {
             stopExpectation.fulfill()
         }
         
-        scheduler.stop()
+        await scheduler.stop()
 
         await fulfillment(of: [stopExpectation], timeout: 0.5)
     }
@@ -53,15 +53,15 @@ class TimeSchedulerrTests: XCTestCase {
         let invertedExpectation = self.expectation(description: "Should not called")
         invertedExpectation.isInverted = true
         let expectation = self.expectation(description: "sendAction called")
-        scheduler.updateInterval(to: 5)
+        await scheduler.updateInterval(to: 5)
 
-        scheduler.start {
+        await scheduler.start {
             invertedExpectation.fulfill()
             expectation.fulfill()
         }
 
         await fulfillment(of: [invertedExpectation], timeout: 0.5)
-        scheduler.updateInterval(to: 0.1)
+        await scheduler.updateInterval(to: 0.1)
 
         await fulfillment(of: [expectation], timeout: 1)
     }

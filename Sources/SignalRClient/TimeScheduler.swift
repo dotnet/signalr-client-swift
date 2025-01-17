@@ -1,6 +1,6 @@
 import Foundation
 
-class TimeScheduler {
+actor TimeScheduler {
     private let queue = DispatchQueue(label: "com.schduler.timer")
     private var timer: DispatchSourceTimer?
     private var interval: TimeInterval
@@ -20,9 +20,8 @@ class TimeScheduler {
 
             Task {
                 await sendAction()
+                await self.refreshSchduler()
             }
-            
-            self.refreshSchduler()
         }
         timer.resume()
     }
