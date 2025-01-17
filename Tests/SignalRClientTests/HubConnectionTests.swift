@@ -3,6 +3,8 @@ import XCTest
 @testable import SignalRClient
 
 class MockConnection: ConnectionProtocol, @unchecked Sendable {
+    var inherentKeepAlive: Bool = false
+
     var onReceive: Transport.OnReceiveHandler?
     var onClose: Transport.OnCloseHander?
     var onSend: ((StringOrData) -> Void)?
@@ -461,6 +463,57 @@ final class HubConnectionTests: XCTestCase {
         await handleCloseTask.value
         let state = await hubConnection.state()
         XCTAssertEqual(state, HubConnectionState.Stopped)
+    }
+
+    func testKeepAlive() async throws {
+        let keepAliveInterval: TimeInterval = 0.1
+        hubConnection = HubConnection(
+            connection: mockConnection,
+            logger: Logger(logLevel: .debug, logHandler: logHandler),
+            hubProtocol: hubProtocol,
+            retryPolicy: DefaultRetryPolicy(retryDelays: []), // No retry
+            serverTimeout: nil,
+            keepAliveInterval: keepAliveInterval
+        )
+
+        let handshakeExpectation = XCTestExpectation(description: "handshake should be called")
+        let pingExpectations = [
+            XCTestExpectation(description: "ping should be called"),
+            XCTestExpectation(description: "ping should be called"),
+            XCTestExpectation(description: "ping should be called")
+        ]
+        var sendCount = 0
+        mockConnection.onSend = { data in
+            do {
+                let messages = try self.hubProtocol.parseMessages(input: data, binder: TestInvocationBinder(binderTypes: []))
+                for message in messages {
+                    if let pingMessage = message as? PingMessage {
+                        if sendCount < pingExpectations.count {
+                            pingExpectations[sendCount].fulfill()
+                        }
+                        sendCount += 1
+                        return
+                    }
+                }
+                handshakeExpectation.fulfill()
+                Task { await self.hubConnection.processIncomingData(.string(self.successHandshakeResponse)) } // only success the first time
+            } catch {
+                XCTFail("Unexpected error: \(error)")
+            }
+            
+        }
+
+        let startTask = Task { try await hubConnection.start() }
+        defer { startTask.cancel() }
+
+        // HubConnect start handshake
+        await fulfillment(of: [handshakeExpectation], timeout: 1.0)
+
+        // Response a handshake response
+        await whenTaskWithTimeout(startTask, timeout: 1.0)
+
+        // Send keepalive after connect
+        await fulfillment(of: [pingExpectations[0], pingExpectations[1], pingExpectations[2]], timeout: 1.0)
     }
 
     func testSend() async throws {

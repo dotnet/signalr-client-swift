@@ -93,9 +93,17 @@ actor HttpConnection: ConnectionProtocol {
     private var stopTask: Task<Void, Never>?
     private var stopError: Error?
     private var accessTokenFactory: (@Sendable () async throws -> String?)?
+    private var inherentKeepAlivePrivate: Bool = false
+
     public var features: [String: Any] = [:]
     public var baseUrl: String
     public var connectionId: String?
+    public var inherentKeepAlive: Bool { 
+        get async {
+            return inherentKeepAlivePrivate
+        }
+     }
+
     private var onReceive: Transport.OnReceiveHandler?
     private var onClose: Transport.OnCloseHander?
     private let negotiateVersion = 1
@@ -238,6 +246,10 @@ actor HttpConnection: ConnectionProtocol {
 
                 logger.log(level: .debug, message: "Successfully finish the negotiation. \(String(describing: negotiateResponse))")
                 try await createTransport(url: url, requestedTransport: options.transport, negotiateResponse: negotiateResponse, requestedTransferFormat: transferFormat)
+            }
+
+            if (transport is LongPollingTransport) {
+                inherentKeepAlivePrivate = true
             }
 
             if connectionState == .connecting {
