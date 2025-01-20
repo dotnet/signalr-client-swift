@@ -516,6 +516,41 @@ final class HubConnectionTests: XCTestCase {
         await fulfillment(of: [pingExpectations[0], pingExpectations[1], pingExpectations[2]], timeout: 1.0)
     }
 
+    func serverTimeoutTest() async throws {
+        hubConnection = HubConnection(
+            connection: mockConnection,
+            logger: Logger(logLevel: .debug, logHandler: logHandler),
+            hubProtocol: hubProtocol,
+            retryPolicy: DefaultRetryPolicy(retryDelays: []), // No retry
+            serverTimeout: 0.1,
+            keepAliveInterval: 99
+        )
+
+        let handshakeExpectation = XCTestExpectation(description: "handshake should be called")
+        let closeExpectation = XCTestExpectation(description: "close should be called")
+        mockConnection.onSend = { data in
+            handshakeExpectation.fulfill()
+            Task { await self.hubConnection.processIncomingData(.string(self.successHandshakeResponse)) } // only success the first time
+        }
+
+        mockConnection.onClose = { error in
+            closeExpectation.fulfill()
+            XCTAssert(error as! SignalRError == SignalRError.serverTimeout(0.1))
+        }
+
+        let startTask = Task { try await hubConnection.start() }
+        defer { startTask.cancel() }
+
+        // HubConnect start handshake
+        await fulfillment(of: [handshakeExpectation], timeout: 1.0)
+
+        // Response a handshake response
+        await whenTaskWithTimeout(startTask, timeout: 1.0)
+
+        // Send keepalive after connect
+        await fulfillment(of: [closeExpectation], timeout: 1.0)
+    }
+
     func testSend() async throws {
         // Arrange
         let expectation = XCTestExpectation(description: "send() should be called")

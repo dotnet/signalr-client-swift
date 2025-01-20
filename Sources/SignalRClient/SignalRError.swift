@@ -28,6 +28,7 @@ public enum SignalRError: Error, Equatable {
     case messageBiggerThan2GB
     case unexpectedMessageType(String)
     case streamCancelled
+    case serverTimeout(TimeInterval)
 
     var localizedDescription: String {
         switch self {
@@ -87,6 +88,8 @@ public enum SignalRError: Error, Equatable {
             return "Unexpected message type: \(messageType)."
         case .streamCancelled:
             return "Stream cancelled."
+        case .serverTimeout(let timeout):
+            return "Server timeout. Did not receive a message for \(timeout) seconds."
         }
     }
 }

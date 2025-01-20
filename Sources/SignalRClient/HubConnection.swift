@@ -13,6 +13,7 @@ public actor HubConnection {
     private let connection: ConnectionProtocol
     private let retryPolicy: RetryPolicy
     private let keepAliveScheduler: TimeScheduler
+    private let serverTimeoutScheduler: TimeScheduler
 
     private var connectionStarted: Bool = false
     private var receivedHandshakeResponse: Bool = false
@@ -45,6 +46,7 @@ public actor HubConnection {
         self.invocationBinder = DefaultInvocationBinder()
         self.invocationHandler = InvocationHandler()
         self.keepAliveScheduler = TimeScheduler(initialInterval: self.keepAliveInterval)
+        self.serverTimeoutScheduler = TimeScheduler(initialInterval: self.serverTimeout)
     }
 
     public func start() async throws {
@@ -65,6 +67,7 @@ public actor HubConnection {
                 connectionStatus = .Stopped
                 stopping = false
                 await keepAliveScheduler.stop()
+                await serverTimeoutScheduler.stop()
                 logger.log(level: .debug, message: "HubConnection start failed \(error)")
                 throw error
             }
@@ -343,6 +346,8 @@ public actor HubConnection {
     }
 
     func dispatchMessage(_ message: HubMessage) async {
+        await serverTimeoutScheduler.refreshSchduler()
+
         switch message {
             case let message as InvocationMessage:
                 // Invoke a method
@@ -388,6 +393,7 @@ public actor HubConnection {
         connectionStatus = .Stopped
         stopping = false
         await keepAliveScheduler.stop()
+        await serverTimeoutScheduler.stop()
         await triggerClosedHandlers(error: error)
     }
 
@@ -402,6 +408,7 @@ public actor HubConnection {
 
         stopDuringStartError = nil
         await keepAliveScheduler.stop() // make sure to stop the keepalive scheduler
+        await serverTimeoutScheduler.stop() // make sure to stop the server timeout scheduler
 
         try await connection.start(transferFormat: hubProtocol.transferFormat)
 
@@ -459,6 +466,10 @@ public actor HubConnection {
                         self.logger.log(level: .debug, message: "Error sending ping: \(error)") // We don't care about this error
                     }
                 }
+            }
+            await serverTimeoutScheduler.start {
+                self.logger.log(level: .warning, message: "Server timeout")
+                await self.connection.stop(error: SignalRError.serverTimeout(self.serverTimeout))
             }
 
             guard stopDuringStartError == nil else {
