@@ -64,6 +64,27 @@ try await connection.invoke(method: "SendMessage", arguments: "myUser", "Hello")
 try await connection.send(method: "SendMessage", arguments: "myUser", "Hello")
 ```
 
+## Client results
+
+In addition to making calls to clients, the server can request a result from a client. This requires the server to use `ISingleClientProxy.InvokeAsync` and the client to return a result from its `.on` handler.
+
+```swift
+await connection.on("ClientResult") { (message: String) in
+    return "client response"
+}
+```
+
+In the following example, the server calls the `ClientResult` method on the client and waits for the client to return a result. The message will be "client response".
+```C#
+public class ChatHub : Hub
+{
+    public async Task TriggerClientResult()
+    {
+        var message = await Clients.Client(connectionId).InvokeAsync<string>("ClientResult");
+    }
+}
+```
+
 ## Working with Streaming Responses
 To receive a stream of data from the server, use the `stream` method:
 
@@ -141,4 +162,4 @@ let connection = HubConnectionBuilder()
 | WebSockets                      |✅|
 | JSON Protocol                   |✅|
 | MessagePack Protocol            |✅|
-| Client Results                  ||
+| Client Results                  |✅|
