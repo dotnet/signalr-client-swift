@@ -180,6 +180,10 @@ public actor HubConnection {
         invocationBinder.registerSubscription(methodName: method, types: types, handler: handler)
     }
 
+    internal func on(method: String, types: [Any.Type], handler: @escaping ([Any]) async throws -> Any) {
+        invocationBinder.registerSubscription(methodName: method, types: types, handler: handler)
+    }
+
     public func off(method: String) {
         invocationBinder.removeSubscrioption(methodName: method)
     }
@@ -351,12 +355,10 @@ public actor HubConnection {
         switch message {
             case let message as InvocationMessage:
                 // Invoke a method
-                if let handler = invocationBinder.getHandler(methodName: message.target) {
-                    do {
-                        try await handler(message.arguments.value ?? [])
-                    } catch {
-                        logger.log(level: .error, message: "Error invoking method: \(error)")
-                    }
+                do {
+                    try await invokeClientMethod(message: message)
+                } catch {
+                    logger.log(level: .error, message: "Error invoking method: \(error)")
                 }
                 break
             case let message as StreamItemMessage:
@@ -366,26 +368,43 @@ public actor HubConnection {
                 await invocationHandler.setResult(message: message)
                 invocationBinder.removeReturnValueType(invocationId: message.invocationId!)
                 break
-            case _ as StreamInvocationMessage:
-                // Never happened in client
-                break
-            case _ as CancelInvocationMessage:
-                // Never happened in client
-                break
             case _ as PingMessage:
-                // Ping
+                // Don't care about the content of ping
                 break
             case _ as CloseMessage:
                 // Close
                 break
             case _ as AckMessage:
-                // Ack
+                // TODO: In stateful reconnect
                 break
             case _ as SequenceMessage:
-                // Sequence
+                // TODO: In stateful reconnect
                 break
             default:
                 logger.log(level: .warning, message: "Unknown message type: \(message)")
+        }
+    }
+
+    private func invokeClientMethod(message: InvocationMessage) async throws {
+        guard let handler = invocationBinder.getHandler(methodName: message.target) else {
+            logger.log(level: .warning, message: "No handler registered for method: \(message.target)")
+            if let invocationId = message.invocationId {
+                logger.log(level:.warning, message: "No result given for method: \(message.target), and invocationId: \(invocationId)")
+                let completionMessage = CompletionMessage(invocationId: invocationId, error: "No handler registered for method: \(message.target)", result: AnyEncodable(nil), headers: nil)
+                let data = try hubProtocol.writeMessage(message: completionMessage)
+                try await sendMessageInternal(data)
+            }
+            return            
+        }
+        
+        let expectResponse = message.invocationId != nil
+        if (expectResponse) {
+            let result = try await handler(message.arguments.value ?? [])
+            let completionMessage = CompletionMessage(invocationId: message.invocationId!, error: nil, result: AnyEncodable(result), headers: nil)
+            let data = try hubProtocol.writeMessage(message: completionMessage)
+            try await sendMessageInternal(data)
+        } else {
+            _ = try await handler(message.arguments.value ?? [])
         }
     }
 
@@ -536,9 +555,9 @@ public actor HubConnection {
 
     private class SubscriptionEntity {
         public let types: [Any.Type]
-        public let callback: ([Any]) async throws -> Void
+        public let callback: ([Any]) async throws -> Any
 
-        init(types: [Any.Type], callback: @escaping ([Any]) async throws -> Void) {
+        init(types: [Any.Type], callback: @escaping ([Any]) async throws -> Any) {
             self.types = types
             self.callback = callback
         }
@@ -549,7 +568,7 @@ public actor HubConnection {
         private var subscriptionHandlers: [String: SubscriptionEntity] = [:]
         private var returnValueHandler: [String: Any.Type] = [:]
 
-        mutating func registerSubscription(methodName: String, types: [Any.Type], handler: @escaping ([Any]) async throws -> Void) {
+        mutating func registerSubscription(methodName: String, types: [Any.Type], handler: @escaping ([Any]) async throws -> Any) {
             lock.wait()
             defer {lock.signal()}
             subscriptionHandlers[methodName] = SubscriptionEntity(types: types, callback: handler)
@@ -573,7 +592,7 @@ public actor HubConnection {
             returnValueHandler[invocationId] = nil
         }
 
-        func getHandler(methodName: String) -> (([Any]) async throws -> Void)? {
+        func getHandler(methodName: String) -> (([Any]) async throws -> Any)? {
             lock.wait()
             defer {lock.signal()}
             return subscriptionHandlers[methodName]?.callback

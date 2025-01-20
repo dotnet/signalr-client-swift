@@ -131,7 +131,8 @@ let connection = HubConnectionBuilder()
 
 | Feature                         | Supported |
 |---------------------------------|-----------|
-| Automatic Reconnect             |✅|
+| Azure SignalR Service Support   |✅|
+| Automatic Reconnection          |✅|
 | Stateful Reconnect              ||
 | Server to Client Streaming      |✅|
 | Client to Server Streaming      ||
@@ -140,4 +141,4 @@ let connection = HubConnectionBuilder()
 | WebSockets                      |✅|
 | JSON Protocol                   |✅|
 | MessagePack Protocol            |✅|
-| Client Invocation               ||
+| Client Results                  ||
