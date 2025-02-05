@@ -355,7 +355,7 @@ class IntegrationTests: XCTestCase {
         }
         defer { wrappedTask.cancel() }
 
-        await fulfillment(of: [expectation], timeout: timeout, file: #file, line: line)
+        await fulfillment(of: [expectation], timeout: timeout, enforceOrder: false, file: #file, line: line)
     }
 
     func run<T>(_ operation: () async throws -> T,
