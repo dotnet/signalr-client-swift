@@ -104,7 +104,7 @@ The swift client for SiganlR supports automatic reconnect. You can enable it by 
 ```swift
 let connection = HubConnectionBuilder()
     .withUrl(url: "https://your-signalr-server")
-    .withAtuomaticReconnect()
+    .withAutomaticReconnect()
     .build()
 ```
 
@@ -118,7 +118,7 @@ In order to configure a custom number of reconnect attempts before disconnecting
 ```swift
 let connection = HubConnectionBuilder()
     .withUrl(url: "https://your-signalr-server")
-    .withAtuomaticReconnect([0, 0, 1]) // wait 0, 0, and 1 second before trying to reconnect and stop after 3 attempts
+    .withAutomaticReconnect([0, 0, 1]) // wait 0, 0, and 1 second before trying to reconnect and stop after 3 attempts
     .build()
 ```
 
@@ -134,7 +134,7 @@ struct CustomRetryPolicy: RetryPolicy {
 
 let connection = HubConnectionBuilder()
     .withUrl(url: "https://your-signalr-server")
-    .withAtuomaticReconnect(CustomRetryPolicy())
+    .withAutomaticReconnect(CustomRetryPolicy())
     .build()
 ```
 
