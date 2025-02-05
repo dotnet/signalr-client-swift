@@ -19,6 +19,15 @@ public class TestHub : Hub
         await Clients.Client(Context.ConnectionId).SendAsync("EchoBack", result);
     }
 
+    public async Task invokeWithEmptyClientResult(string message1)
+    {
+        Console.WriteLine("ClientResult invoking");
+        var rst = await Clients.Client(Context.ConnectionId).InvokeAsync<object>("ClientResult", message1, CancellationToken.None);
+        Console.WriteLine("ClientResult invoked");
+        Console.WriteLine(rst);
+        await Clients.Client(Context.ConnectionId).SendAsync("EchoBack", "received");
+    }
+
     public async IAsyncEnumerable<string> Stream()
     {
         yield return "a";

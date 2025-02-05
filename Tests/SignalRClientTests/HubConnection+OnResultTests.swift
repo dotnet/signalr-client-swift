@@ -64,6 +64,18 @@ final class HubConnectionOnResultTests: XCTestCase {
         XCTAssertEqual(result?.result.value as? Int, self.resultValue)
     }
 
+    func testOnNoArgs_VoidReturn() async throws {
+        let expectation = self.expectation(description: "Handler called")
+        await hubConnection.on("testMethod") {
+            expectation.fulfill()
+            return
+        }
+
+        await hubConnection.dispatchMessage(InvocationMessage(target: "testMethod", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: "invocationId"))
+        await fulfillment(of: [expectation, resultExpectation], timeout: 1)
+        XCTAssertNil(result?.result.value)
+    }
+
     func testOnAndOff() async throws {
         let expectation = self.expectation(description: "Handler called")
         expectation.isInverted = true

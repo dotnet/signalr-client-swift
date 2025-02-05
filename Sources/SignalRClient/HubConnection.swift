@@ -103,6 +103,7 @@ public actor HubConnection {
     public func send(method: String, arguments: Any...) async throws {
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil, invocationId: nil)
         let data = try hubProtocol.writeMessage(message: invocationMessage)
+        logger.log(level: .debug, message: "Sending message to target: \(method)")
         try await sendMessageInternal(data)
     }
 
@@ -110,6 +111,7 @@ public actor HubConnection {
         let (invocationId, tcs) = await invocationHandler.create()
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil, invocationId: invocationId)
         let data = try hubProtocol.writeMessage(message: invocationMessage)
+        logger.log(level: .debug, message: "Invoke message to target: \(method), invocationId: \(invocationId)")
         try await sendMessageInternal(data)
         _ = try await tcs.task()
     }
@@ -120,6 +122,7 @@ public actor HubConnection {
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil, invocationId: invocationId)
         do {
             let data = try hubProtocol.writeMessage(message: invocationMessage)
+            logger.log(level: .debug, message: "Invoke message to target: \(method), invocationId: \(invocationId)")
             try await sendMessageInternal(data)
         } catch {
             await invocationHandler.cancel(invocationId: invocationId, error: error)
@@ -140,6 +143,7 @@ public actor HubConnection {
         let StreamInvocationMessage = StreamInvocationMessage(invocationId: invocationId, target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil)
         do {
             let data = try hubProtocol.writeMessage(message: StreamInvocationMessage)
+            logger.log(level: .debug, message: "Stream message to target: \(method), invocationId: \(invocationId)")
             try await sendMessageInternal(data)
         } catch {
             await invocationHandler.cancel(invocationId: invocationId, error: error)
@@ -355,6 +359,7 @@ public actor HubConnection {
         switch message {
             case let message as InvocationMessage:
                 // Invoke a method
+                logger.log(level: .debug, message: "Invocation message received for method: \(message.target)")
                 do {
                     try await invokeClientMethod(message: message)
                 } catch {
@@ -362,9 +367,11 @@ public actor HubConnection {
                 }
                 break
             case let message as StreamItemMessage:
+                logger.log(level: .debug, message: "Stream item message received for invocation: \(message.invocationId!)")
                 await invocationHandler.setStreamItem(message: message)
                 break
             case let message as CompletionMessage:
+                logger.log(level: .debug, message: "Completion message received for invocation: \(message.invocationId!), error: \(message.error ?? "nil"), result: \(message.result.value ?? "nil")")
                 await invocationHandler.setResult(message: message)
                 invocationBinder.removeReturnValueType(invocationId: message.invocationId!)
                 break
@@ -399,7 +406,11 @@ public actor HubConnection {
         
         let expectResponse = message.invocationId != nil
         if (expectResponse) {
-            let result = try await handler(message.arguments.value ?? [])
+            var result: Any? = try await handler(message.arguments.value ?? [])
+            if (result is Void) {
+                // Void is not encodeable
+                result = nil
+            }
             let completionMessage = CompletionMessage(invocationId: message.invocationId!, error: nil, result: AnyEncodable(result), headers: nil)
             let data = try hubProtocol.writeMessage(message: completionMessage)
             try await sendMessageInternal(data)

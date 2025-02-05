@@ -195,6 +195,21 @@ final class JsonHubProtocolTests: XCTestCase {
         XCTAssertEqual("someData", msg.item.value as! String)
     }
 
+    func testParseStreamItemMessageWithNull() throws {
+        let input = "{\"type\": 2, \"invocationId\":\"345\", \"item\": null}\(TextMessageFormat.recordSeparator)" // JSON format for StreamItemMessage
+        let binder = TestInvocationBinder(binderTypes: [String.self])
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages[0] is StreamItemMessage)
+        guard let msg = messages[0] as? StreamItemMessage else {
+            XCTFail("Expected StreamItemMessage")
+            return
+        }
+        XCTAssertEqual("345", msg.invocationId)
+        XCTAssertNil(msg.item.value)
+    }
+
     func testParseCompletionMessage() throws {
         let input = "{\"type\": 3, \"invocationId\":\"345\", \"result\": \"completionResult\"}\(TextMessageFormat.recordSeparator)" // JSON format for CompletionMessage
         let binder = TestInvocationBinder(binderTypes: [String.self])
@@ -207,6 +222,20 @@ final class JsonHubProtocolTests: XCTestCase {
         }
         XCTAssertEqual("345", msg.invocationId)
         XCTAssertEqual("completionResult", msg.result.value as! String)
+    }
+
+    func testParseCompletionMessageWithNull() throws {
+        let input = "{\"type\": 3, \"invocationId\":\"345\", \"result\": null}\(TextMessageFormat.recordSeparator)" // JSON format for CompletionMessage
+        let binder = TestInvocationBinder(binderTypes: [String.self])
+        let messages = try jsonHubProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        guard let msg = messages[0] as? CompletionMessage else {
+            XCTFail("Expected CompletionMessage")
+            return
+        }
+        XCTAssertEqual("345", msg.invocationId)
+        XCTAssertNil(msg.result.value)
     }
 
     func testParseCompletionMessageError() throws {
@@ -347,6 +376,14 @@ final class JsonHubProtocolTests: XCTestCase {
         """)
     }
 
+    func testWriteStreamItemMessage3() throws {
+        let message = StreamItemMessage(invocationId: "123", item: AnyEncodable(nil), headers: ["key1": "value1", "key2": "value2"])
+        
+        try verifyWriteMessage(message: message, expectedJson: """
+        {"type":2,"item":null,"invocationId":"123","headers":{"key2":"value2","key1":"value1"}}
+        """)
+    }
+
     func testWriteCompletionMessage() throws {
         let message = CompletionMessage(
             invocationId: "123",
@@ -357,6 +394,19 @@ final class JsonHubProtocolTests: XCTestCase {
         
         try verifyWriteMessage(message: message, expectedJson: """
         {"type":3,"invocationId":"123","result":"completionResult","headers":{"key2":"value2","key1":"value1"}}
+        """)
+    }
+
+    func testWriteCompletionMessageWithNull() throws {
+        let message = CompletionMessage(
+            invocationId: "123",
+            error: nil,
+            result: AnyEncodable(nil),
+            headers: ["key1": "value1", "key2": "value2"]
+        )
+        
+        try verifyWriteMessage(message: message, expectedJson: """
+        {"type":3,"invocationId":"123","result":null,"headers":{"key2":"value2","key1":"value1"}}
         """)
     }
 

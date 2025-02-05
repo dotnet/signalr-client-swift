@@ -171,7 +171,7 @@ struct JsonHubProtocol: HubProtocol {
 
     private func DecodeStreamItem(_ jsonObject: [String: Any], type: Any.Type?) throws -> AnyEncodable {
         let item = jsonObject["item"]
-        if item == nil {
+        if isNil(item) {
             return AnyEncodable(nil)
         }
 
@@ -184,7 +184,7 @@ struct JsonHubProtocol: HubProtocol {
 
     private func DecodeCompletionResult(_ jsonObject: [String: Any], type: Any.Type?) throws -> AnyEncodable {
         let result = jsonObject["result"]
-        if result == nil || type == nil{
+        if isNil(result) || type == nil{
             return AnyEncodable(nil)
         }
 
@@ -209,5 +209,12 @@ struct JsonHubProtocol: HubProtocol {
 
         // primay elements
         return anyObject
+    }
+
+    private func isNil(_ obj: Any?) -> Bool {
+        if obj == nil || obj is NSNull {
+            return true
+        }
+        return false
     }
 }
