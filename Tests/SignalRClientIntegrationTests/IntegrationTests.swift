@@ -347,7 +347,7 @@ class IntegrationTests: XCTestCase {
         }
     }
 
-    func whenTaskTimeout(_ task: @escaping () async throws -> Void, timeout: TimeInterval, line: Int = #line) async throws -> Void {
+    func whenTaskTimeout(_ task: @escaping () async throws -> Void, timeout: TimeInterval) async throws -> Void {
         let expectation = XCTestExpectation(description: "Task should finish")
         let wrappedTask = Task {
             try await task()
@@ -355,7 +355,7 @@ class IntegrationTests: XCTestCase {
         }
         defer { wrappedTask.cancel() }
 
-        await fulfillment(of: [expectation], timeout: timeout, enforceOrder: false, file: #file, line: line)
+        await fulfillment(of: [expectation], timeout: timeout)
     }
 
     func run<T>(_ operation: () async throws -> T,
