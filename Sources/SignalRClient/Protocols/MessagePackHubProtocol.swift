@@ -99,9 +99,9 @@ final class MessagePackHubProtocol: HubProtocol {
     func parseMessage(message: Data, binder: any InvocationBinder)
         throws -> HubMessage?
     {
-        let (msgpackType, _ ) = try MsgpackType.parse(data: message)
+        let (msgpackElement, _ ) = try MsgpackElement.parse(data: message)
         let decoder = MsgpackDecoder()
-        try decoder.loadMsgpackType(msgpackType)
+        try decoder.loadMsgpackElement(from: msgpackElement)
         var container = try decoder.unkeyedContainer()
         guard
             let messageType = MessageType(

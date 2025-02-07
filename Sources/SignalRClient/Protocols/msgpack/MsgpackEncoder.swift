@@ -1,10 +1,10 @@
 import Foundation
 
 // MARK: Swift Encodable implementation. Encoder, KeyedContainer, UnkeyedContainer, SingleValueContainer
-class MsgpackEncoder: Encoder, MsgpackTypeConvertable {
+class MsgpackEncoder: Encoder, MsgpackElementConvertable {
     var codingPath: [any CodingKey]
     var userInfo: [CodingUserInfoKey: Any]
-    var msgpack: MsgpackTypeConvertable?
+    var msgpack: MsgpackElementConvertable?
 
     init(
         codingPath: [any CodingKey] = [],
@@ -15,7 +15,7 @@ class MsgpackEncoder: Encoder, MsgpackTypeConvertable {
     }
 
     func encodeMsgpackExt(extType: Int8, extData: Data) throws {
-        self.msgpack = MsgpackType.ext(extType, extData)
+        self.msgpack = MsgpackElement.ext(extType, extData)
     }
 
     func container<Key>(keyedBy key: Key.Type) -> KeyedEncodingContainer<Key>
@@ -58,12 +58,12 @@ class MsgpackEncoder: Encoder, MsgpackTypeConvertable {
     }
 
     func encode<T>(_ v: T) throws -> Data where T: Encodable {
-        var msgpackType = MsgpackType(v)
-        if msgpackType == nil {
+        var msgpackElement = MsgpackElement(v)
+        if msgpackElement == nil {
             try v.encode(to: self)
-            msgpackType = try? convertToMsgpackType()
+            msgpackElement = try? convertToMsgpackElement()
         }
-        guard let msgpackType = msgpackType else {
+        guard let msgpackElement = msgpackElement else {
             throw EncodingError.invalidValue(
                 type(of: v),
                 .init(
@@ -72,23 +72,23 @@ class MsgpackEncoder: Encoder, MsgpackTypeConvertable {
                         "Top-level \(String(describing: T.self)) did not encode any values."
                 ))
         }
-        self.msgpack = msgpackType
-        return try msgpackType.marshall()
+        self.msgpack = msgpackElement
+        return try msgpackElement.marshall()
     }
 
-    func convertToMsgpackType() throws -> MsgpackType {
+    func convertToMsgpackElement() throws -> MsgpackElement {
         guard let msgpack = msgpack else {
             throw MsgpackEncodingError.encoderNotIntilized
         }
-        return try msgpack.convertToMsgpackType()
+        return try msgpack.convertToMsgpackElement()
     }
 }
 
 class MsgpackKeyedEncodingContainer<Key: CodingKey>:
-    KeyedEncodingContainerProtocol, MsgpackTypeConvertable,
+    KeyedEncodingContainerProtocol, MsgpackElementConvertable,
     MsgpackSwitchKeyProtocol
 {
-    private var holder: [String: MsgpackTypeConvertable] = [:]
+    private var holder: [String: MsgpackElementConvertable] = [:]
     private var userInfo: [CodingUserInfoKey: Any]
     var codingPath: [any CodingKey]
 
@@ -97,8 +97,8 @@ class MsgpackKeyedEncodingContainer<Key: CodingKey>:
         self.userInfo = userInfo
     }
 
-    func convertToMsgpackType() throws -> MsgpackType {
-        return .map(try holder.mapValues { v in try v.convertToMsgpackType() })
+    func convertToMsgpackElement() throws -> MsgpackElement {
+        return .map(try holder.mapValues { v in try v.convertToMsgpackElement() })
     }
 
     func switchKey<NewKey: CodingKey>(newKey: NewKey.Type)
@@ -111,16 +111,16 @@ class MsgpackKeyedEncodingContainer<Key: CodingKey>:
     }
 
     func encodeNil(forKey key: Key) throws {
-        holder[key.stringValue] = MsgpackType.null
+        holder[key.stringValue] = MsgpackElement.null
     }
 
     func encode<T>(_ value: T, forKey key: Key) throws where T: Encodable {
-        guard let msgpackType = MsgpackType(value) else {
+        guard let msgpackElement = MsgpackElement(value) else {
             let encoder = initEncoder(key: key)
             try value.encode(to: encoder)
             return
         }
-        holder[key.stringValue] = msgpackType
+        holder[key.stringValue] = msgpackElement
     }
 
     func nestedContainer<NestedKey>(
@@ -155,9 +155,9 @@ class MsgpackKeyedEncodingContainer<Key: CodingKey>:
 }
 
 class MsgpackUnkeyedEncodingContainer: UnkeyedEncodingContainer,
-    MsgpackTypeConvertable
+    MsgpackElementConvertable
 {
-    private var holder: [MsgpackTypeConvertable] = []
+    private var holder: [MsgpackElementConvertable] = []
     private var userInfo: [CodingUserInfoKey: Any]
     var codingPath: [any CodingKey]
     var count: Int { holder.count }
@@ -167,21 +167,21 @@ class MsgpackUnkeyedEncodingContainer: UnkeyedEncodingContainer,
         self.userInfo = userInfo
     }
 
-    func convertToMsgpackType() throws -> MsgpackType {
-        return .array(try holder.map { e in try e.convertToMsgpackType() })
+    func convertToMsgpackElement() throws -> MsgpackElement {
+        return .array(try holder.map { e in try e.convertToMsgpackElement() })
     }
 
     func encodeNil() throws {
-        holder.append(MsgpackType.null)
+        holder.append(MsgpackElement.null)
     }
 
     func encode<T>(_ value: T) throws where T: Encodable {
-        guard let msgpackType = MsgpackType(value) else {
+        guard let msgpackElement = MsgpackElement(value) else {
             let encoder = initEncoder()
             try value.encode(to: encoder)
             return
         }
-        self.holder.append(msgpackType)
+        self.holder.append(msgpackElement)
     }
 
     func nestedContainer<NestedKey>(keyedBy keyType: NestedKey.Type)
@@ -211,9 +211,9 @@ class MsgpackUnkeyedEncodingContainer: UnkeyedEncodingContainer,
 }
 
 class MsgpackSingleValueEncodingContainer: SingleValueEncodingContainer,
-    MsgpackTypeConvertable
+    MsgpackElementConvertable
 {
-    private var holder: MsgpackTypeConvertable?
+    private var holder: MsgpackElementConvertable?
     private var userInfo: [CodingUserInfoKey: Any]
     var codingPath: [any CodingKey]
 
@@ -223,25 +223,25 @@ class MsgpackSingleValueEncodingContainer: SingleValueEncodingContainer,
     }
 
     func encodeNil() throws {
-        holder = MsgpackType.null
+        holder = MsgpackElement.null
     }
 
-    func convertToMsgpackType() throws -> MsgpackType {
+    func convertToMsgpackElement() throws -> MsgpackElement {
         guard let holder = holder else {
-            return MsgpackType.null
+            return MsgpackElement.null
         }
-        return try holder.convertToMsgpackType()
+        return try holder.convertToMsgpackElement()
     }
 
     func encode<T>(_ value: T) throws where T: Encodable {
-        guard let msgpackType = MsgpackType(value) else {
+        guard let msgpackElement = MsgpackElement(value) else {
             let encoder = MsgpackEncoder(
                 codingPath: codingPath, userInfo: self.userInfo)
             try value.encode(to: encoder)
             self.holder = encoder
             return
         }
-        self.holder = msgpackType
+        self.holder = msgpackElement
     }
 }
 
@@ -251,13 +251,13 @@ private protocol MsgpackSwitchKeyProtocol {
         -> MsgpackKeyedEncodingContainer<NewKey>
 }
 
-protocol MsgpackTypeConvertable {
-    func convertToMsgpackType() throws -> MsgpackType
+protocol MsgpackElementConvertable {
+    func convertToMsgpackElement() throws -> MsgpackElement
 }
 
 // MARK: (Encoding Part) Intermediate type which implements messagepack protocol. Similar to JSonObject
-extension MsgpackType: MsgpackTypeConvertable {
-    // MARK: Convert basic Swift type to MsgpackType
+extension MsgpackElement: MsgpackElementConvertable {
+    // MARK: Convert basic Swift type to MsgpackElement
     init?<T>(_ value: T) where T: Encodable {
         switch value {
         case let number as Int:
@@ -294,11 +294,11 @@ extension MsgpackType: MsgpackTypeConvertable {
         }
     }
 
-    func convertToMsgpackType() throws -> MsgpackType {
+    func convertToMsgpackElement() throws -> MsgpackElement {
         return self
     }
 
-    // MARK: Convert MsgpackType to Data
+    // MARK: Convert MsgpackElement to Data
     func marshall() throws -> Data {
         switch self {
         case .int(let number):
@@ -440,7 +440,7 @@ extension MsgpackType: MsgpackTypeConvertable {
         return lengthPrefix + v
     }
 
-    private static func encodeMap(_ v: [String: MsgpackType]) throws -> Data {
+    private static func encodeMap(_ v: [String: MsgpackElement]) throws -> Data {
         let length = v.count
         var mapPrefix: Data
         if length < 1 << 4 {
@@ -474,7 +474,7 @@ extension MsgpackType: MsgpackTypeConvertable {
         return result
     }
 
-    private static func encodeArray(_ v: [MsgpackType]) throws -> Data {
+    private static func encodeArray(_ v: [MsgpackElement]) throws -> Data {
         let length = v.count
         var arrayPrefix: Data
         if length < 1 << 4 {

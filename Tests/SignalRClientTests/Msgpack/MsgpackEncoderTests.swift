@@ -4,7 +4,7 @@ import XCTest
 @testable import SignalRClient
 
 class MsgpackEncoderTests: XCTestCase {
-    // MARK: Convert MsgpackType to Data
+    // MARK: Convert MsgpackElement to Data
     func testEncodeUInt() throws {
         var data: [UInt64: Data] = [:]
         data[0x00] = Data([0x00])
@@ -19,7 +19,7 @@ class MsgpackEncoderTests: XCTestCase {
             0xcf, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
         ])
         for (uint64, expected) in data {
-            let result = try MsgpackType.uint(uint64).marshall()
+            let result = try MsgpackElement.uint(uint64).marshall()
             XCTAssertEqual(result, expected)
         }
     }
@@ -39,7 +39,7 @@ class MsgpackEncoderTests: XCTestCase {
         data[0x00] = Data([0x00])
         data[0x7f] = Data([0x7f])
         for (int64, expected) in data {
-            let result = try MsgpackType.int(int64).marshall()
+            let result = try MsgpackElement.int(int64).marshall()
             XCTAssertEqual(result, expected)
         }
     }
@@ -50,7 +50,7 @@ class MsgpackEncoderTests: XCTestCase {
         data[1.1] = Data([0xca, 0x3f, 0x8c, 0xcc, 0xcd])
         data[-0.9] = Data([0xca, 0xbf, 0x66, 0x66, 0x66])
         for (float32, expected) in data {
-            let result = try MsgpackType.float32(float32).marshall()
+            let result = try MsgpackElement.float32(float32).marshall()
             XCTAssertEqual(result, expected)
         }
     }
@@ -63,7 +63,7 @@ class MsgpackEncoderTests: XCTestCase {
             0xcb, 0xbf, 0xec, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcd,
         ])
         for (float64, expected) in data {
-            let result = try MsgpackType.float64(float64).marshall()
+            let result = try MsgpackElement.float64(float64).marshall()
             XCTAssertEqual(result, expected)
         }
     }
@@ -84,7 +84,7 @@ class MsgpackEncoderTests: XCTestCase {
             + Data(repeating: 0x61, count: 1 << 16)
         for (length, expected) in data {
             let string = String(repeating: Character("a"), count: length)
-            let result = try MsgpackType.string(string).marshall()
+            let result = try MsgpackElement.string(string).marshall()
             XCTAssertEqual(result, expected)
         }
     }
@@ -94,14 +94,14 @@ class MsgpackEncoderTests: XCTestCase {
         data[true] = Data([0xc3])
         data[false] = Data([0xc2])
         for (bool, expected) in data {
-            let result = try MsgpackType.bool(bool).marshall()
+            let result = try MsgpackElement.bool(bool).marshall()
             XCTAssertEqual(result, expected)
         }
     }
 
     func testEncodeNil() throws {
         let expected = Data([0xc0])
-        let result = try MsgpackType.null.marshall()
+        let result = try MsgpackElement.null.marshall()
         XCTAssertEqual(result, expected)
     }
 
@@ -119,70 +119,70 @@ class MsgpackEncoderTests: XCTestCase {
             + Data(repeating: UInt8(1), count: 1 << 16)
         for (length, expected) in data {
             let data = Data(repeating: UInt8(1), count: length)
-            let result = try MsgpackType.bin(data).marshall()
+            let result = try MsgpackElement.bin(data).marshall()
             XCTAssertEqual(result, expected)
         }
     }
 
     func testEncodeMap() throws {
-        var map: [String: MsgpackType] = [:]
-        var result = try MsgpackType.map(map).marshall()
+        var map: [String: MsgpackElement] = [:]
+        var result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result, Data([0x80]))
         for i in 0..<1 << 4 - 1 {
-            map[String(i)] = MsgpackType.bool(true)
+            map[String(i)] = MsgpackElement.bool(true)
         }
-        result = try MsgpackType.map(map).marshall()
+        result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result.count, 51)
         XCTAssertEqual(result[0], 0x8f)
 
         map.removeAll()
         for i in 0..<1 << 4 {
-            map[String(i)] = MsgpackType.bool(true)
+            map[String(i)] = MsgpackElement.bool(true)
         }
-        result = try MsgpackType.map(map).marshall()
+        result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result.count, 57)
         XCTAssertEqual(result[0...2], Data([0xde, 0x00, 0x10]))
 
         map.removeAll()
         for i in 0..<1 << 16 - 1 {
-            map[String(i)] = MsgpackType.bool(true)
+            map[String(i)] = MsgpackElement.bool(true)
         }
-        result = try MsgpackType.map(map).marshall()
+        result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result.count, 447638)
         XCTAssertEqual(result[0...2], Data([0xde, 0xff, 0xff]))
 
         map.removeAll()
         for i in 0..<1 << 16 {
-            map[String(i)] = MsgpackType.bool(true)
+            map[String(i)] = MsgpackElement.bool(true)
         }
-        result = try MsgpackType.map(map).marshall()
+        result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result.count, 447647)
         XCTAssertEqual(result[0...4], Data([0xdf, 0x00, 0x01, 0x00, 0x00]))
     }
 
     func testEncodeArray() throws {
-        var data: [MsgpackType] = []
-        var result = try MsgpackType.array(data).marshall()
+        var data: [MsgpackElement] = []
+        var result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(result, Data([0x90]))
 
-        data = [MsgpackType](repeating: .bool(true), count: 1 << 4 - 1)
-        result = try MsgpackType.array(data).marshall()
+        data = [MsgpackElement](repeating: .bool(true), count: 1 << 4 - 1)
+        result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
             result, [0x9f] + Data(repeating: 0xc3, count: 1 << 4 - 1))
 
-        data = [MsgpackType](repeating: .bool(true), count: 1 << 4)
-        result = try MsgpackType.array(data).marshall()
+        data = [MsgpackElement](repeating: .bool(true), count: 1 << 4)
+        result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
             result, [0xdc, 0x00, 0x10] + Data(repeating: 0xc3, count: 1 << 4))
 
-        data = [MsgpackType](repeating: .bool(true), count: 1 << 16 - 1)
-        result = try MsgpackType.array(data).marshall()
+        data = [MsgpackElement](repeating: .bool(true), count: 1 << 16 - 1)
+        result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
             result,
             [0xdc, 0xff, 0xff] + Data(repeating: 0xc3, count: 1 << 16 - 1))
 
-        data = [MsgpackType](repeating: .bool(true), count: 1 << 16)
-        result = try MsgpackType.array(data).marshall()
+        data = [MsgpackElement](repeating: .bool(true), count: 1 << 16)
+        result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
             result,
             [0xdd, 0x00, 0x01, 0x00, 0x00]
@@ -204,8 +204,8 @@ class MsgpackEncoderTests: XCTestCase {
         data[Int(UInt32.max)] = Data([0xc9, 0xff, 0xff, 0xff, 0xff, 0xff])
         for (len, extPrefix) in data {
             let extData = Data(repeating: 1, count: len)
-            let msgpackType = MsgpackType.ext(-1, extData)
-            let result = try msgpackType.marshall()
+            let msgpackElement = MsgpackElement.ext(-1, extData)
+            let result = try msgpackElement.marshall()
             let expected = extPrefix + extData
             XCTAssertEqual(result, expected)
         }
@@ -221,53 +221,53 @@ class MsgpackEncoderTests: XCTestCase {
         }
     }
 
-    // MARK: Convert from basic Swift type to MsgpackType
+    // MARK: Convert from basic Swift type to MsgpackElement
     func testInitInt() throws {
-        XCTAssertEqual(MsgpackType(Int8(-1)), MsgpackType.int(Int64(-1)))
-        XCTAssertEqual(MsgpackType(Int16(-1)), MsgpackType.int(Int64(-1)))
-        XCTAssertEqual(MsgpackType(Int32(-1)), MsgpackType.int(Int64(-1)))
-        XCTAssertEqual(MsgpackType(Int64(-1)), MsgpackType.int(Int64(-1)))
+        XCTAssertEqual(MsgpackElement(Int8(-1)), MsgpackElement.int(Int64(-1)))
+        XCTAssertEqual(MsgpackElement(Int16(-1)), MsgpackElement.int(Int64(-1)))
+        XCTAssertEqual(MsgpackElement(Int32(-1)), MsgpackElement.int(Int64(-1)))
+        XCTAssertEqual(MsgpackElement(Int64(-1)), MsgpackElement.int(Int64(-1)))
     }
 
     func testInitUInt() throws {
-        XCTAssertEqual(MsgpackType(UInt8(1)), MsgpackType.uint(UInt64(1)))
-        XCTAssertEqual(MsgpackType(UInt16(1)), MsgpackType.uint(UInt64(1)))
-        XCTAssertEqual(MsgpackType(UInt32(1)), MsgpackType.uint(UInt64(1)))
-        XCTAssertEqual(MsgpackType(UInt64(1)), MsgpackType.uint(UInt64(1)))
+        XCTAssertEqual(MsgpackElement(UInt8(1)), MsgpackElement.uint(UInt64(1)))
+        XCTAssertEqual(MsgpackElement(UInt16(1)), MsgpackElement.uint(UInt64(1)))
+        XCTAssertEqual(MsgpackElement(UInt32(1)), MsgpackElement.uint(UInt64(1)))
+        XCTAssertEqual(MsgpackElement(UInt64(1)), MsgpackElement.uint(UInt64(1)))
     }
 
     // The compiler implement its encodable as Float32
     func testFloat16() throws {
         let encoder = MsgpackEncoder()
         _ = try encoder.encode(Float16(1))
-        let msgpackType = try encoder.msgpack?.convertToMsgpackType()
-        XCTAssertEqual(msgpackType, MsgpackType.float32(Float32(1)))
+        let msgpackElement = try encoder.msgpack?.convertToMsgpackElement()
+        XCTAssertEqual(msgpackElement, MsgpackElement.float32(Float32(1)))
     }
 
     func testInitFloat32() throws {
-        XCTAssertEqual(MsgpackType(Float32(1)), MsgpackType.float32(Float32(1)))
+        XCTAssertEqual(MsgpackElement(Float32(1)), MsgpackElement.float32(Float32(1)))
     }
 
     func testInitFloat64() throws {
-        XCTAssertEqual(MsgpackType(Float64(1)), MsgpackType.float64(Float64(1)))
+        XCTAssertEqual(MsgpackElement(Float64(1)), MsgpackElement.float64(Float64(1)))
     }
 
     func testInitBool() throws {
-        XCTAssertEqual(MsgpackType(true), MsgpackType.bool(true))
-        XCTAssertEqual(MsgpackType(false), MsgpackType.bool(false))
+        XCTAssertEqual(MsgpackElement(true), MsgpackElement.bool(true))
+        XCTAssertEqual(MsgpackElement(false), MsgpackElement.bool(false))
     }
 
     func testInitString() throws {
-        XCTAssertEqual(MsgpackType("abc"), MsgpackType.string("abc"))
+        XCTAssertEqual(MsgpackElement("abc"), MsgpackElement.string("abc"))
     }
 
     func testInitData() throws {
-        XCTAssertEqual(MsgpackType(Data([123])), MsgpackType.bin(Data([123])))
+        XCTAssertEqual(MsgpackElement(Data([123])), MsgpackElement.bin(Data([123])))
     }
 
     func testMapArrayNotInited() throws {
-        XCTAssertEqual(MsgpackType([String: String]()), nil)
-        XCTAssertEqual(MsgpackType([String]()), nil)
+        XCTAssertEqual(MsgpackElement([String: String]()), nil)
+        XCTAssertEqual(MsgpackElement([String]()), nil)
     }
 
     // MARK: MsgpackEncoder encode
@@ -308,35 +308,35 @@ class MsgpackEncoderTests: XCTestCase {
         let encoder = MsgpackEncoder()
         let example = DefaultEncodeExample()
         _ = try encoder.encode(example)
-        let msgpackType = try encoder.convertToMsgpackType()
-        guard case let MsgpackType.map(m) = msgpackType else {
-            XCTFail("Decoded to unexpected msgpack type:\(msgpackType)")
+        let msgpackElement = try encoder.convertToMsgpackElement()
+        guard case let MsgpackElement.map(m) = msgpackElement else {
+            XCTFail("Decoded to unexpected msgpack type:\(msgpackElement)")
             return
         }
         XCTAssertEqual(m.count, 13)
-        XCTAssertEqual(m["int"], MsgpackType.int(Int64(2)))
+        XCTAssertEqual(m["int"], MsgpackElement.int(Int64(2)))
         XCTAssertEqual(m["intNil"], nil)
-        XCTAssertEqual(m["bool"], MsgpackType.bool(true))
-        XCTAssertEqual(m["boolNil"], MsgpackType.bool(true))
-        XCTAssertEqual(m["string"], MsgpackType.string("123"))
-        XCTAssertEqual(m["data"], MsgpackType.bin(Data([0x90])))
-        XCTAssertEqual(m["float32"], MsgpackType.float32(Float32(1.1)))
-        XCTAssertEqual(m["float64"], MsgpackType.float64(Float64(1.1)))
-        XCTAssertEqual(m["map1"], MsgpackType.map([String: MsgpackType]()))
-        var map2: [String: MsgpackType] = [:]
-        map2["a"] = MsgpackType.bool(true)
-        XCTAssertEqual(m["map2"], MsgpackType.map(map2))
-        var map3: [String: MsgpackType] = [:]
-        map3["b"] = MsgpackType.map(map2)
-        XCTAssertEqual(m["map3"], MsgpackType.map(map3))
+        XCTAssertEqual(m["bool"], MsgpackElement.bool(true))
+        XCTAssertEqual(m["boolNil"], MsgpackElement.bool(true))
+        XCTAssertEqual(m["string"], MsgpackElement.string("123"))
+        XCTAssertEqual(m["data"], MsgpackElement.bin(Data([0x90])))
+        XCTAssertEqual(m["float32"], MsgpackElement.float32(Float32(1.1)))
+        XCTAssertEqual(m["float64"], MsgpackElement.float64(Float64(1.1)))
+        XCTAssertEqual(m["map1"], MsgpackElement.map([String: MsgpackElement]()))
+        var map2: [String: MsgpackElement] = [:]
+        map2["a"] = MsgpackElement.bool(true)
+        XCTAssertEqual(m["map2"], MsgpackElement.map(map2))
+        var map3: [String: MsgpackElement] = [:]
+        map3["b"] = MsgpackElement.map(map2)
+        XCTAssertEqual(m["map3"], MsgpackElement.map(map3))
         let array1 = [
-            MsgpackType.int(1), MsgpackType.int(2), MsgpackType.null,
-            MsgpackType.int(4),
+            MsgpackElement.int(1), MsgpackElement.int(2), MsgpackElement.null,
+            MsgpackElement.int(4),
         ]
-        XCTAssertEqual(m["array1"], MsgpackType.array(array1))
-        var array2: [MsgpackType] = []
-        array2.append(MsgpackType.array(array1))
-        XCTAssertEqual(m["array2"], MsgpackType.array(array2))
+        XCTAssertEqual(m["array1"], MsgpackElement.array(array1))
+        var array2: [MsgpackElement] = []
+        array2.append(MsgpackElement.array(array1))
+        XCTAssertEqual(m["array2"], MsgpackElement.array(array2))
     }
 
     private class ManualEncodeExample: Encodable {
@@ -364,18 +364,18 @@ class MsgpackEncoderTests: XCTestCase {
         let example2 = ManualEncodeExample()
         let encoder = MsgpackEncoder()
         _ = try encoder.encode(example2)
-        let msgpackType = try encoder.convertToMsgpackType()
+        let msgpackElement = try encoder.convertToMsgpackElement()
 
-        var map: [String: MsgpackType] = [:]
-        map["Key1"] = MsgpackType.int(123)
-        var nestedMap: [String: MsgpackType] = [:]
-        nestedMap["nestedKey1"] = MsgpackType.string("123")
-        map["Key2"] = MsgpackType.map(nestedMap)
-        var nestedArray: [MsgpackType] = []
-        nestedArray.append(MsgpackType.bin(Data([0x12])))
-        map["Key3"] = MsgpackType.array(nestedArray)
-        let expected = MsgpackType.map(map)
-        XCTAssertEqual(msgpackType, expected)
+        var map: [String: MsgpackElement] = [:]
+        map["Key1"] = MsgpackElement.int(123)
+        var nestedMap: [String: MsgpackElement] = [:]
+        nestedMap["nestedKey1"] = MsgpackElement.string("123")
+        map["Key2"] = MsgpackElement.map(nestedMap)
+        var nestedArray: [MsgpackElement] = []
+        nestedArray.append(MsgpackElement.bin(Data([0x12])))
+        map["Key3"] = MsgpackElement.array(nestedArray)
+        let expected = MsgpackElement.map(map)
+        XCTAssertEqual(msgpackElement, expected)
     }
 
     private class BaseClassExample: Encodable {
@@ -401,15 +401,15 @@ class MsgpackEncoderTests: XCTestCase {
         let encoder = MsgpackEncoder()
         let example = InherienceWithSameContainerExample()
         _ = try encoder.encode(example)
-        let msgpackType = try encoder.convertToMsgpackType()
-        guard case let MsgpackType.map(m) = msgpackType else {
-            XCTFail("The msgpackType should be map")
+        let msgpackElement = try encoder.convertToMsgpackElement()
+        guard case let MsgpackElement.map(m) = msgpackElement else {
+            XCTFail("The msgpackElement should be map")
             return
         }
         XCTAssertEqual(m.count, 2)
-        XCTAssertEqual(m["parent"], MsgpackType.bool(true))
-        XCTAssertEqual(m["child"], MsgpackType.bool(true))
-        print(msgpackType)
+        XCTAssertEqual(m["parent"], MsgpackElement.bool(true))
+        XCTAssertEqual(m["child"], MsgpackElement.bool(true))
+        print(msgpackElement)
     }
 
     private class KeyedSuperExample: BaseClassExample {
@@ -432,19 +432,19 @@ class MsgpackEncoderTests: XCTestCase {
         let encoder = MsgpackEncoder()
         let example = KeyedSuperExample()
         _ = try encoder.encode(example)
-        let msgpackType = try encoder.convertToMsgpackType()
-        guard case let MsgpackType.map(m) = msgpackType else {
-            XCTFail("The msgpackType should be map")
+        let msgpackElement = try encoder.convertToMsgpackElement()
+        guard case let MsgpackElement.map(m) = msgpackElement else {
+            XCTFail("The msgpackElement should be map")
             return
         }
 
         XCTAssertEqual(m.count, 3)
-        var parent: [String: MsgpackType] = [:]
-        parent["parent"] = MsgpackType.bool(true)
-        let parentMsgpackType = MsgpackType.map(parent)
-        XCTAssertEqual(m["super"], parentMsgpackType)
-        XCTAssertEqual(m["super2"], parentMsgpackType)
-        XCTAssertEqual(m["child"], MsgpackType.bool(true))
+        var parent: [String: MsgpackElement] = [:]
+        parent["parent"] = MsgpackElement.bool(true)
+        let parentMsgpackElement = MsgpackElement.map(parent)
+        XCTAssertEqual(m["super"], parentMsgpackElement)
+        XCTAssertEqual(m["super2"], parentMsgpackElement)
+        XCTAssertEqual(m["child"], MsgpackElement.bool(true))
     }
 
     private class UnkeyedSuperExample: BaseClassExample {
@@ -460,19 +460,19 @@ class MsgpackEncoderTests: XCTestCase {
         let encoder = MsgpackEncoder()
         let example = UnkeyedSuperExample()
         _ = try encoder.encode(example)
-        let msgpackType = try encoder.convertToMsgpackType()
-        guard case let MsgpackType.array(array) = msgpackType else {
-            XCTFail("The msgpackType should be array")
+        let msgpackElement = try encoder.convertToMsgpackElement()
+        guard case let MsgpackElement.array(array) = msgpackElement else {
+            XCTFail("The msgpackElement should be array")
             return
         }
 
         _ = try JSONEncoder().encode(example)
         XCTAssertEqual(array.count, 2)
-        var parent: [String: MsgpackType] = [:]
-        parent["parent"] = MsgpackType.bool(true)
-        let parentMsgpackType = MsgpackType.map(parent)
-        XCTAssertEqual(array[0], MsgpackType.bool(true))
-        XCTAssertEqual(array[1], parentMsgpackType)
+        var parent: [String: MsgpackElement] = [:]
+        parent["parent"] = MsgpackElement.bool(true)
+        let parentMsgpackElement = MsgpackElement.map(parent)
+        XCTAssertEqual(array[0], MsgpackElement.bool(true))
+        XCTAssertEqual(array[1], parentMsgpackElement)
     }
 
     // MARK: Extension
@@ -508,8 +508,8 @@ class MsgpackEncoderTests: XCTestCase {
                 seconds: seconds, nanoseconds: nanoseconds)
             let encoder = MsgpackEncoder()
             _ = try encoder.encode(timestamp)
-            let msgpackType = try encoder.convertToMsgpackType()
-            guard case let MsgpackType.ext(extType, extData) = msgpackType
+            let msgpackElement = try encoder.convertToMsgpackElement()
+            guard case let MsgpackElement.ext(extType, extData) = msgpackElement
             else {
                 XCTFail("Encoder should produce extension type")
                 return

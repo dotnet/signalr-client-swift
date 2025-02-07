@@ -3,18 +3,18 @@ import XCTest
 @testable import SignalRClient
 
 class MsgpackDecoderTests: XCTestCase {
-    // MARK: Convert Data to MsgpackType
+    // MARK: Convert Data to MsgpackElement
     func testParseUInt() throws {
         let data: [UInt64] = [
             0, 0x7f, 0x80, 0xff, 0x100, 0xffff, 0x10000, 0xffff_ffff,
             0x1_0000_0000,
         ]
         for i in data {
-            let msgpackType = MsgpackType.uint(i)
-            let binary = try msgpackType.marshall()
-            let (decodeddType, remaining) = try MsgpackType.parse(data: binary)
+            let msgpackElement = MsgpackElement.uint(i)
+            let binary = try msgpackElement.marshall()
+            let (decodeddType, remaining) = try MsgpackElement.parse(data: binary)
             XCTAssertEqual(remaining.count, 0)
-            XCTAssertEqual(decodeddType, msgpackType)
+            XCTAssertEqual(decodeddType, msgpackElement)
         }
     }
 
@@ -23,11 +23,11 @@ class MsgpackDecoderTests: XCTestCase {
             -0x20, -0x21, -0x80, -0x81, -0x8000, -0x8000, -0x10000, -0x8000,
         ]
         for i in data {
-            let msgpackType = MsgpackType.int(i)
-            let binary = try msgpackType.marshall()
-            let (decodeddType, remaining) = try MsgpackType.parse(data: binary)
+            let msgpackElement = MsgpackElement.int(i)
+            let binary = try msgpackElement.marshall()
+            let (decodeddType, remaining) = try MsgpackElement.parse(data: binary)
             XCTAssertEqual(remaining.count, 0)
-            XCTAssertEqual(decodeddType, msgpackType)
+            XCTAssertEqual(decodeddType, msgpackElement)
         }
     }
 
@@ -43,32 +43,32 @@ class MsgpackDecoderTests: XCTestCase {
             0xd3, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00,
         ])
         for (k, v) in data {
-            let (decodeddType, remaining) = try MsgpackType.parse(data: v)
+            let (decodeddType, remaining) = try MsgpackElement.parse(data: v)
             XCTAssertEqual(remaining.count, 0)
-            let msgpackType = MsgpackType.int(k)
-            XCTAssertEqual(decodeddType, msgpackType)
+            let msgpackElement = MsgpackElement.int(k)
+            XCTAssertEqual(decodeddType, msgpackElement)
         }
     }
 
     func testParseFloat32() throws {
         let data: [Float32] = [0.0, 1.1 - 0.9]
         for i in data {
-            let msgpackType = MsgpackType.float32(i)
-            let binary = try msgpackType.marshall()
-            let (decodeddType, remaining) = try MsgpackType.parse(data: binary)
+            let msgpackElement = MsgpackElement.float32(i)
+            let binary = try msgpackElement.marshall()
+            let (decodeddType, remaining) = try MsgpackElement.parse(data: binary)
             XCTAssertEqual(remaining.count, 0)
-            XCTAssertEqual(decodeddType, msgpackType)
+            XCTAssertEqual(decodeddType, msgpackElement)
         }
     }
 
     func testParseFloat64() throws {
         let data: [Float64] = [0.0, 1.1 - 0.9]
         for i in data {
-            let msgpackType = MsgpackType.float64(i)
-            let binary = try msgpackType.marshall()
-            let (decodeddType, remaining) = try MsgpackType.parse(data: binary)
+            let msgpackElement = MsgpackElement.float64(i)
+            let binary = try msgpackElement.marshall()
+            let (decodeddType, remaining) = try MsgpackElement.parse(data: binary)
             XCTAssertEqual(remaining.count, 0)
-            XCTAssertEqual(decodeddType, msgpackType)
+            XCTAssertEqual(decodeddType, msgpackElement)
         }
     }
 
@@ -77,74 +77,74 @@ class MsgpackDecoderTests: XCTestCase {
             0, 1 << 5 - 1, 1 << 5, 1 << 8 - 1, 1 << 8, 1 << 16 - 1, 1 << 16,
         ]
         for length in data {
-            let msgpackType = MsgpackType.string(
+            let msgpackElement = MsgpackElement.string(
                 String(repeating: Character("a"), count: length))
-            let binary = try msgpackType.marshall()
-            let (decodedType, remaining) = try MsgpackType.parse(data: binary)
+            let binary = try msgpackElement.marshall()
+            let (decodedType, remaining) = try MsgpackElement.parse(data: binary)
             XCTAssertEqual(remaining.count, 0)
-            XCTAssertEqual(decodedType, msgpackType)
+            XCTAssertEqual(decodedType, msgpackElement)
         }
     }
 
     func testParseNil() throws {
-        let msgpackType = MsgpackType.null
-        let binary = try msgpackType.marshall()
-        let (decodedType, remaining) = try MsgpackType.parse(data: binary)
+        let msgpackElement = MsgpackElement.null
+        let binary = try msgpackElement.marshall()
+        let (decodedType, remaining) = try MsgpackElement.parse(data: binary)
         XCTAssertEqual(remaining.count, 0)
-        XCTAssertEqual(decodedType, msgpackType)
+        XCTAssertEqual(decodedType, msgpackElement)
     }
 
     func testParseBool() throws {
         let data: [Bool] = [true, false]
         for b in data {
-            let msgpackType = MsgpackType.bool(b)
-            let binary = try msgpackType.marshall()
-            let (decodedType, remaining) = try MsgpackType.parse(data: binary)
+            let msgpackElement = MsgpackElement.bool(b)
+            let binary = try msgpackElement.marshall()
+            let (decodedType, remaining) = try MsgpackElement.parse(data: binary)
             XCTAssertEqual(remaining.count, 0)
-            XCTAssertEqual(decodedType, msgpackType)
+            XCTAssertEqual(decodedType, msgpackElement)
         }
     }
 
     func testParseData() throws {
         let data = [0, 1 << 8 - 1, 1 << 8, 1 << 16 - 1, 1 << 16]
         for length in data {
-            let msgpackType = MsgpackType.bin(
+            let msgpackElement = MsgpackElement.bin(
                 Data(repeating: UInt8(2), count: length))
-            let binary = try msgpackType.marshall()
-            let (decodedType, remaining) = try MsgpackType.parse(data: binary)
+            let binary = try msgpackElement.marshall()
+            let (decodedType, remaining) = try MsgpackElement.parse(data: binary)
             XCTAssertEqual(remaining.count, 0)
-            XCTAssertEqual(decodedType, msgpackType)
+            XCTAssertEqual(decodedType, msgpackElement)
         }
     }
 
     func testParseMap() throws {
         let data = [0, 1 << 4 - 1, 1 << 4, 1 << 16 - 1, 1 << 16]
         for i in data {
-            var map: [String: MsgpackType] = [:]
+            var map: [String: MsgpackElement] = [:]
             for i in 0..<i {
-                map[String(i)] = MsgpackType.bool(true)
+                map[String(i)] = MsgpackElement.bool(true)
             }
-            let msgpackType = MsgpackType.map(map)
-            let content = try msgpackType.marshall()
-            let (decoded, remaining) = try MsgpackType.parse(data: content)
+            let msgpackElement = MsgpackElement.map(map)
+            let content = try msgpackElement.marshall()
+            let (decoded, remaining) = try MsgpackElement.parse(data: content)
             XCTAssertEqual(remaining.count, 0)
-            XCTAssertEqual(decoded, msgpackType)
+            XCTAssertEqual(decoded, msgpackElement)
         }
     }
 
     func testParseArray() throws {
         let data = [0, 1 << 4 - 1, 1 << 4, 1 << 16 - 1, 1 << 16]
         for i in data {
-            var array: [MsgpackType] = []
+            var array: [MsgpackElement] = []
             array.reserveCapacity(i)
             for _ in 0..<i {
-                array.append(MsgpackType.bool(true))
+                array.append(MsgpackElement.bool(true))
             }
-            let msgpackType = MsgpackType.array(array)
-            let content = try msgpackType.marshall()
-            let (decoded, remaining) = try MsgpackType.parse(data: content)
+            let msgpackElement = MsgpackElement.array(array)
+            let content = try msgpackElement.marshall()
+            let (decoded, remaining) = try MsgpackElement.parse(data: content)
             XCTAssertEqual(remaining.count, 0)
-            XCTAssertEqual(decoded, msgpackType)
+            XCTAssertEqual(decoded, msgpackElement)
         }
     }
 
@@ -155,257 +155,257 @@ class MsgpackDecoderTests: XCTestCase {
         ]
         for len in data {
             let extData = Data(repeating: 1, count: len)
-            let msgpackType = MsgpackType.ext(-1, extData)
-            let content = try msgpackType.marshall()
-            let (decoded, remaining) = try MsgpackType.parse(data: content)
+            let msgpackElement = MsgpackElement.ext(-1, extData)
+            let content = try msgpackElement.marshall()
+            let (decoded, remaining) = try MsgpackElement.parse(data: content)
             XCTAssertEqual(remaining.count, 0)
-            XCTAssertEqual(decoded, msgpackType)
+            XCTAssertEqual(decoded, msgpackElement)
         }
     }
 
-    // MARK: Convert MsgpackType to basic Swift types
+    // MARK: Convert MsgpackElement to basic Swift types
     func testDecodeUInt8() throws {
         XCTAssertEqual(
-            try MsgpackType.int(Int64(UInt8.min)).decode(type: UInt8.self),
+            try MsgpackElement.int(Int64(UInt8.min)).decode(type: UInt8.self),
             UInt8.min)
         XCTAssertEqual(
-            try MsgpackType.int(Int64(UInt8.max)).decode(type: UInt8.self),
+            try MsgpackElement.int(Int64(UInt8.max)).decode(type: UInt8.self),
             UInt8.max)
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(UInt8.max) + 1).decode(type: UInt8.self))
+            try MsgpackElement.int(Int64(UInt8.max) + 1).decode(type: UInt8.self))
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(-1)).decode(type: UInt8.self))
+            try MsgpackElement.int(Int64(-1)).decode(type: UInt8.self))
 
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(UInt8.min)).decode(type: UInt8.self),
+            try MsgpackElement.uint(UInt64(UInt8.min)).decode(type: UInt8.self),
             UInt8.min)
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(UInt8.max)).decode(type: UInt8.self),
+            try MsgpackElement.uint(UInt64(UInt8.max)).decode(type: UInt8.self),
             UInt8.max)
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(UInt8.max) + 1).decode(type: UInt8.self)
+            try MsgpackElement.uint(UInt64(UInt8.max) + 1).decode(type: UInt8.self)
         )
     }
 
     func testDecodeUInt16() throws {
         XCTAssertEqual(
-            try MsgpackType.int(Int64(UInt16.min)).decode(type: UInt16.self),
+            try MsgpackElement.int(Int64(UInt16.min)).decode(type: UInt16.self),
             UInt16.min)
         XCTAssertEqual(
-            try MsgpackType.int(Int64(UInt16.max)).decode(type: UInt16.self),
+            try MsgpackElement.int(Int64(UInt16.max)).decode(type: UInt16.self),
             UInt16.max)
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(UInt16.max) + 1).decode(type: UInt16.self)
+            try MsgpackElement.int(Int64(UInt16.max) + 1).decode(type: UInt16.self)
         )
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(-1)).decode(type: UInt16.self))
+            try MsgpackElement.int(Int64(-1)).decode(type: UInt16.self))
 
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(UInt16.min)).decode(type: UInt16.self),
+            try MsgpackElement.uint(UInt64(UInt16.min)).decode(type: UInt16.self),
             UInt16.min)
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(UInt16.max)).decode(type: UInt16.self),
+            try MsgpackElement.uint(UInt64(UInt16.max)).decode(type: UInt16.self),
             UInt16.max)
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(UInt16.max) + 1).decode(
+            try MsgpackElement.uint(UInt64(UInt16.max) + 1).decode(
                 type: UInt16.self))
     }
 
     func testDecodeUInt32() throws {
         XCTAssertEqual(
-            try MsgpackType.int(Int64(UInt32.min)).decode(type: UInt32.self),
+            try MsgpackElement.int(Int64(UInt32.min)).decode(type: UInt32.self),
             UInt32.min)
         XCTAssertEqual(
-            try MsgpackType.int(Int64(UInt32.max)).decode(type: UInt32.self),
+            try MsgpackElement.int(Int64(UInt32.max)).decode(type: UInt32.self),
             UInt32.max)
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(UInt32.max) + 1).decode(type: UInt32.self)
+            try MsgpackElement.int(Int64(UInt32.max) + 1).decode(type: UInt32.self)
         )
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(-1)).decode(type: UInt32.self))
+            try MsgpackElement.int(Int64(-1)).decode(type: UInt32.self))
 
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(UInt32.min)).decode(type: UInt32.self),
+            try MsgpackElement.uint(UInt64(UInt32.min)).decode(type: UInt32.self),
             UInt32.min)
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(UInt32.max)).decode(type: UInt32.self),
+            try MsgpackElement.uint(UInt64(UInt32.max)).decode(type: UInt32.self),
             UInt32.max)
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(UInt32.max) + 1).decode(
+            try MsgpackElement.uint(UInt64(UInt32.max) + 1).decode(
                 type: UInt32.self))
     }
 
     func testDecodeUInt64() throws {
         XCTAssertEqual(
-            try MsgpackType.int(Int64(UInt64.min)).decode(type: UInt64.self),
+            try MsgpackElement.int(Int64(UInt64.min)).decode(type: UInt64.self),
             UInt64.min)
         XCTAssertEqual(
-            try MsgpackType.int(Int64(Int64.max)).decode(type: UInt64.self),
+            try MsgpackElement.int(Int64(Int64.max)).decode(type: UInt64.self),
             UInt64(Int64.max))
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(-1)).decode(type: UInt64.self))
+            try MsgpackElement.int(Int64(-1)).decode(type: UInt64.self))
 
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(UInt64.min)).decode(type: UInt64.self),
+            try MsgpackElement.uint(UInt64(UInt64.min)).decode(type: UInt64.self),
             UInt64.min)
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(UInt64.max)).decode(type: UInt64.self),
+            try MsgpackElement.uint(UInt64(UInt64.max)).decode(type: UInt64.self),
             UInt64.max)
     }
 
     func testDecodeInt8() throws {
         XCTAssertEqual(
-            try MsgpackType.int(Int64(Int8.min)).decode(type: Int8.self),
+            try MsgpackElement.int(Int64(Int8.min)).decode(type: Int8.self),
             Int8.min)
         XCTAssertEqual(
-            try MsgpackType.int(Int64(Int8.max)).decode(type: Int8.self),
+            try MsgpackElement.int(Int64(Int8.max)).decode(type: Int8.self),
             Int8.max)
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(Int8.max) + 1).decode(type: Int8.self))
+            try MsgpackElement.int(Int64(Int8.max) + 1).decode(type: Int8.self))
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(Int8.min) - 1).decode(type: Int8.self))
+            try MsgpackElement.int(Int64(Int8.min) - 1).decode(type: Int8.self))
 
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(Int8.max)).decode(type: Int8.self),
+            try MsgpackElement.uint(UInt64(Int8.max)).decode(type: Int8.self),
             Int8.max)
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(0)).decode(type: Int8.self), 0)
+            try MsgpackElement.uint(UInt64(0)).decode(type: Int8.self), 0)
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(Int8.max) + 1).decode(type: Int8.self))
+            try MsgpackElement.uint(UInt64(Int8.max) + 1).decode(type: Int8.self))
     }
 
     func testDecodeInt16() throws {
         XCTAssertEqual(
-            try MsgpackType.int(Int64(Int16.min)).decode(type: Int16.self),
+            try MsgpackElement.int(Int64(Int16.min)).decode(type: Int16.self),
             Int16.min)
         XCTAssertEqual(
-            try MsgpackType.int(Int64(Int16.max)).decode(type: Int16.self),
+            try MsgpackElement.int(Int64(Int16.max)).decode(type: Int16.self),
             Int16.max)
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(Int16.max) + 1).decode(type: Int16.self))
+            try MsgpackElement.int(Int64(Int16.max) + 1).decode(type: Int16.self))
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(Int16.min) - 1).decode(type: Int16.self))
+            try MsgpackElement.int(Int64(Int16.min) - 1).decode(type: Int16.self))
 
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(0)).decode(type: Int16.self), 0)
+            try MsgpackElement.uint(UInt64(0)).decode(type: Int16.self), 0)
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(Int16.max)).decode(type: Int16.self),
+            try MsgpackElement.uint(UInt64(Int16.max)).decode(type: Int16.self),
             Int16.max)
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(Int16.max) + 1).decode(type: Int16.self)
+            try MsgpackElement.uint(UInt64(Int16.max) + 1).decode(type: Int16.self)
         )
     }
 
     func testDecodeInt32() throws {
         XCTAssertEqual(
-            try MsgpackType.int(Int64(Int32.min)).decode(type: Int32.self),
+            try MsgpackElement.int(Int64(Int32.min)).decode(type: Int32.self),
             Int32.min)
         XCTAssertEqual(
-            try MsgpackType.int(Int64(Int32.max)).decode(type: Int32.self),
+            try MsgpackElement.int(Int64(Int32.max)).decode(type: Int32.self),
             Int32.max)
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(Int32.max) + 1).decode(type: Int32.self))
+            try MsgpackElement.int(Int64(Int32.max) + 1).decode(type: Int32.self))
         XCTAssertThrowsError(
-            try MsgpackType.int(Int64(Int32.min) - 1).decode(type: Int32.self))
+            try MsgpackElement.int(Int64(Int32.min) - 1).decode(type: Int32.self))
 
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(0)).decode(type: Int32.self), 0)
+            try MsgpackElement.uint(UInt64(0)).decode(type: Int32.self), 0)
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(Int32.max)).decode(type: Int32.self),
+            try MsgpackElement.uint(UInt64(Int32.max)).decode(type: Int32.self),
             Int32.max)
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(Int32.max) + 1).decode(type: Int32.self)
+            try MsgpackElement.uint(UInt64(Int32.max) + 1).decode(type: Int32.self)
         )
     }
 
     func testDecodeInt64() throws {
         XCTAssertEqual(
-            try MsgpackType.int(Int64(Int64.min)).decode(type: Int64.self),
+            try MsgpackElement.int(Int64(Int64.min)).decode(type: Int64.self),
             Int64.min)
         XCTAssertEqual(
-            try MsgpackType.int(Int64(Int64.max)).decode(type: Int64.self),
+            try MsgpackElement.int(Int64(Int64.max)).decode(type: Int64.self),
             Int64.max)
 
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(0)).decode(type: Int64.self), 0)
+            try MsgpackElement.uint(UInt64(0)).decode(type: Int64.self), 0)
         XCTAssertEqual(
-            try MsgpackType.uint(UInt64(Int64.max)).decode(type: Int64.self),
+            try MsgpackElement.uint(UInt64(Int64.max)).decode(type: Int64.self),
             Int64.max)
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(Int64.max) + 1).decode(type: Int64.self)
+            try MsgpackElement.uint(UInt64(Int64.max) + 1).decode(type: Int64.self)
         )
     }
 
     func testDecodeBool() throws {
-        XCTAssertEqual(try MsgpackType.bool(true).decode(type: Bool.self), true)
+        XCTAssertEqual(try MsgpackElement.bool(true).decode(type: Bool.self), true)
         XCTAssertEqual(
-            try MsgpackType.bool(false).decode(type: Bool.self), false)
+            try MsgpackElement.bool(false).decode(type: Bool.self), false)
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(Int64.max)).decode(type: Bool.self))
+            try MsgpackElement.uint(UInt64(Int64.max)).decode(type: Bool.self))
     }
 
     func testDecodeString() throws {
         XCTAssertEqual(
-            try MsgpackType.string("abc").decode(type: String.self), "abc")
-        XCTAssertEqual(try MsgpackType.string("").decode(type: String.self), "")
+            try MsgpackElement.string("abc").decode(type: String.self), "abc")
+        XCTAssertEqual(try MsgpackElement.string("").decode(type: String.self), "")
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(Int64.max)).decode(type: String.self))
+            try MsgpackElement.uint(UInt64(Int64.max)).decode(type: String.self))
     }
 
     func testDecodeData() throws {
         XCTAssertEqual(
-            try MsgpackType.bin(Data([0x81])).decode(type: Data.self),
+            try MsgpackElement.bin(Data([0x81])).decode(type: Data.self),
             Data([0x81]))
         XCTAssertEqual(
-            try MsgpackType.bin(Data()).decode(type: Data.self), Data())
+            try MsgpackElement.bin(Data()).decode(type: Data.self), Data())
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(Int64.max)).decode(type: Data.self))
+            try MsgpackElement.uint(UInt64(Int64.max)).decode(type: Data.self))
     }
 
     func testDecodeFloat16() throws {
         let decoder = MsgpackDecoder()
-        var msgpackType = MsgpackType.float32(Float32(1.0))
-        try decoder.loadMsgpackType(msgpackType)
+        var msgpackElement = MsgpackElement.float32(Float32(1.0))
+        try decoder.loadMsgpackElement(from: msgpackElement)
         var float16 = try Float16.init(from: decoder)
         XCTAssertEqual(float16, Float16(1.0))
-        msgpackType = MsgpackType.float64(Float64(1.0))
-        try decoder.loadMsgpackType(msgpackType)
+        msgpackElement = MsgpackElement.float64(Float64(1.0))
+        try decoder.loadMsgpackElement(from: msgpackElement)
         float16 = try Float16.init(from: decoder)
         XCTAssertEqual(float16, Float16(1.0))
 
-        msgpackType = MsgpackType.uint(UInt64(Int64.max))
-        try decoder.loadMsgpackType(msgpackType)
+        msgpackElement = MsgpackElement.uint(UInt64(Int64.max))
+        try decoder.loadMsgpackElement(from: msgpackElement)
         XCTAssertThrowsError(try Float16.init(from: decoder))
     }
 
     func testDecodeFloat32() throws {
         XCTAssertEqual(
-            try MsgpackType.float32(Float32(1.0)).decode(type: Float32.self),
+            try MsgpackElement.float32(Float32(1.0)).decode(type: Float32.self),
             Float32(1.0))
         XCTAssertEqual(
-            try MsgpackType.float64(Float64(1.0)).decode(type: Float32.self),
+            try MsgpackElement.float64(Float64(1.0)).decode(type: Float32.self),
             Float32(1.0))
         XCTAssertEqual(
-            try MsgpackType.float64(Float64(1.1)).decode(type: Float32.self),
+            try MsgpackElement.float64(Float64(1.1)).decode(type: Float32.self),
             Float32(1.1))
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(Int64.max)).decode(type: Float32.self))
+            try MsgpackElement.uint(UInt64(Int64.max)).decode(type: Float32.self))
     }
 
     func testDecodeFloat64() throws {
         XCTAssertEqual(
-            try MsgpackType.float32(Float32(1.0)).decode(type: Float64.self),
+            try MsgpackElement.float32(Float32(1.0)).decode(type: Float64.self),
             Float64(1.0))
         // Lose precision. But it should not throw
         XCTAssertNotEqual(
-            try MsgpackType.float32(Float32(1.1)).decode(type: Float64.self),
+            try MsgpackElement.float32(Float32(1.1)).decode(type: Float64.self),
             Float64(1.1))
 
         XCTAssertEqual(
-            try MsgpackType.float64(Float64(1.0)).decode(type: Float64.self),
+            try MsgpackElement.float64(Float64(1.0)).decode(type: Float64.self),
             Float64(1.0))
         XCTAssertThrowsError(
-            try MsgpackType.uint(UInt64(Int64.max)).decode(type: Float64.self))
+            try MsgpackElement.uint(UInt64(Int64.max)).decode(type: Float64.self))
     }
 
     // MARK: MsgpackDecoder
@@ -445,10 +445,10 @@ class MsgpackDecoderTests: XCTestCase {
         let encoder = MsgpackEncoder()
         let example = Example1()
         let encodedData = try encoder.encode(example)
-        let msgpackType = try encoder.convertToMsgpackType()
+        let msgpackElement = try encoder.convertToMsgpackElement()
 
         let decoder = MsgpackDecoder()
-        try decoder.loadMsgpackType(msgpackType)
+        try decoder.loadMsgpackElement(from: msgpackElement)
         let decodedExample1 = try Example1.init(from: decoder)
 
         XCTAssertEqual(example, decodedExample1)
@@ -480,18 +480,18 @@ class MsgpackDecoderTests: XCTestCase {
     }
 
     func testDecode2() throws {
-        var map: [String: MsgpackType] = [:]
-        map["Key1"] = MsgpackType.int(Int64(123))
-        var nestedMap: [String: MsgpackType] = [:]
-        nestedMap["nestedKey"] = MsgpackType.string("abc")
-        map["Key2"] = MsgpackType.map(nestedMap)
-        let array: [MsgpackType] = [MsgpackType.bin(Data([0xab]))]
-        map["Key3"] = MsgpackType.array(array)
-        map["Key4"] = MsgpackType.null
+        var map: [String: MsgpackElement] = [:]
+        map["Key1"] = MsgpackElement.int(Int64(123))
+        var nestedMap: [String: MsgpackElement] = [:]
+        nestedMap["nestedKey"] = MsgpackElement.string("abc")
+        map["Key2"] = MsgpackElement.map(nestedMap)
+        let array: [MsgpackElement] = [MsgpackElement.bin(Data([0xab]))]
+        map["Key3"] = MsgpackElement.array(array)
+        map["Key4"] = MsgpackElement.null
 
-        let msgpackType = MsgpackType.map(map)
+        let msgpackElement = MsgpackElement.map(map)
         let decoder = MsgpackDecoder()
-        try decoder.loadMsgpackType(msgpackType)
+        try decoder.loadMsgpackElement(from: msgpackElement)
         let decodedExample = try Example2.init(from: decoder)
         XCTAssertEqual(decodedExample.Key1, 123)
         let expectedMap: [String: String] = ["nestedKey": "abc"]
@@ -534,9 +534,9 @@ class MsgpackDecoderTests: XCTestCase {
         example.parent = "abc"
         example.child = "def"
         let data = try encoder.encode(example)
-        let msgpackType = try encoder.convertToMsgpackType()
+        let msgpackElement = try encoder.convertToMsgpackElement()
         let decoder = MsgpackDecoder()
-        try decoder.loadMsgpackType(msgpackType)
+        try decoder.loadMsgpackElement(from: msgpackElement)
         let decodedExample = try InherienceWithSameContainerExample.init(
             from: decoder)
         XCTAssertEqual(decodedExample.parent, "abc")
@@ -578,9 +578,9 @@ class MsgpackDecoderTests: XCTestCase {
         example.parent = "abc"
         example.child = "def"
         let data = try encoder.encode(example)
-        let msgpackType = try encoder.convertToMsgpackType()
+        let msgpackElement = try encoder.convertToMsgpackElement()
         let decoder = MsgpackDecoder()
-        try decoder.loadMsgpackType(msgpackType)
+        try decoder.loadMsgpackElement(from: msgpackElement)
         let decodedExample = try KeyedSuperExample.init(from: decoder)
         XCTAssertEqual(decodedExample.parent, "abc")
         XCTAssertEqual(decodedExample.child, "def")

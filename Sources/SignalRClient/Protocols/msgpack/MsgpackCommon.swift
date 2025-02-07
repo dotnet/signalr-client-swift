@@ -3,7 +3,7 @@ import Foundation
 // Messagepack protocol: https://github.com/msgpack/msgpack/blob/master/spec.md
 
 // MARK: Public
-// Predefined Timstamp Extension
+// Predefined Timestamp Extension
 public struct MsgpackTimestamp: Equatable {
     var seconds: Int64
     var nanoseconds: UInt32
@@ -42,7 +42,7 @@ extension Decoder {
 }
 
 // MARK: Internal
-enum MsgpackType: Equatable {
+enum MsgpackElement: Equatable {
     case int(Int64)
     case uint(UInt64)
     case float32(Float32)
@@ -50,8 +50,8 @@ enum MsgpackType: Equatable {
     case string(String)
     case bin(Data)
     case bool(Bool)
-    case map([String: MsgpackType])
-    case array([MsgpackType])
+    case map([String: MsgpackElement])
+    case array([MsgpackElement])
     case null
     case ext(Int8, Data)
 
