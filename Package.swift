@@ -10,13 +10,11 @@ let package = Package(
         .library(name: "SignalRClient", targets: ["SignalRClient"])
     ],
     dependencies: [
-        .package(url: "https://github.com/hirotakan/MessagePacker.git", .exact("0.4.7"))
     ],
     targets: [
         .target(
             name: "SignalRClient",
             dependencies: [
-                .product(name: "MessagePacker", package: "MessagePacker")
             ]
         ),
         .testTarget(

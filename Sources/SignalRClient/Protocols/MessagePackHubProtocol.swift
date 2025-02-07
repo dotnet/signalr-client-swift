@@ -1,5 +1,4 @@
 import Foundation
-import MessagePacker
 
 final class MessagePackHubProtocol: HubProtocol {
     let name = "messagepack"
@@ -92,7 +91,7 @@ final class MessagePackHubProtocol: HubProtocol {
         default:
             throw SignalRError.unexpectedMessageType("\(type(of: message))")
         }
-        let messageData = try MessagePackEncoder().encode(
+        let messageData = try MsgpackEncoder().encode(
             AnyEncodableArray(arr))
         return try .data(BinaryMessageFormat.write(messageData))
     }
@@ -100,7 +99,9 @@ final class MessagePackHubProtocol: HubProtocol {
     func parseMessage(message: Data, binder: any InvocationBinder)
         throws -> HubMessage?
     {
-        let decoder = MessagePackDecoder(referencing: message)
+        let (msgpackType, _ ) = try MsgpackType.parse(data: message)
+        let decoder = MsgpackDecoder()
+        try decoder.loadMsgpackType(msgpackType)
         var container = try decoder.unkeyedContainer()
         guard
             let messageType = MessageType(
