@@ -1,5 +1,4 @@
 import Foundation
-import MessagePacker
 import XCTest
 
 @testable import SignalRClient
