@@ -287,7 +287,7 @@ class IntegrationTests: XCTestCase {
     func testClientResultWithNull() async throws {
         #if os(Linux)
         let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            // (.longPolling, .messagePack), // TODO: This test fails, need more investigation
+             (.longPolling, .messagePack),
             (.longPolling, .json),
         ]
         #else
@@ -295,8 +295,8 @@ class IntegrationTests: XCTestCase {
             (.webSockets, .json),
             (.serverSentEvents, .json),
             (.longPolling, .json),
-            // (.webSockets, .messagePack), // TODO: This test fails, need more investigation
-            // (.longPolling, .messagePack), // TODO: This test fails, need more investigation
+             (.webSockets, .messagePack),
+             (.longPolling, .messagePack),
         ]
         #endif
 

@@ -77,11 +77,12 @@ final class MessagePackHubProtocol: HubProtocol {
                     1,
                     message.error,
                 ]
-            } else if message.result.value == nil {
-                arr = [
-                    message.type, message.headers ?? [:], message.invocationId,
-                    2,
-                ]
+                // Set ResultKind = 2 will trigger a server side issue
+//            } else if message.result.value == nil {
+//                arr = [
+//                    message.type, message.headers ?? [:], message.invocationId,
+//                    2
+//                ]
             } else {
                 arr = [
                     message.type, message.headers ?? [:], message.invocationId,
