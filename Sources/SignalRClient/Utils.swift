@@ -1,9 +1,38 @@
 import Foundation
 
 class Utils {
-    static func getUserAgent() -> String{
-        // Placeholder implementation
-        return "SignalR-Client-Swift/1.0"
+    static let PackageVersion = "Todo"  // Update the packageVersion for each release
+
+    static func getUserAgent() -> String {
+        return
+            "Microsoft SignalR Client/Swift \(Utils.PackageVersion); \(currentOSVersion())"
+    }
+
+    static func currentOSVersion() -> String {
+        #if os(macOS)
+            let osName = "macOS"
+        #elseif os(iOS)
+            #if targetEnvironment(macCatalyst)
+                let osName = "Mac Catalyst"
+            #else
+                let osName = "iOS"
+            #endif
+        #elseif os(tvOS)
+            let osName = "tvOS"
+        #elseif os(watchOS)
+            let osName = "watchOS"
+        #elseif os(Windows)
+            return "Windows"
+        #elseif os(Linux)
+            return "Linux"
+        #else
+            return "Unknown OS"
+        #endif
+
+        let version = ProcessInfo.processInfo.operatingSystemVersion
+        let versionString =
+            "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
+        return "\(osName) \(versionString)"
     }
 }
 

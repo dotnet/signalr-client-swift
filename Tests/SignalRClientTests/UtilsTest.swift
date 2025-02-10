@@ -20,4 +20,8 @@ class UtilsTest: XCTestCase {
         XCTAssertTrue(StringOrData.data(Data()).isEmpty())
         XCTAssertFalse(StringOrData.data(Data(repeating: .max, count: 1)).isEmpty())
     }
+    
+    func testUserAgent() {
+        _ = Utils.getUserAgent()
+    }
 }
