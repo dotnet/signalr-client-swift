@@ -54,18 +54,19 @@ public protocol HttpClient: Sendable {
 
 actor DefaultHttpClient: HttpClient {
     private let logger: Logger
+    private let session: URLSession
 
     init(logger: Logger) {
         self.logger = logger
+        self.session = URLSession(configuration: URLSessionConfiguration.default)
     }
 
     public func send(request: HttpRequest) async throws -> (
         StringOrData, HttpResponse
     ) {
-        let session = URLSession.shared
         do {
             let urlRequest = try request.buildURLRequest()
-            let (data, response) = try await session.data(
+            let (data, response) = try await self.session.data(
                 for: urlRequest)
             guard let httpURLResponse = response as? HTTPURLResponse else {
                 throw SignalRError.invalidResponseType

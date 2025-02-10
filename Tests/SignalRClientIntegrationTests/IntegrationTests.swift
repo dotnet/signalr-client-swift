@@ -5,6 +5,20 @@ import XCTest
 class IntegrationTests: XCTestCase {
     private var url: String?
     private let logLevel: LogLevel = .debug
+    #if os(Linux)
+    private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
+        (.longPolling, .messagePack),
+        (.longPolling, .json),
+    ]
+    #else
+    private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
+        (.webSockets, .json),
+        (.serverSentEvents, .json),
+        (.longPolling, .json),
+        (.webSockets, .messagePack),
+        (.longPolling, .messagePack),
+    ]
+    #endif
 
     override func setUpWithError() throws {
         guard let url = ProcessInfo.processInfo.environment["SIGNALR_INTEGRATION_TEST_URL"] else {
@@ -14,21 +28,6 @@ class IntegrationTests: XCTestCase {
     }
 
     func testConnect() async throws {
-        #if os(Linux)
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.longPolling, .messagePack),
-            (.longPolling, .json),
-        ]
-        #else
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.webSockets, .json),
-            (.serverSentEvents, .json),
-            (.longPolling, .json),
-            (.webSockets, .messagePack),
-            (.longPolling, .messagePack),
-        ]
-        #endif
-
         for (transport, hubProtocol) in testCombinations {
             do {
                 try await whenTaskTimeout({ try await self.testConnectCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
@@ -52,23 +51,31 @@ class IntegrationTests: XCTestCase {
             await connection.stop()
         }
     }
-
+    
+    func testMultipleConnectection() async throws {
+        for (transport, hubProtocol) in testCombinations {
+            let count = 10 // DefaultUrlSession has 5 connections
+            var connections: [HubConnection] = []
+            do {
+                for _ in 0..<count {
+                    let connection = HubConnectionBuilder()
+                        .withUrl(url: url!, transport: transport)
+                        .withHubProtocol(hubProtocol: hubProtocol)
+                        .withLogLevel(logLevel: logLevel)
+                        .build()
+                    try await whenTaskTimeout(connection.start,timeout:1)
+                    connections.append(connection)
+                }
+            } catch {
+                XCTFail("Failed to establish multible connection with transport: \(transport) and hubProtocol: \(hubProtocol)")
+            }
+            for connection in connections {
+                await connection.stop()
+            }
+        }
+    }
+    
     func testSendAndOn() async throws {
-        #if os(Linux)
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.longPolling, .messagePack),
-            (.longPolling, .json),
-        ]
-        #else
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.webSockets, .json),
-            (.serverSentEvents, .json),
-            (.longPolling, .json),
-            (.webSockets, .messagePack),
-            (.longPolling, .messagePack),
-        ]
-        #endif
-
         for (transport, hubProtocol) in testCombinations {
             try await whenTaskTimeout({try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: "hello")}, timeout: 1)
             try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: 1) }, timeout: 1)
@@ -111,21 +118,6 @@ class IntegrationTests: XCTestCase {
     }
 
     func testInvoke() async throws {
-        #if os(Linux)
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.longPolling, .messagePack),
-            (.longPolling, .json),
-        ]
-        #else
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.webSockets, .json),
-            (.serverSentEvents, .json),
-            (.longPolling, .json),
-            (.webSockets, .messagePack),
-            (.longPolling, .messagePack),
-        ]
-        #endif
-
         for (transport, hubProtocol) in testCombinations {
             try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: "hello") }, timeout: 1)
             try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: 1) }, timeout: 1)
@@ -156,21 +148,6 @@ class IntegrationTests: XCTestCase {
     }
 
     func testInvokeWithoutReturn() async throws {
-        #if os(Linux)
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.longPolling, .messagePack),
-            (.longPolling, .json),
-        ]
-        #else
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.webSockets, .json),
-            (.serverSentEvents, .json),
-            (.longPolling, .json),
-            (.webSockets, .messagePack),
-            (.longPolling, .messagePack),
-        ]
-        #endif
-
         for (transport, hubProtocol) in testCombinations {
             try await whenTaskTimeout({ try await self.testInvokeWithoutReturnCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
         }
@@ -194,21 +171,6 @@ class IntegrationTests: XCTestCase {
     }
 
     func testStream() async throws {
-        #if os(Linux)
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.longPolling, .messagePack),
-            (.longPolling, .json),
-        ]
-        #else
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.webSockets, .json),
-            (.serverSentEvents, .json),
-            (.longPolling, .json),
-            (.webSockets, .messagePack),
-            (.longPolling, .messagePack),
-        ]
-        #endif
-
         for (transport, hubProtocol) in testCombinations {
             try await whenTaskTimeout({ try await self.testStreamCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
         }
@@ -237,21 +199,6 @@ class IntegrationTests: XCTestCase {
     }
 
     func testClientResult() async throws {
-        #if os(Linux)
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.longPolling, .messagePack),
-            (.longPolling, .json),
-        ]
-        #else
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.webSockets, .json),
-            (.serverSentEvents, .json),
-            (.longPolling, .json),
-            (.webSockets, .messagePack),
-            (.longPolling, .messagePack),
-        ]
-        #endif
-
         for (transport, hubProtocol) in testCombinations {
             try await whenTaskTimeout({ try await self.testClientResultCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
         }
@@ -285,21 +232,6 @@ class IntegrationTests: XCTestCase {
     }
 
     func testClientResultWithNull() async throws {
-        #if os(Linux)
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-             (.longPolling, .messagePack),
-            (.longPolling, .json),
-        ]
-        #else
-        let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.webSockets, .json),
-            (.serverSentEvents, .json),
-            (.longPolling, .json),
-             (.webSockets, .messagePack),
-             (.longPolling, .messagePack),
-        ]
-        #endif
-
         for (transport, hubProtocol) in testCombinations {
             try await whenTaskTimeout({ try await self.testClientResultWithNullCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
         }
