@@ -1,13 +1,11 @@
 import Foundation
 
 class Utils {
-    static let PackageVersion = "Todo"  // Update the packageVersion for each release
-
     static func getUserAgent() -> String {
         return
-            "Microsoft SignalR Client/Swift \(Utils.PackageVersion); \(currentOSVersion())"
+            "Microsoft SignalR Client/Swift \(PackageVersion); \(currentOSVersion())"
     }
-
+    
     static func currentOSVersion() -> String {
         #if os(macOS)
             let osName = "macOS"
