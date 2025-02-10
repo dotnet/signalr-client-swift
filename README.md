@@ -145,6 +145,22 @@ let connection = HubConnectionBuilder()
 |withKeepAliveInterval| 15 (seconds)|Determines the interval at which the client sends ping messages and is set directly on HubConnectionBuilder. This setting allows the server to detect hard disconnects, such as when a client unplugs their computer from the network. Sending any message from the client resets the timer to the start of the interval. If the client hasn't sent a message in the ClientTimeoutInterval set on the server, the server considers the client disconnected.|
 |withServerTimeout| 30 (seconds)|Determines the interval at which the client waits for a response from the server before it considers the server disconnected. This setting is set directly on HubConnectionBuilder.|
 
+## Configure transport
+
+The SignalR Swift client supports three transports: LongPolling, ServerSentEvents, and WebSockets. By default, the client will use WebSockets if the server supports it, and fall back to ServerSentEvents and LongPolling if it doesn't. You can configure the client to use a specific transport by calling `withUrl(url:transport:)` while building the connection.
+
+```swift
+let connection = HubConnectionBuilder()
+    .withUrl(url: "https://your-signalr-server", transport: .webSockets) // use websocket only
+    .build()
+```
+
+```swift
+let connection = HubConnectionBuilder()
+    .withUrl(url: "https://your-signalr-server", transport: [.webSockets, .serverSentEvents]) // use websockets and server sent events
+    .build()
+```
+
 ## Support and unsupported features
 
 | Feature                         | Supported |
