@@ -13,14 +13,14 @@ class UtilsTest: XCTestCase {
         XCTAssertEqual(request.headers["d"], "e")
         XCTAssertEqual(request.headers["h"], "i")
     }
-    
+
     func testStringOrDataIsEmpty(){
         XCTAssertTrue(StringOrData.string("").isEmpty())
         XCTAssertFalse(StringOrData.string("1").isEmpty())
         XCTAssertTrue(StringOrData.data(Data()).isEmpty())
         XCTAssertFalse(StringOrData.data(Data(repeating: .max, count: 1)).isEmpty())
     }
-    
+
     func testUserAgent() {
         _ = Utils.getUserAgent()
     }

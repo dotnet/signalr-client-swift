@@ -27,29 +27,29 @@ class HandshakeProtocol {
         var remainingData: StringOrData?
 
         switch data {
-            case .string(let textData):
-                if let separatorIndex = textData.firstIndex(of: Character(TextMessageFormat.recordSeparator)) {
-                    let responseLength = textData.distance(from: textData.startIndex, to: separatorIndex) + 1
-                    let messageRange = textData.startIndex..<textData.index(textData.startIndex, offsetBy: responseLength)
-                    messageData = String(textData[messageRange])
-                    remainingData = (textData.count > responseLength) ? .string(String(textData[textData.index(textData.startIndex, offsetBy: responseLength)...])) : nil
-                } else {
-                    throw SignalRError.incompleteMessage
+        case .string(let textData):
+            if let separatorIndex = textData.firstIndex(of: Character(TextMessageFormat.recordSeparator)) {
+                let responseLength = textData.distance(from: textData.startIndex, to: separatorIndex) + 1
+                let messageRange = textData.startIndex..<textData.index(textData.startIndex, offsetBy: responseLength)
+                messageData = String(textData[messageRange])
+                remainingData = (textData.count > responseLength) ? .string(String(textData[textData.index(textData.startIndex, offsetBy: responseLength)...])) : nil
+            } else {
+                throw SignalRError.incompleteMessage
+            }
+        case .data(let binaryData):
+            if let separatorIndex = binaryData.firstIndex(of: TextMessageFormat.recordSeparatorCode) {
+                let responseLength = separatorIndex + 1
+                let responseData = binaryData.subdata(in: 0..<responseLength)
+                guard let responseString = String(data: responseData, encoding: .utf8) else {
+                    throw SignalRError.failedToDecodeResponseData
                 }
-            case .data(let binaryData):
-                if let separatorIndex = binaryData.firstIndex(of: TextMessageFormat.recordSeparatorCode) {
-                    let responseLength = separatorIndex + 1
-                    let responseData = binaryData.subdata(in: 0..<responseLength)
-                    guard let responseString = String(data: responseData, encoding: .utf8) else {
-                        throw SignalRError.failedToDecodeResponseData
-                    }
-                    messageData = responseString
-                    remainingData = (binaryData.count > responseLength) ? .data(binaryData.subdata(in: responseLength..<binaryData.count)) : nil
-                } else {
-                    throw SignalRError.incompleteMessage
-                }
+                messageData = responseString
+                remainingData = (binaryData.count > responseLength) ? .data(binaryData.subdata(in: responseLength..<binaryData.count)) : nil
+            } else {
+                throw SignalRError.incompleteMessage
+            }
         }
-        
+
         // At this point we should have just the single handshake message
         let messages = try TextMessageFormat.parse(messageData)
         guard let firstMessage = messages.first else {

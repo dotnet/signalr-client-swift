@@ -137,7 +137,7 @@ final class MessagePackHubProtocol: HubProtocol {
                     target: target, arguments: AnyEncodableArray(arguments),
                     streamIds: [],
                     headers: headers, invocationId: invocationId)
-            
+
         case MessageType.streamItem:
             guard container.count! >= 4 else {
                 throw SignalRError.invalidData(
@@ -155,7 +155,7 @@ final class MessagePackHubProtocol: HubProtocol {
             return StreamItemMessage(
                 invocationId: invocationId, item: AnyEncodable(item),
                 headers: headers)
-            
+
         case MessageType.completion:
             guard container.count! >= 4 else {
                 throw SignalRError.invalidData(
@@ -207,10 +207,10 @@ final class MessagePackHubProtocol: HubProtocol {
             return CancelInvocationMessage(
                 invocationId: invocationId,
                 headers: headers)
-            
+
         case MessageType.ping:
             return PingMessage()
-            
+
         case MessageType.close:
             guard container.count! >= 2 else {
                 throw SignalRError.invalidData(
@@ -220,7 +220,7 @@ final class MessagePackHubProtocol: HubProtocol {
             let allowReconnect =
                 container.isAtEnd ? nil : try container.decode(Bool?.self)
             return CloseMessage(error: err, allowReconnect: allowReconnect)
-            
+
         case MessageType.ack:
             guard container.count! >= 2 else {
                 throw SignalRError.invalidData(
@@ -228,7 +228,7 @@ final class MessagePackHubProtocol: HubProtocol {
             }
             let sequenceId = try container.decode(Int64.self)
             return AckMessage(sequenceId: sequenceId)
-            
+
         case MessageType.sequence:
             guard container.count! >= 2 else {
                 throw SignalRError.invalidData(
@@ -236,7 +236,7 @@ final class MessagePackHubProtocol: HubProtocol {
             }
             let sequenceId = try container.decode(Int64.self)
             return SequenceMessage(sequenceId: sequenceId)
-            
+
         default:
             // StreamInvocation is not supported at client side
             return nil

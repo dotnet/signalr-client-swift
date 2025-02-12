@@ -81,7 +81,7 @@ class MsgpackEncoderTests: XCTestCase {
             [0xda, 0xff, 0xff] + Data(repeating: 0x61, count: 1 << 16 - 1)
         data[1 << 16] =
             [0xdb, 0x00, 0x01, 0x00, 0x00]
-            + Data(repeating: 0x61, count: 1 << 16)
+                + Data(repeating: 0x61, count: 1 << 16)
         for (length, expected) in data {
             let string = String(repeating: Character("a"), count: length)
             let result = try MsgpackElement.string(string).marshall()
@@ -116,7 +116,7 @@ class MsgpackEncoderTests: XCTestCase {
             [0xc5, 0xff, 0xff] + Data(repeating: UInt8(1), count: 1 << 16 - 1)
         data[1 << 16] =
             [0xc6, 0x00, 0x01, 0x00, 0x00]
-            + Data(repeating: UInt8(1), count: 1 << 16)
+                + Data(repeating: UInt8(1), count: 1 << 16)
         for (length, expected) in data {
             let data = Data(repeating: UInt8(1), count: length)
             let result = try MsgpackElement.bin(data).marshall()

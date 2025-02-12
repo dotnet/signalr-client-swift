@@ -69,7 +69,7 @@ class MsgpackEncoder: Encoder, MsgpackElementConvertable {
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "Top-level \(String(describing: T.self)) did not encode any values."
+                    "Top-level \(String(describing: T.self)) did not encode any values."
                 ))
         }
         self.msgpack = msgpackElement

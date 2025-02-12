@@ -10,9 +10,9 @@ protocol HubProtocol: Sendable {
 
     /**
      Creates an array of `HubMessage` objects from the specified serialized representation.
-     
+
      If `transferFormat` is 'Text', the `input` parameter must be a String, otherwise it must be Data.
-     
+
      - Parameters:
        - input: A Data containing the serialized representation.
      - Returns: An array of `HubMessage` objects.
@@ -21,9 +21,9 @@ protocol HubProtocol: Sendable {
 
     /**
      Writes the specified `HubMessage` to a String or Data and returns it.
-     
+
      If `transferFormat` is 'Text', the result of this method will be a String, otherwise it will be Data.
-     
+
      - Parameter message: The message to write.
      - Returns: A Data containing the serialized representation of the message.
      */

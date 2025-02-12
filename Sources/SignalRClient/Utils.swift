@@ -5,7 +5,7 @@ class Utils {
         return
             "Microsoft SignalR Client/Swift \(PackageVersion); \(currentOSVersion())"
     }
-    
+
     static func currentOSVersion() -> String {
         #if os(macOS)
             let osName = "macOS"

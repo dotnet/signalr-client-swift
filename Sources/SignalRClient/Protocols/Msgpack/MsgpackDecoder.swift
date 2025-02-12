@@ -24,7 +24,7 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "\(msgpackElement.typeDescription) is not extension type"))
+                    "\(msgpackElement.typeDescription) is not extension type"))
         }
         return extType
     }
@@ -39,7 +39,7 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "\(msgpackElement.typeDescription) is not extension type"))
+                    "\(msgpackElement.typeDescription) is not extension type"))
         }
         return data
     }
@@ -120,7 +120,7 @@ class MsgpackKeyedDecodingContainer<Key: CodingKey>:
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "Expected to decode \([String:Any].self) but found \(data.typeDescription) instead."
+                    "Expected to decode \([String:Any].self) but found \(data.typeDescription) instead."
                 ))
 
         }
@@ -238,7 +238,7 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "Expected to decode \([Any].self) but found \(data.typeDescription) instead."
+                    "Expected to decode \([Any].self) but found \(data.typeDescription) instead."
                 ))
         }
     }
@@ -734,7 +734,7 @@ extension MsgpackElement {
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "Can't convert \(self.typeDescription) to \(T.self)"))
+                    "Can't convert \(self.typeDescription) to \(T.self)"))
         }
     }
 
@@ -891,7 +891,7 @@ extension MsgpackTimestamp: Decodable {
                 .init(
                     codingPath: decoder.codingPath,
                     debugDescription:
-                        "The extension type is not -1 when decoding \(MsgpackTimestamp.self)"
+                    "The extension type is not -1 when decoding \(MsgpackTimestamp.self)"
                 ))
         }
         let extData = try decoder.getMsgpackExtData()

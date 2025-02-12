@@ -8,10 +8,10 @@ struct JsonHubProtocol: HubProtocol {
     func parseMessages(input: StringOrData, binder: InvocationBinder) throws -> [HubMessage] {
         let inputString: String
         switch input {
-            case .string(let str):
-                inputString = str
-            case .data:
-                throw SignalRError.invalidData("Invalid input for JSON hub protocol. Expected a string.")
+        case .string(let str):
+            inputString = str
+        case .data:
+            throw SignalRError.invalidData("Invalid input for JSON hub protocol. Expected a string.")
         }
 
         if inputString.isEmpty {
@@ -26,40 +26,40 @@ struct JsonHubProtocol: HubProtocol {
                 throw SignalRError.invalidData("Failed to convert message to data.")
             }
             if let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                let type = jsonObject["type"] as? Int {
-                    switch type {
-                        case 1:
-                            let result = try DecodeInvocationMessage(jsonObject, binder: binder)
-                            hubMessages.append(result)
-                        case 2:
-                            let result = try DecodeStreamItemMessage(jsonObject, binder: binder)
-                            hubMessages.append(result)
-                        case 3:
-                            let result = try DecodeCompletionMessage(jsonObject, binder: binder)
-                            hubMessages.append(result)
-                        case 4:
-                            let result = try DecodeStreamInvocationMessage(jsonObject, binder: binder)
-                            hubMessages.append(result)
-                        case 5:
-                            let result = try DecodeCancelInvocationMessage(jsonObject)
-                            hubMessages.append(result)
-                        case 6:
-                            let result = try DecodePingMessage(jsonObject)
-                            hubMessages.append(result)
-                        case 7:
-                            let result = try DecodeCloseMessage(jsonObject)
-                            hubMessages.append(result)
-                        case 8:
-                            let result = try DecodeAckMessage(jsonObject)
-                            hubMessages.append(result)
-                        case 9:
-                            let result = try DecodeSequenceMessage(jsonObject)
-                            hubMessages.append(result)
-                        default:
-                            // Unknown message type
-                            break
-                    }
+               let type = jsonObject["type"] as? Int {
+                switch type {
+                case 1:
+                    let result = try DecodeInvocationMessage(jsonObject, binder: binder)
+                    hubMessages.append(result)
+                case 2:
+                    let result = try DecodeStreamItemMessage(jsonObject, binder: binder)
+                    hubMessages.append(result)
+                case 3:
+                    let result = try DecodeCompletionMessage(jsonObject, binder: binder)
+                    hubMessages.append(result)
+                case 4:
+                    let result = try DecodeStreamInvocationMessage(jsonObject, binder: binder)
+                    hubMessages.append(result)
+                case 5:
+                    let result = try DecodeCancelInvocationMessage(jsonObject)
+                    hubMessages.append(result)
+                case 6:
+                    let result = try DecodePingMessage(jsonObject)
+                    hubMessages.append(result)
+                case 7:
+                    let result = try DecodeCloseMessage(jsonObject)
+                    hubMessages.append(result)
+                case 8:
+                    let result = try DecodeAckMessage(jsonObject)
+                    hubMessages.append(result)
+                case 9:
+                    let result = try DecodeSequenceMessage(jsonObject)
+                    hubMessages.append(result)
+                default:
+                    // Unknown message type
+                    break
                 }
+            }
         }
 
         return hubMessages
@@ -195,13 +195,13 @@ struct JsonHubProtocol: HubProtocol {
         guard let decodableType = targetType as? Decodable.Type else {
             throw SignalRError.invalidData("Provided type \(targetType) does not conform to Decodable.")
         }
-        
+
         // Convert dictionary / array to JSON data
         if (JSONSerialization.isValidJSONObject(anyObject)) {
             guard let jsonData = try? JSONSerialization.data(withJSONObject: anyObject) else {
                 throw SignalRError.invalidData("Failed to serialize to JSON data.")
             }
-        
+
             let decoder = JSONDecoder()
             let decodedObject = try decoder.decode(decodableType, from: jsonData)
             return decodedObject

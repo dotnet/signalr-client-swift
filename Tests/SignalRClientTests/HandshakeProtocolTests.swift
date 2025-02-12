@@ -20,7 +20,7 @@ class HandshakeProtocolTests: XCTestCase {
         let responseString = "{\"error\":null,\"minorVersion\":1}\u{1e}"
         let data = StringOrData.string(responseString)
         let (remainingData, responseMessage) = try HandshakeProtocol.parseHandshakeResponse(data: data)
-        
+
         XCTAssertNil(remainingData)
         XCTAssertNil(responseMessage.error)
         XCTAssertEqual(responseMessage.minorVersion, 1)
@@ -30,7 +30,7 @@ class HandshakeProtocolTests: XCTestCase {
         let responseString = "{}\u{1e}"
         let data = StringOrData.string(responseString)
         let (remainingData, responseMessage) = try HandshakeProtocol.parseHandshakeResponse(data: data)
-        
+
         XCTAssertNil(remainingData)
         XCTAssertNil(responseMessage.error)
         XCTAssertNil(responseMessage.minorVersion)
@@ -41,7 +41,7 @@ class HandshakeProtocolTests: XCTestCase {
         let responseData = responseString.data(using: .utf8)!
         let data = StringOrData.data(responseData)
         let (remainingData, responseMessage) = try HandshakeProtocol.parseHandshakeResponse(data: data)
-        
+
         XCTAssertNil(remainingData)
         XCTAssertNil(responseMessage.error)
         XCTAssertEqual(responseMessage.minorVersion, 1)
@@ -51,7 +51,7 @@ class HandshakeProtocolTests: XCTestCase {
         let responseString = "{\"error\":null,\"minorVersion\":1}\u{1e}remaining"
         let data = StringOrData.string(responseString)
         let (remainingData, responseMessage) = try HandshakeProtocol.parseHandshakeResponse(data: data)
-        
+
         if case let .string(remainingData) = remainingData {
             XCTAssertEqual(remainingData, "remaining")
         } else {
@@ -66,7 +66,7 @@ class HandshakeProtocolTests: XCTestCase {
         let responseData = responseString.data(using: .utf8)!
         let data = StringOrData.data(responseData)
         let (remainingData, responseMessage) = try HandshakeProtocol.parseHandshakeResponse(data: data)
-        
+
         if case let .data(remainingData) = remainingData {
             XCTAssertEqual(remainingData, "remaining".data(using: .utf8)!)
         } else {
@@ -80,7 +80,7 @@ class HandshakeProtocolTests: XCTestCase {
         let responseString = "{\"error\":\"Some error\",\"minorVersion\":null}\u{1e}"
         let data = StringOrData.string(responseString)
         let (remainingData, responseMessage) = try HandshakeProtocol.parseHandshakeResponse(data: data)
-        
+
         XCTAssertNil(remainingData)
         XCTAssertEqual(responseMessage.error, "Some error")
         XCTAssertNil(responseMessage.minorVersion)
@@ -89,7 +89,7 @@ class HandshakeProtocolTests: XCTestCase {
     func testParseHandshakeResponseWithIncompleteMessage() {
         let responseString = "{\"error\":null,\"minorVersion\":1}"
         let data = StringOrData.string(responseString)
-        
+
         XCTAssertThrowsError(try HandshakeProtocol.parseHandshakeResponse(data: data)) { error in
             XCTAssertEqual(error as? SignalRError, SignalRError.incompleteMessage)
         }
@@ -98,7 +98,7 @@ class HandshakeProtocolTests: XCTestCase {
     func testParseHandshakeResponseWithNormalMessage() {
         let responseString = "{\"type\":1,\"target\":\"Send\",\"arguments\":[]}\u{1e}"
         let data = StringOrData.string(responseString)
-        
+
         XCTAssertThrowsError(try HandshakeProtocol.parseHandshakeResponse(data: data)) { error in
             XCTAssertEqual(error as? SignalRError, SignalRError.expectedHandshakeResponse)
         }

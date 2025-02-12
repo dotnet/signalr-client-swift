@@ -12,13 +12,13 @@ public class HubConnectionBuilder {
     private var httpConnectionOptions: HttpConnectionOptions = HttpConnectionOptions()
 
     public init() {}
-    
+
     public func withLogLevel(logLevel: LogLevel) -> HubConnectionBuilder{
         self.logLevel = logLevel
         self.httpConnectionOptions.logLevel = logLevel
         return self
     }
-    
+
     public func withLogHandler(logHandler: LogHandler) -> HubConnectionBuilder{
         self.logHandler = logHandler
         return self
@@ -26,8 +26,8 @@ public class HubConnectionBuilder {
 
     public func withHubProtocol(hubProtocol: HubProtocolType) -> HubConnectionBuilder {
         switch hubProtocol {
-            case .json:
-                self.hubProtocol = JsonHubProtocol()
+        case .json:
+            self.hubProtocol = JsonHubProtocol()
         case .messagePack:
             self.hubProtocol = MessagePackHubProtocol()
         }

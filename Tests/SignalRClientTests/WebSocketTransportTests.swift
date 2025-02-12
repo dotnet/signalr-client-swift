@@ -1,5 +1,5 @@
 #if canImport(FoundationNetworking)
-import FoundationNetworking
+    import FoundationNetworking
 #endif
 import XCTest
 @testable import SignalRClient

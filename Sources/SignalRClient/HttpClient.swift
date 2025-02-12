@@ -78,7 +78,7 @@ actor DefaultHttpClient: HttpClient {
             return (message, httpResponse)
         } catch {
             if let urlError = error as? URLError,
-                urlError.code == URLError.timedOut
+               urlError.code == URLError.timedOut
             {
                 logger.log(
                     level: .warning, message: "Timeout from HTTP request.")
@@ -117,7 +117,7 @@ actor AccessTokenHttpClient: HttpClient {
         var allowRetry = true
 
         if let factory = accessTokenFactory,
-            accessToken == nil || (request.url.contains("/negotiate?"))
+           accessToken == nil || (request.url.contains("/negotiate?"))
         {
             // Don't retry if the request is a negotiate or if we just got a potentially new token from the access token factory
             allowRetry = false
@@ -130,7 +130,7 @@ actor AccessTokenHttpClient: HttpClient {
             request: mutableRequest)
 
         if allowRetry && httpResponse.statusCode == 401,
-            let factory = accessTokenFactory
+           let factory = accessTokenFactory
         {
             accessToken = try await factory()
             setAuthorizationHeader(request: &mutableRequest)

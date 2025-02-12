@@ -12,7 +12,7 @@ class AsyncLock {
             defer {
                 lock.signal()
             }
-            
+
             isLocked = true
             return
         }

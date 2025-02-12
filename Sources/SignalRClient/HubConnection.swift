@@ -30,11 +30,11 @@ public actor HubConnection {
     private var startTask: Task<Void, Error>?
 
     internal init(connection: ConnectionProtocol,
-                logger: Logger,
-                hubProtocol: HubProtocol,
-                retryPolicy: RetryPolicy,
-                serverTimeout: TimeInterval?,
-                keepAliveInterval: TimeInterval?) {
+                  logger: Logger,
+                  hubProtocol: HubProtocol,
+                  retryPolicy: RetryPolicy,
+                  serverTimeout: TimeInterval?,
+                  keepAliveInterval: TimeInterval?) {
         self.serverTimeout = serverTimeout ?? HubConnection.defaultTimeout
         self.keepAliveInterval = keepAliveInterval ?? HubConnection.defaultPingInterval
         self.logger = logger
@@ -55,7 +55,7 @@ public actor HubConnection {
         }
 
         connectionStatus = .Connecting
-        
+
         startTask = Task {
             do {
                 await self.connection.onClose(handleConnectionClose)
@@ -91,7 +91,7 @@ public actor HubConnection {
         }
 
         stopping = true
-        
+
         // In this step, there's no other start running
         stopTask = Task {
             await stopInternal()
@@ -129,7 +129,7 @@ public actor HubConnection {
             invocationBinder.removeReturnValueType(invocationId: invocationId)
             throw error
         }
-        
+
         if let returnVal = (try await tcs.task()) as? TReturn {
             return returnVal
         } else {
@@ -176,7 +176,7 @@ public actor HubConnection {
                 try await self.sendMessageInternal(data)
             } catch {}
         }
-        
+
         return streamResult
     }
 
@@ -277,10 +277,10 @@ public actor HubConnection {
 
         // reconnect
         while let interval = retryPolicy.nextRetryInterval(retryContext: RetryContext(
-                retryCount: retryCount,
-                elapsed: elapsed,
-                retryReason: lastError
-            )) {
+            retryCount: retryCount,
+            elapsed: elapsed,
+            retryReason: lastError
+        )) {
             try Task.checkCancellation()
             if (stopping) {
                 break
@@ -357,38 +357,38 @@ public actor HubConnection {
         await serverTimeoutScheduler.refreshSchduler()
 
         switch message {
-            case let message as InvocationMessage:
-                // Invoke a method
-                logger.log(level: .debug, message: "Invocation message received for method: \(message.target)")
-                do {
-                    try await invokeClientMethod(message: message)
-                } catch {
-                    logger.log(level: .error, message: "Error invoking method: \(error)")
-                }
-                break
-            case let message as StreamItemMessage:
-                logger.log(level: .debug, message: "Stream item message received for invocation: \(message.invocationId!)")
-                await invocationHandler.setStreamItem(message: message)
-                break
-            case let message as CompletionMessage:
-                logger.log(level: .debug, message: "Completion message received for invocation: \(message.invocationId!), error: \(message.error ?? "nil"), result: \(message.result.value ?? "nil")")
-                await invocationHandler.setResult(message: message)
-                invocationBinder.removeReturnValueType(invocationId: message.invocationId!)
-                break
-            case _ as PingMessage:
-                // Don't care about the content of ping
-                break
-            case _ as CloseMessage:
-                // Close
-                break
-            case _ as AckMessage:
-                // TODO: In stateful reconnect
-                break
-            case _ as SequenceMessage:
-                // TODO: In stateful reconnect
-                break
-            default:
-                logger.log(level: .warning, message: "Unknown message type: \(message)")
+        case let message as InvocationMessage:
+            // Invoke a method
+            logger.log(level: .debug, message: "Invocation message received for method: \(message.target)")
+            do {
+                try await invokeClientMethod(message: message)
+            } catch {
+                logger.log(level: .error, message: "Error invoking method: \(error)")
+            }
+            break
+        case let message as StreamItemMessage:
+            logger.log(level: .debug, message: "Stream item message received for invocation: \(message.invocationId!)")
+            await invocationHandler.setStreamItem(message: message)
+            break
+        case let message as CompletionMessage:
+            logger.log(level: .debug, message: "Completion message received for invocation: \(message.invocationId!), error: \(message.error ?? "nil"), result: \(message.result.value ?? "nil")")
+            await invocationHandler.setResult(message: message)
+            invocationBinder.removeReturnValueType(invocationId: message.invocationId!)
+            break
+        case _ as PingMessage:
+            // Don't care about the content of ping
+            break
+        case _ as CloseMessage:
+            // Close
+            break
+        case _ as AckMessage:
+            // TODO: In stateful reconnect
+            break
+        case _ as SequenceMessage:
+            // TODO: In stateful reconnect
+            break
+        default:
+            logger.log(level: .warning, message: "Unknown message type: \(message)")
         }
     }
 
@@ -403,7 +403,7 @@ public actor HubConnection {
             }
             return            
         }
-        
+
         let expectResponse = message.invocationId != nil
         if (expectResponse) {
             var result: Any? = try await handler(message.arguments.value ?? [])
@@ -510,7 +510,7 @@ public actor HubConnection {
             // Either the error throw by stopDuringStartError, either it's connected status so `handleConnectionClose` can call reconnect there.
 
             connectionStatus = .Connected
-            
+
             logger.log(level: .debug, message: "Handshake completed")
         } catch {
             logger.log(level: .error, message: "Handshake failed: \(error)")
@@ -534,7 +534,7 @@ public actor HubConnection {
             handshakeRejector!(error)
             throw error
         }
-        
+
         if (handshakeResponse.error != nil) {
             logger.log(level: .error, message: "Server returned handshake error: \(handshakeResponse.error!)") 
             let error = SignalRError.handshakeError(handshakeResponse.error!)
