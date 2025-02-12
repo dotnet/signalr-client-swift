@@ -130,7 +130,7 @@ public actor HubConnection {
             throw error
         }
         
-        if let returnVal =  (try await tcs.task()) as? TReturn {
+        if let returnVal = (try await tcs.task()) as? TReturn {
             return returnVal
         } else {
             throw SignalRError.invalidOperation("Cannot convert the result of the invocation to the specified type.")
@@ -155,7 +155,7 @@ public actor HubConnection {
             Task {
                 do {
                     for try await item in stream {
-                        if let returnVal =  item as? Element {
+                        if let returnVal = item as? Element {
                             continuation.yield(returnVal)
                         } else {
                             throw SignalRError.invalidOperation("Cannot convert the result of the invocation to the specified type.")

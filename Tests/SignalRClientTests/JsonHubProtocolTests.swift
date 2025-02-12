@@ -469,7 +469,7 @@ final class JsonHubProtocolTests: XCTestCase {
         let output = try jsonHubProtocol.writeMessage(message: message)
         
         if case var .string(outputString) = output {
-            outputString = String(outputString.dropLast())  // Remove last 0x1E character if present
+            outputString = String(outputString.dropLast()) // Remove last 0x1E character if present
             
             // Convert output and expected JSON strings to dictionaries for comparison
             let outputJson = try JSONSerialization.jsonObject(with: outputString.data(using: .utf8)!) as! NSDictionary

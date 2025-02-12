@@ -528,7 +528,7 @@ class MsgpackDecoderTests: XCTestCase {
         }
     }
 
-    func testInherienceUsingSameTopContainer() throws {  // Undocumented behavior. Keep aligh with the jsonEncoder
+    func testInherienceUsingSameTopContainer() throws { // Undocumented behavior. Keep aligh with the jsonEncoder
         let encoder = MsgpackEncoder()
         let example = InherienceWithSameContainerExample()
         example.parent = "abc"

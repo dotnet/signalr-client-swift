@@ -170,7 +170,7 @@ class ServerSentEventTransportTests: XCTestCase {
     
     // MARK: asyncStream
     func testAsyncStream() async {
-        let stream: AsyncStream<Int>  = AsyncStream{ continuition in
+        let stream: AsyncStream<Int> = AsyncStream{ continuition in
             Task{
                 for i in 0...99{
                     try await Task.sleep(for: .microseconds(100))

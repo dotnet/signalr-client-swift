@@ -1,6 +1,6 @@
 extension HubConnection {
     public func on(_ methodName: String, handler: @escaping () async -> Void) {
-        self.on(method: methodName, types: [],  handler: { _ in
+        self.on(method: methodName, types: [], handler: { _ in
             await handler()
         })
     }

@@ -396,7 +396,7 @@ extension MsgpackElement: MsgpackElementConvertable {
         if length <= UInt8.max {
             return [0xd9, UInt8(length)] + content
         }
-        if length <= UInt16.max  {
+        if length <= UInt16.max {
             var uint16 = UInt16(length).bigEndian
             return [0xda]
                 + Data(bytes: &uint16, count: MemoryLayout<UInt16>.size)

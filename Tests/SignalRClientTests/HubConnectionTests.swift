@@ -161,14 +161,12 @@ final class HubConnectionTests: XCTestCase {
         // HubConnect start handshake
         await fulfillment(of: [expectation], timeout: 1.0)
 
-
         let err = await whenTaskThrowsTimeout({
             try await self.hubConnection.start()
         }, timeout: 1.0)
 
         XCTAssertEqual(SignalRError.invalidOperation("Start client while not in a stopped state."), err as? SignalRError)
     }
-
 
     func testStop_CallsStopDuringConnect() async throws {
         hubConnection = HubConnection(
@@ -194,7 +192,7 @@ final class HubConnectionTests: XCTestCase {
         // The moment start is waiting for handshake response but it should throw 
         await hubConnection.stop()
 
-        let err =  await whenTaskThrowsTimeout(startTask, timeout: 1.0)
+        let err = await whenTaskThrowsTimeout(startTask, timeout: 1.0)
         XCTAssertEqual(SignalRError.connectionAborted, err as? SignalRError)
     }
 
@@ -944,4 +942,3 @@ final class HubConnectionTests: XCTestCase {
         }
     }
 }
-

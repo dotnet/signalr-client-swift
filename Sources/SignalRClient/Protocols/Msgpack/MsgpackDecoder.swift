@@ -421,28 +421,28 @@ extension MsgpackElement {
         }
 
         switch first {
-        case 0xcc:  // UInt8
+        case 0xcc: // UInt8
             let (uint8, remaining) = try parseRawUInt8(data: remaining)
             return (MsgpackElement.uint(UInt64(uint8)), remaining)
-        case 0xcd:  // UInt16
+        case 0xcd: // UInt16
             let (uint16, remaining) = try parseRawUInt16(data: remaining)
             return (MsgpackElement.uint(UInt64(uint16)), remaining)
-        case 0xce:  // UInt32
+        case 0xce: // UInt32
             let (uint32, remaining) = try parseRawUInt32(data: remaining)
             return (MsgpackElement.uint(UInt64(uint32)), remaining)
-        case 0xcf:  // UInt64
+        case 0xcf: // UInt64
             let (uint64, remaining) = try parseRawUInt64(data: remaining)
             return (MsgpackElement.uint(uint64), remaining)
-        case 0xd0:  //Int8
+        case 0xd0: //Int8
             let (int8, remaining) = try parseRawInt8(data: remaining)
             return (MsgpackElement.int(Int64(int8)), remaining)
-        case 0xd1:  //Int16
+        case 0xd1: //Int16
             let (int16, remaining) = try parseRawInt16(data: remaining)
             return (MsgpackElement.int(Int64(int16)), remaining)
-        case 0xd2:  //Int32
+        case 0xd2: //Int32
             let (int32, remaining) = try parseRawInt32(data: remaining)
             return (MsgpackElement.int(Int64(int32)), remaining)
-        case 0xd3:  //Int64
+        case 0xd3: //Int64
             let (int64, remaining) = try parseRawInt64(data: remaining)
             return (MsgpackElement.int(int64), remaining)
         default:
@@ -473,15 +473,15 @@ extension MsgpackElement {
             length = Int(first & 0x1f)
         } else {
             switch first {
-            case 0xd9:  //Str8
+            case 0xd9: //Str8
                 var uint8: UInt8
                 (uint8, remaining) = try parseRawUInt8(data: remaining)
                 length = Int(uint8)
-            case 0xda:  //str16
+            case 0xda: //str16
                 var uint16: UInt16
                 (uint16, remaining) = try parseRawUInt16(data: remaining)
                 length = Int(uint16)
-            case 0xdb:  //str32
+            case 0xdb: //str32
                 var uint32: UInt32
                 (uint32, remaining) = try parseRawUInt32(data: remaining)
                 guard uint32 <= Int.max else {
@@ -510,15 +510,15 @@ extension MsgpackElement {
         let first = data[0]
         var remaining = data.subdata(in: 1..<data.count)
         switch first {
-        case 0xc4:  //bin8
+        case 0xc4: //bin8
             var uint8: UInt8
             (uint8, remaining) = try parseRawUInt8(data: remaining)
             length = Int(uint8)
-        case 0xc5:  //bin16
+        case 0xc5: //bin16
             var uint16: UInt16
             (uint16, remaining) = try parseRawUInt16(data: remaining)
             length = Int(uint16)
-        case 0xc6:  //bin32
+        case 0xc6: //bin32
             var uint32: UInt32
             (uint32, remaining) = try parseRawUInt32(data: remaining)
             guard uint32 <= Int.max else {
@@ -545,11 +545,11 @@ extension MsgpackElement {
             length = Int(first & 0x0f)
         } else {
             switch first {
-            case 0xde:  //map16
+            case 0xde: //map16
                 var uint16: UInt16
                 (uint16, remaining) = try parseRawUInt16(data: remaining)
                 length = Int(uint16)
-            case 0xdf:  //map32
+            case 0xdf: //map32
                 var uint32: UInt32
                 (uint32, remaining) = try parseRawUInt32(data: remaining)
                 guard uint32 <= Int.max else {
@@ -585,11 +585,11 @@ extension MsgpackElement {
             length = Int(first & 0x0f)
         } else {
             switch first {
-            case 0xdc:  //array16
+            case 0xdc: //array16
                 var uint16: UInt16
                 (uint16, remaining) = try parseRawUInt16(data: remaining)
                 length = Int(uint16)
-            case 0xdd:  //array32
+            case 0xdd: //array32
                 var uint32: UInt32
                 (uint32, remaining) = try parseRawUInt32(data: remaining)
                 guard uint32 <= Int.max else {

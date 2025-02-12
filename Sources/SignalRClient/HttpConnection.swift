@@ -365,7 +365,7 @@ actor HttpConnection: ConnectionProtocol {
 
     private func startTransport(url: String, transferFormat: TransferFormat) async throws {
         await transport!.onReceive(self.onReceive)
-        await transport!.onClose  { [weak self] error in
+        await transport!.onClose { [weak self] error in
             guard let self = self else { return }
             await self.stopConnection(error: error)
         }
