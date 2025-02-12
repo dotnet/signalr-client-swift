@@ -4,16 +4,15 @@ import SignalRClient
 @MainActor
 class ChatViewModel: ObservableObject {
     @Published var messages: [String] = []
+    @Published var isConnected: Bool = false
     var username: String = ""
     private var connection: HubConnection?
  
-    init() {
-        Task {
-            try await setupConnection()
+    func setupConnection() async throws {
+        guard connection == nil else {
+            return
         }
-    }
- 
-    private func setupConnection() async throws {
+        
         connection = HubConnectionBuilder()
             .withUrl(url: "http://localhost:8080/chat")
             .withAutomaticReconnect()
@@ -26,6 +25,7 @@ class ChatViewModel: ObservableObject {
         }
  
         try await connection!.start()
+        isConnected = true
     }
  
     func sendMessage(user: String, message: String) async throws {

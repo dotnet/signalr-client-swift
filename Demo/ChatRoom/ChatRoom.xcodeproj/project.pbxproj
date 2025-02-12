@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		E3D7F27B2D59D2560002FC3B /* SignalRClient in Frameworks */ = {isa = PBXBuildFile; productRef = E3D7F27A2D59D2560002FC3B /* SignalRClient */; };
+		E3D7F27D2D5C47C10002FC3B /* ReadMe.md in Sources */ = {isa = PBXBuildFile; fileRef = E3D7F27C2D5C47B70002FC3B /* ReadMe.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,6 +32,7 @@
 		E3090A9D2D5358B7002B986C /* ChatRoom.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChatRoom.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3090AAE2D5358B9002B986C /* ChatRoomTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChatRoomTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3090AB82D5358B9002B986C /* ChatRoomUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChatRoomUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E3D7F27C2D5C47B70002FC3B /* ReadMe.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ReadMe.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -70,6 +72,7 @@
 		E3090A942D5358B7002B986C = {
 			isa = PBXGroup;
 			children = (
+				E3D7F27C2D5C47B70002FC3B /* ReadMe.md */,
 				E3090A9F2D5358B7002B986C /* ChatRoom */,
 				E3090A9E2D5358B7002B986C /* Products */,
 			);
@@ -227,6 +230,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E3D7F27D2D5C47C10002FC3B /* ReadMe.md in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
