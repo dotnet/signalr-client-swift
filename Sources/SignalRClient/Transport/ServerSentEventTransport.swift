@@ -205,7 +205,7 @@ extension EventSourceAdaptor {
     }
 }
 
-public protocol EventSourceAdaptor: Sendable {
+protocol EventSourceAdaptor: Sendable {
     func start(url: String, headers: [String: String]) async throws
     func stop(err: Error?) async
     func onClose(closeHandler: @escaping (Error?) async -> Void) async
