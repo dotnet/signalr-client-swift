@@ -148,7 +148,7 @@ class MsgpackEncoderTests: XCTestCase {
             map[String(i)] = MsgpackElement.bool(true)
         }
         result = try MsgpackElement.map(map).marshall()
-        XCTAssertEqual(result.count, 447638)
+        XCTAssertEqual(result.count, 447_638)
         XCTAssertEqual(result[0...2], Data([0xde, 0xff, 0xff]))
 
         map.removeAll()
@@ -156,7 +156,7 @@ class MsgpackEncoderTests: XCTestCase {
             map[String(i)] = MsgpackElement.bool(true)
         }
         result = try MsgpackElement.map(map).marshall()
-        XCTAssertEqual(result.count, 447647)
+        XCTAssertEqual(result.count, 447_647)
         XCTAssertEqual(result[0...4], Data([0xdf, 0x00, 0x01, 0x00, 0x00]))
     }
 

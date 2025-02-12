@@ -21,8 +21,8 @@ public actor HubConnection {
     private var connectionStatus: HubConnectionState = .Stopped
     private var stopping: Bool = false
     private var stopDuringStartError: Error?
-    nonisolated(unsafe) private var handshakeResolver: ((HandshakeResponseMessage) -> Void)?
-    nonisolated(unsafe) private var handshakeRejector: ((Error) -> Void)?
+    private nonisolated(unsafe) var handshakeResolver: ((HandshakeResponseMessage) -> Void)?
+    private nonisolated(unsafe) var handshakeRejector: ((Error) -> Void)?
     private var closedHandlers: [(Error?) async -> Void] = []
     private var reconnectingHandlers: [(Error?) async -> Void] = []
 
