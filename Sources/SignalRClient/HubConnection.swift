@@ -581,49 +581,49 @@ public actor HubConnection {
 
         mutating func registerSubscription(methodName: String, types: [Any.Type], handler: @escaping ([Any]) async throws -> Any) {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             subscriptionHandlers[methodName] = SubscriptionEntity(types: types, callback: handler)
         }
 
         mutating func removeSubscrioption(methodName: String) {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             subscriptionHandlers[methodName] = nil
         }
 
         mutating func registerReturnValueType(invocationId: String, types: Any.Type) {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             returnValueHandler[invocationId] = types
         }
 
         mutating func removeReturnValueType(invocationId: String) {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             returnValueHandler[invocationId] = nil
         }
 
         func getHandler(methodName: String) -> (([Any]) async throws -> Any)? {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             return subscriptionHandlers[methodName]?.callback
         }
 
         func getReturnType(invocationId: String) -> (any Any.Type)? {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             return returnValueHandler[invocationId]
         }
 
         func getParameterTypes(methodName: String) -> [any Any.Type] {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             return subscriptionHandlers[methodName]?.types ?? []
         }
 
         func getStreamItemType(streamId: String) -> (any Any.Type)? {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             return returnValueHandler[streamId] 
         }   
     }

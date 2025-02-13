@@ -18,7 +18,7 @@ class AsyncLock {
         }
 
         await withCheckedContinuation { continuation in
-            defer {lock.signal()}
+            defer { lock.signal() }
             waitQueue.append(continuation)
         }
     }

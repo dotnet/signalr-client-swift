@@ -156,7 +156,7 @@ final class HubConnectionTests: XCTestCase {
             try await hubConnection.start()
         }
 
-        defer {task.cancel()}
+        defer { task.cancel() }
 
         // HubConnect start handshake
         await fulfillment(of: [expectation], timeout: 1.0)
