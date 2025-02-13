@@ -335,12 +335,12 @@ final class JsonHubProtocolTests: XCTestCase {
     func testWriteInvocationMessageWithAllElement() throws {
         let message = InvocationMessage(
             target: "testTarget",
-            arguments: AnyEncodableArray(["arg1", //string
-                                          123, //int
-                                          3.14, //double
-                                          true, //bool
-                                          ["array1", 456], //array
-                                          ["key1": "value1", "key2": "value2"], //dictionary
+            arguments: AnyEncodableArray(["arg1", // string
+                                          123, // int
+                                          3.14, // double
+                                          true, // bool
+                                          ["array1", 456], // array
+                                          ["key1": "value1", "key2": "value2"], // dictionary
                                           CustomizedEncodingClass(stringVal: "str", intVal: 12345, doubleVal: 3.14, boolVal: true)]),
 
             streamIds: ["456"],
