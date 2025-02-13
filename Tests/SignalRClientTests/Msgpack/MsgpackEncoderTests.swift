@@ -168,25 +168,29 @@ class MsgpackEncoderTests: XCTestCase {
         data = [MsgpackElement](repeating: .bool(true), count: 1 << 4 - 1)
         result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
-            result, [0x9f] + Data(repeating: 0xc3, count: 1 << 4 - 1))
+            result, [0x9f] + Data(repeating: 0xc3, count: 1 << 4 - 1)
+        )
 
         data = [MsgpackElement](repeating: .bool(true), count: 1 << 4)
         result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
-            result, [0xdc, 0x00, 0x10] + Data(repeating: 0xc3, count: 1 << 4))
+            result, [0xdc, 0x00, 0x10] + Data(repeating: 0xc3, count: 1 << 4)
+        )
 
         data = [MsgpackElement](repeating: .bool(true), count: 1 << 16 - 1)
         result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
             result,
-            [0xdc, 0xff, 0xff] + Data(repeating: 0xc3, count: 1 << 16 - 1))
+            [0xdc, 0xff, 0xff] + Data(repeating: 0xc3, count: 1 << 16 - 1)
+        )
 
         data = [MsgpackElement](repeating: .bool(true), count: 1 << 16)
         result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
             result,
             [0xdd, 0x00, 0x01, 0x00, 0x00]
-                + Data(repeating: 0xc3, count: 1 << 16))
+                + Data(repeating: 0xc3, count: 1 << 16)
+        )
     }
 
     func testEncodeExtension() throws {
@@ -343,7 +347,8 @@ class MsgpackEncoderTests: XCTestCase {
             var container = encoder.container(keyedBy: Keys.self)
             try container.encode(123, forKey: .Key1)
             var nestedKeyedContainer1 = container.nestedContainer(
-                keyedBy: Keys.self, forKey: Keys.Key2)
+                keyedBy: Keys.self, forKey: Keys.Key2
+            )
             try nestedKeyedContainer1.encode("123", forKey: Keys.nestedKey1)
             var nestedUnkeyedContainer = container.nestedUnkeyedContainer(
                 forKey: Keys.Key3)
@@ -504,7 +509,8 @@ class MsgpackEncoderTests: XCTestCase {
                 ((time - Double(seconds)) * 1_000_000_000).rounded(
                     FloatingPointRoundingRule.down))
             let timestamp = MsgpackTimestamp(
-                seconds: seconds, nanoseconds: nanoseconds)
+                seconds: seconds, nanoseconds: nanoseconds
+            )
             let encoder = MsgpackEncoder()
             _ = try encoder.encode(timestamp)
             let msgpackElement = try encoder.convertToMsgpackElement()
@@ -567,12 +573,14 @@ class MsgpackEncoderTests: XCTestCase {
             XCTAssertEqual(superEncoder.codingPath.count, 1)
             XCTAssertEqual(
                 superEncoder.codingPath[0] as! MsgpackCodingKey,
-                MsgpackCodingKey(stringValue: "super"))
+                MsgpackCodingKey(stringValue: "super")
+            )
             let superSingleValueContainer = superEncoder.singleValueContainer()
             XCTAssertEqual(superSingleValueContainer.codingPath.count, 1)
             XCTAssertEqual(
                 superSingleValueContainer.codingPath[0] as! MsgpackCodingKey,
-                MsgpackCodingKey(stringValue: "super"))
+                MsgpackCodingKey(stringValue: "super")
+            )
 
             let superEncoder2 = container1.superEncoder(forKey: .superKey)
             XCTAssertEqual(superEncoder2.codingPath.count, 1)
@@ -586,7 +594,8 @@ class MsgpackEncoderTests: XCTestCase {
 
             XCTAssertEqual(container1.codingPath.count, 0)
             var container2 = container1.nestedContainer(
-                keyedBy: Keys.self, forKey: .Key1)
+                keyedBy: Keys.self, forKey: .Key1
+            )
             XCTAssertEqual(container2.codingPath.count, 1)
             XCTAssertEqual(container2.codingPath[0] as! Keys, Keys.Key1)
 
@@ -601,7 +610,8 @@ class MsgpackEncoderTests: XCTestCase {
             XCTAssertEqual(container4.codingPath[1] as! Keys, Keys.Key2)
             XCTAssertEqual(
                 container4.codingPath[2] as! MsgpackCodingKey,
-                MsgpackCodingKey(intValue: 0))
+                MsgpackCodingKey(intValue: 0)
+            )
         }
 
         enum Keys: CodingKey {

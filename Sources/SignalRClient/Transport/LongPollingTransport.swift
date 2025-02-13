@@ -25,15 +25,18 @@ actor LongPollingTransport: Transport {
         // MARK: Here's an assumption that the connect won't be called twice
         self.url = url
         logger.log(
-            level: .debug, message: "(LongPolling transport) Connecting.")
+            level: .debug, message: "(LongPolling transport) Connecting."
+        )
 
         var pollRequest = HttpRequest(
             method: .GET, url: url, responseType: transferFormat,
-            options: options)
+            options: options
+        )
         pollRequest.appendDateInUrl()
         logger.log(
             level: .debug,
-            message: "(LongPolling transport) polling: \(pollRequest.url).")
+            message: "(LongPolling transport) polling: \(pollRequest.url)."
+        )
 
         let (_, response) = try await httpClient.send(request: pollRequest)
 
@@ -63,7 +66,8 @@ actor LongPollingTransport: Transport {
                 logger.log(
                     level: .debug,
                     message:
-                    "(LongPolling transport) polling: \(pollRequest.url).")
+                    "(LongPolling transport) polling: \(pollRequest.url)."
+                )
 
                 let (message, response) = try await httpClient.send(
                     request: pollRequest)
@@ -126,7 +130,8 @@ actor LongPollingTransport: Transport {
         }
 
         logger.log(
-            level: .debug, message: "(LongPolling transport) Polling complete.")
+            level: .debug, message: "(LongPolling transport) Polling complete."
+        )
         if !Task.isCancelled {
             await raiseClose()
         }
@@ -144,7 +149,8 @@ actor LongPollingTransport: Transport {
         )
         let request = HttpRequest(
             method: .POST, url: self.url!, content: requestData,
-            options: options)
+            options: options
+        )
         let (_, response) = try await httpClient.send(request: request)
         logger.log(
             level: .debug,
@@ -155,7 +161,8 @@ actor LongPollingTransport: Transport {
 
     func stop(error: (any Error)?) async throws {
         logger.log(
-            level: .debug, message: "(LongPolling transport) Stopping polling.")
+            level: .debug, message: "(LongPolling transport) Stopping polling."
+        )
         self.running = false
         self.receiving?.cancel()
 
@@ -169,7 +176,8 @@ actor LongPollingTransport: Transport {
 
         do {
             let deleteRequest = HttpRequest(
-                method: .DELETE, url: self.url!, options: options)
+                method: .DELETE, url: self.url!, options: options
+            )
             let (_, response) = try await httpClient.send(
                 request: deleteRequest)
             if response.statusCode == 404 {
@@ -181,7 +189,8 @@ actor LongPollingTransport: Transport {
             } else if response.ok() {
                 logger.log(
                     level: .debug,
-                    message: "(LongPolling transport) DELETE request accepted.")
+                    message: "(LongPolling transport) DELETE request accepted."
+                )
             } else {
                 logger.log(
                     level: .debug,
@@ -197,7 +206,8 @@ actor LongPollingTransport: Transport {
             )
         }
         logger.log(
-            level: .debug, message: "(LongPolling transport) Stop finished.")
+            level: .debug, message: "(LongPolling transport) Stop finished."
+        )
 
         await raiseClose()
     }

@@ -30,7 +30,8 @@ actor ServerSentEventTransport: Transport {
         }
 
         logger.log(
-            level: .debug, message: "(SSE transport) Connecting.")
+            level: .debug, message: "(SSE transport) Connecting."
+        )
 
         self.url = url
         var url = url
@@ -57,7 +58,8 @@ actor ServerSentEventTransport: Transport {
 
         self.eventSource = eventSource
         logger.log(
-            level: .information, message: "SSE connected to \(self.url!)")
+            level: .information, message: "SSE connected to \(self.url!)"
+        )
     }
 
     func send(_ requestData: StringOrData) async throws {
@@ -71,7 +73,8 @@ actor ServerSentEventTransport: Transport {
         )
         let request = HttpRequest(
             method: .POST, url: self.url!, content: requestData,
-            options: options)
+            options: options
+        )
         let (_, response) = try await httpClient.send(request: request)
         logger.log(
             level: .debug,

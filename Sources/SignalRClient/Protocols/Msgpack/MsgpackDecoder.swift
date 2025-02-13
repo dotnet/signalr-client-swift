@@ -24,7 +24,9 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                    "\(msgpackElement.typeDescription) is not extension type"))
+                    "\(msgpackElement.typeDescription) is not extension type"
+                )
+            )
         }
         return extType
     }
@@ -39,7 +41,9 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                    "\(msgpackElement.typeDescription) is not extension type"))
+                    "\(msgpackElement.typeDescription) is not extension type"
+                )
+            )
         }
         return data
     }
@@ -55,7 +59,8 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
         }
         let container = try MsgpackKeyedDecodingContainer<Key>(
             codingPath: codingPath, userInfo: userInfo,
-            msgpackValue: messagepackType)
+            msgpackValue: messagepackType
+        )
         return KeyedDecodingContainer(container)
     }
 
@@ -65,7 +70,8 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
         }
         let container = try MsgpackUnkeyedDecodingContainer(
             codingPath: codingPath, userInfo: userInfo,
-            msgpackValue: messagepackType)
+            msgpackValue: messagepackType
+        )
         return container
     }
 
@@ -75,7 +81,8 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
         }
         let container = try MsgpackSingleValueDecodingContainer(
             codingPath: codingPath, userInfo: userInfo,
-            msgpackValue: messagepackType)
+            msgpackValue: messagepackType
+        )
         return container
     }
 
@@ -119,7 +126,8 @@ KeyedDecodingContainerProtocol, MsgpackElementLoader {
                     codingPath: codingPath,
                     debugDescription:
                     "Expected to decode \([String: Any].self) but found \(data.typeDescription) instead."
-                ))
+                )
+            )
 
         }
     }
@@ -139,7 +147,8 @@ KeyedDecodingContainerProtocol, MsgpackElementLoader {
     where T: Decodable {
         let v = try getMsgpackElement(key)
         let result = try v.decode(
-            type: value, codingPath: subCodingPath(key: key))
+            type: value, codingPath: subCodingPath(key: key)
+        )
         guard let result = result else {
             let decoder = try initDecoder(key: key, value: v)
             return try T.init(from: decoder)
@@ -184,7 +193,9 @@ KeyedDecodingContainerProtocol, MsgpackElementLoader {
                 key,
                 .init(
                     codingPath: subCodingPath(key: key),
-                    debugDescription: "No value associated with key \(key)."))
+                    debugDescription: "No value associated with key \(key)."
+                )
+            )
         }
         return v
     }
@@ -192,7 +203,8 @@ KeyedDecodingContainerProtocol, MsgpackElementLoader {
     private func initDecoder(key: CodingKey, value: MsgpackElement) throws
     -> MsgpackDecoder {
         let decoder = MsgpackDecoder(
-            codingPath: subCodingPath(key: key), userInfo: self.userInfo)
+            codingPath: subCodingPath(key: key), userInfo: self.userInfo
+        )
         try decoder.loadMsgpackElement(from: value)
         return decoder
     }
@@ -235,7 +247,8 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
                     codingPath: codingPath,
                     debugDescription:
                     "Expected to decode \([Any].self) but found \(data.typeDescription) instead."
-                ))
+                )
+            )
         }
     }
 
@@ -250,7 +263,8 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
         let msgpackElement = try getMsgpackElement(T.self)
         guard
             let result = try msgpackElement.decode(
-                type: value, codingPath: subCodingPath())
+                type: value, codingPath: subCodingPath()
+            )
         else {
             let decoder = try initDecoder(value: msgpackElement)
             currentIndex += 1
@@ -289,14 +303,17 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
                 targetType,
                 .init(
                     codingPath: subCodingPath(),
-                    debugDescription: "Unkeyed container is at end."))
+                    debugDescription: "Unkeyed container is at end."
+                )
+            )
         }
         return holder[currentIndex]
     }
 
     private func initDecoder(value: MsgpackElement) throws -> MsgpackDecoder {
         let decoder = MsgpackDecoder(
-            codingPath: subCodingPath(), userInfo: self.userInfo)
+            codingPath: subCodingPath(), userInfo: self.userInfo
+        )
         try decoder.loadMsgpackElement(from: value)
         return decoder
     }
@@ -343,7 +360,8 @@ MsgpackElementLoader {
 
     private func initDecoder(value: MsgpackElement) throws -> MsgpackDecoder {
         let decoder = MsgpackDecoder(
-            codingPath: codingPath, userInfo: self.userInfo)
+            codingPath: codingPath, userInfo: self.userInfo
+        )
         try decoder.loadMsgpackElement(from: value)
         return decoder
     }
@@ -717,14 +735,18 @@ extension MsgpackElement {
                 T.self,
                 .init(
                     codingPath: codingPath,
-                    debugDescription: "Can't convert \(number) to \(T.self)"))
+                    debugDescription: "Can't convert \(number) to \(T.self)"
+                )
+            )
         } catch MsgpackDecodingError.decodeTypeNotMatch {
             throw DecodingError.typeMismatch(
                 T.self,
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                    "Can't convert \(self.typeDescription) to \(T.self)"))
+                    "Can't convert \(self.typeDescription) to \(T.self)"
+                )
+            )
         }
     }
 
@@ -879,7 +901,8 @@ extension MsgpackTimestamp: Decodable {
                     codingPath: decoder.codingPath,
                     debugDescription:
                     "The extension type is not -1 when decoding \(MsgpackTimestamp.self)"
-                ))
+                )
+            )
         }
         let extData = try decoder.getMsgpackExtData()
         switch extData.count {

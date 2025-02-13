@@ -22,7 +22,8 @@ class MsgpackEncoder: Encoder, MsgpackElementConvertable {
     where Key: CodingKey {
         guard let container = self.msgpack else {
             let container = MsgpackKeyedEncodingContainer<Key>(
-                codingPath: codingPath, userInfo: userInfo)
+                codingPath: codingPath, userInfo: userInfo
+            )
             self.msgpack = container
             return KeyedEncodingContainer(container)
         }
@@ -37,7 +38,8 @@ class MsgpackEncoder: Encoder, MsgpackElementConvertable {
     func unkeyedContainer() -> any UnkeyedEncodingContainer {
         guard let container = self.msgpack else {
             let container = MsgpackUnkeyedEncodingContainer(
-                codingPath: codingPath, userInfo: userInfo)
+                codingPath: codingPath, userInfo: userInfo
+            )
             self.msgpack = container
             return container
         }
@@ -49,7 +51,8 @@ class MsgpackEncoder: Encoder, MsgpackElementConvertable {
     func singleValueContainer() -> any SingleValueEncodingContainer {
         guard let container = self.msgpack else {
             let container = MsgpackSingleValueEncodingContainer(
-                codingPath: codingPath, userInfo: userInfo)
+                codingPath: codingPath, userInfo: userInfo
+            )
             self.msgpack = container
             return container
         }
@@ -70,7 +73,8 @@ class MsgpackEncoder: Encoder, MsgpackElementConvertable {
                     codingPath: codingPath,
                     debugDescription:
                     "Top-level \(String(describing: T.self)) did not encode any values."
-                ))
+                )
+            )
         }
         self.msgpack = msgpackElement
         return try msgpackElement.marshall()
@@ -103,7 +107,8 @@ class MsgpackKeyedEncodingContainer<Key: CodingKey>:
     func switchKey<NewKey: CodingKey>(newKey: NewKey.Type)
     -> MsgpackKeyedEncodingContainer<NewKey> {
         let container = MsgpackKeyedEncodingContainer<NewKey>(
-            codingPath: codingPath, userInfo: userInfo)
+            codingPath: codingPath, userInfo: userInfo
+        )
         container.holder = self.holder
         return container
     }
@@ -145,7 +150,8 @@ class MsgpackKeyedEncodingContainer<Key: CodingKey>:
         var codingPath = self.codingPath
         codingPath.append(key)
         let encoder = MsgpackEncoder(
-            codingPath: codingPath, userInfo: self.userInfo)
+            codingPath: codingPath, userInfo: self.userInfo
+        )
         holder[key.stringValue] = encoder
         return encoder
     }
@@ -199,7 +205,8 @@ MsgpackElementConvertable {
         var codingPath = self.codingPath
         codingPath.append(MsgpackCodingKey(intValue: holder.count))
         let encoder = MsgpackEncoder(
-            codingPath: codingPath, userInfo: self.userInfo)
+            codingPath: codingPath, userInfo: self.userInfo
+        )
         holder.append(encoder)
         return encoder
     }
@@ -230,7 +237,8 @@ MsgpackElementConvertable {
     func encode<T>(_ value: T) throws where T: Encodable {
         guard let msgpackElement = MsgpackElement(value) else {
             let encoder = MsgpackEncoder(
-                codingPath: codingPath, userInfo: self.userInfo)
+                codingPath: codingPath, userInfo: self.userInfo
+            )
             try value.encode(to: encoder)
             self.holder = encoder
             return
@@ -371,14 +379,16 @@ extension MsgpackElement: MsgpackElementConvertable {
         var float32BigEdianbits = v.bitPattern.bigEndian
         return [0xca]
             + Data(
-                bytes: &float32BigEdianbits, count: MemoryLayout<Float32>.size)
+                bytes: &float32BigEdianbits, count: MemoryLayout<Float32>.size
+            )
     }
 
     private static func encodeFloat64(_ v: Float64) -> Data {
         var float64BigEdianbits = v.bitPattern.bigEndian
         return [0xcb]
             + Data(
-                bytes: &float64BigEdianbits, count: MemoryLayout<Float64>.size)
+                bytes: &float64BigEdianbits, count: MemoryLayout<Float64>.size
+            )
     }
 
     private static func encodeString(_ v: String) throws -> Data {
@@ -524,13 +534,15 @@ extension MsgpackElement: MsgpackElementConvertable {
         if length <= UInt16.max {
             var uint16 = UInt16(length).bigEndian
             let uint16Data = Data(
-                bytes: &uint16, count: MemoryLayout<UInt16>.size)
+                bytes: &uint16, count: MemoryLayout<UInt16>.size
+            )
             return [0xc8] + uint16Data + typeData + data
         }
         if length <= UInt32.max {
             var uint32 = UInt32(length).bigEndian
             let uint32Data = Data(
-                bytes: &uint32, count: MemoryLayout<UInt32>.size)
+                bytes: &uint32, count: MemoryLayout<UInt32>.size
+            )
             return [0xc9] + uint32Data + typeData + data
         }
         throw MsgpackEncodingError.extensionTooLarge
@@ -556,7 +568,8 @@ extension MsgpackTimestamp: Encodable {
             var nanoSecondsUInt32 = UInt32(nanoseconds).bigEndian
             data =
                 Data(
-                    bytes: &nanoSecondsUInt32, count: MemoryLayout<UInt32>.size)
+                    bytes: &nanoSecondsUInt32, count: MemoryLayout<UInt32>.size
+                )
                 + Data(bytes: &secondsInt64, count: MemoryLayout<Int64>.size)
         }
         return try encoder.encodeMsgpackExt(extType: -1, extData: data)

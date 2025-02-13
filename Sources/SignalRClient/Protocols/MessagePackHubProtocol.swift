@@ -21,7 +21,8 @@ final class MessagePackHubProtocol: HubProtocol {
         for message in messages {
             guard
                 let hubMessage = try parseMessage(
-                    message: message, binder: binder)
+                    message: message, binder: binder
+                )
             else {
                 continue
             }
@@ -134,7 +135,8 @@ final class MessagePackHubProtocol: HubProtocol {
                 InvocationMessage(
                     target: target, arguments: AnyEncodableArray(arguments),
                     streamIds: [],
-                    headers: headers, invocationId: invocationId)
+                    headers: headers, invocationId: invocationId
+                )
 
         case MessageType.streamItem:
             guard container.count! >= 4 else {
@@ -152,7 +154,8 @@ final class MessagePackHubProtocol: HubProtocol {
             let item = try container.decode(streamItemType)
             return StreamItemMessage(
                 invocationId: invocationId, item: AnyEncodable(item),
-                headers: headers)
+                headers: headers
+            )
 
         case MessageType.completion:
             guard container.count! >= 4 else {
@@ -193,7 +196,8 @@ final class MessagePackHubProtocol: HubProtocol {
             }
             return CompletionMessage(
                 invocationId: invocationId, error: error,
-                result: AnyEncodable(result), headers: headers)
+                result: AnyEncodable(result), headers: headers
+            )
 
         case MessageType.cancelInvocation:
             guard container.count! >= 3 else {
@@ -204,7 +208,8 @@ final class MessagePackHubProtocol: HubProtocol {
             let invocationId = try container.decode(String?.self)
             return CancelInvocationMessage(
                 invocationId: invocationId,
-                headers: headers)
+                headers: headers
+            )
 
         case MessageType.ping:
             return PingMessage()

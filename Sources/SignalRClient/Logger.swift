@@ -10,7 +10,8 @@ public enum LogLevel: Int, Sendable {
 public protocol LogHandler: Sendable {
     func log(
         logLevel: LogLevel, message: LogMessage, file: String, function: String,
-        line: UInt)
+        line: UInt
+    )
 }
 
 // The current functionality is similar to String. It could be extended in the future.
@@ -46,7 +47,8 @@ struct Logger: Sendable {
         }
         logHandler.log(
             logLevel: level, message: message, file: file,
-            function: function, line: line)
+            function: function, line: line
+        )
     }
 }
 
@@ -55,7 +57,8 @@ struct Logger: Sendable {
         var logger: os.Logger
         init() {
             self.logger = os.Logger(
-                subsystem: "com.microsoft.signalr.client", category: "")
+                subsystem: "com.microsoft.signalr.client", category: ""
+            )
         }
 
         public func log(

@@ -25,7 +25,8 @@ final class MockLogHandler: LogHandler, @unchecked Sendable {
         }
         innerLogHandler?.log(
             logLevel: logLevel, message: message, file: file,
-            function: function, line: line)
+            function: function, line: line
+        )
     }
 
 }
@@ -60,7 +61,8 @@ extension MockLogHandler {
                 if log.contains(message) {
                     XCTFail(
                         "Unexpected Log found: \"\(message)\"", file: file,
-                        line: line)
+                        line: line
+                    )
                 }
             }
         }

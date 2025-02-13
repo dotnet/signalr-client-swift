@@ -44,7 +44,8 @@ extension HttpRequest {
         self.init(
             method: method, url: url, content: content,
             responseType: responseType, headers: headers,
-            timeout: timeout)
+            timeout: timeout
+        )
         if includeUserAgent {
             self.headers["User-Agent"] = Utils.getUserAgent()
         }
@@ -64,7 +65,8 @@ extension Data {
         case .text:
             guard
                 let message = String(
-                    data: self, encoding: .utf8)
+                    data: self, encoding: .utf8
+                )
             else {
                 throw SignalRError.invalidTextMessageEncoding
             }

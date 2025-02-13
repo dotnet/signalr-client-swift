@@ -80,11 +80,13 @@ actor DefaultHttpClient: HttpClient {
             if let urlError = error as? URLError,
                urlError.code == URLError.timedOut {
                 logger.log(
-                    level: .warning, message: "Timeout from HTTP request.")
+                    level: .warning, message: "Timeout from HTTP request."
+                )
                 throw SignalRError.httpTimeoutError
             }
             logger.log(
-                level: .warning, message: "Error from HTTP request: \(error)")
+                level: .warning, message: "Error from HTTP request: \(error)"
+            )
             throw error
         }
     }
@@ -164,11 +166,13 @@ extension HttpRequest {
         case .data(let data):
             urlRequest.httpBody = data
             urlRequest.setValue(
-                "application/octet-stream", forHTTPHeaderField: "Content-Type")
+                "application/octet-stream", forHTTPHeaderField: "Content-Type"
+            )
         case .string(let strData):
             urlRequest.httpBody = strData.data(using: .utf8)
             urlRequest.setValue(
-                "text/plain;charset=UTF-8", forHTTPHeaderField: "Content-Type")
+                "text/plain;charset=UTF-8", forHTTPHeaderField: "Content-Type"
+            )
         case nil:
             break
         }

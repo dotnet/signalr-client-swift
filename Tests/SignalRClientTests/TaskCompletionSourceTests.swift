@@ -42,7 +42,8 @@ class TaskCompletionSourceTests: XCTestCase {
             _ = try await tcs.task()
         } catch {
             XCTAssertEqual(
-                error as? SignalRError, SignalRError.noHandshakeMessageReceived)
+                error as? SignalRError, SignalRError.noHandshakeMessageReceived
+            )
         }
         let elapsed = Date().timeIntervalSince(start)
         XCTAssertLessThan(abs(elapsed - 1), 0.5)
