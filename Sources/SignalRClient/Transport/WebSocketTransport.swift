@@ -129,7 +129,7 @@ actor WebSocketTransport: Transport {
 
                 // wait for startTcs to be completed before returning from connect
                 // this is to ensure that the connection is truely established
-                try await openTcs.task();
+                try await openTcs.task()
             }
 
             func send(_ data: StringOrData) async throws {
