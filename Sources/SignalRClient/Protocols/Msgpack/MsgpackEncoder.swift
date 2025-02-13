@@ -86,8 +86,7 @@ class MsgpackEncoder: Encoder, MsgpackElementConvertable {
 
 class MsgpackKeyedEncodingContainer<Key: CodingKey>:
     KeyedEncodingContainerProtocol, MsgpackElementConvertable,
-    MsgpackSwitchKeyProtocol
-{
+    MsgpackSwitchKeyProtocol {
     private var holder: [String: MsgpackElementConvertable] = [:]
     private var userInfo: [CodingUserInfoKey: Any]
     var codingPath: [any CodingKey]
@@ -102,8 +101,7 @@ class MsgpackKeyedEncodingContainer<Key: CodingKey>:
     }
 
     func switchKey<NewKey: CodingKey>(newKey: NewKey.Type)
-        -> MsgpackKeyedEncodingContainer<NewKey>
-    {
+    -> MsgpackKeyedEncodingContainer<NewKey> {
         let container = MsgpackKeyedEncodingContainer<NewKey>(
             codingPath: codingPath, userInfo: userInfo)
         container.holder = self.holder
@@ -130,8 +128,7 @@ class MsgpackKeyedEncodingContainer<Key: CodingKey>:
         return encoder.container(keyedBy: keyType)
     }
 
-    func nestedUnkeyedContainer(forKey key: Key) -> any UnkeyedEncodingContainer
-    {
+    func nestedUnkeyedContainer(forKey key: Key) -> any UnkeyedEncodingContainer {
         let encoder = initEncoder(key: key)
         return encoder.unkeyedContainer()
     }
@@ -155,8 +152,7 @@ class MsgpackKeyedEncodingContainer<Key: CodingKey>:
 }
 
 class MsgpackUnkeyedEncodingContainer: UnkeyedEncodingContainer,
-    MsgpackElementConvertable
-{
+MsgpackElementConvertable {
     private var holder: [MsgpackElementConvertable] = []
     private var userInfo: [CodingUserInfoKey: Any]
     var codingPath: [any CodingKey]
@@ -185,8 +181,7 @@ class MsgpackUnkeyedEncodingContainer: UnkeyedEncodingContainer,
     }
 
     func nestedContainer<NestedKey>(keyedBy keyType: NestedKey.Type)
-        -> KeyedEncodingContainer<NestedKey> where NestedKey: CodingKey
-    {
+    -> KeyedEncodingContainer<NestedKey> where NestedKey: CodingKey {
         let encoder = initEncoder()
         return KeyedEncodingContainer(encoder.container(keyedBy: keyType))
     }
@@ -211,8 +206,7 @@ class MsgpackUnkeyedEncodingContainer: UnkeyedEncodingContainer,
 }
 
 class MsgpackSingleValueEncodingContainer: SingleValueEncodingContainer,
-    MsgpackElementConvertable
-{
+MsgpackElementConvertable {
     private var holder: MsgpackElementConvertable?
     private var userInfo: [CodingUserInfoKey: Any]
     var codingPath: [any CodingKey]

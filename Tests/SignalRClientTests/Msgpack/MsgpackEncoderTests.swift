@@ -212,8 +212,7 @@ class MsgpackEncoderTests: XCTestCase {
     }
 
     // Used for debugging
-    func testAgainstExpected(v: Encodable, expected: Data, result: Data) throws
-    {
+    func testAgainstExpected(v: Encodable, expected: Data, result: Data) throws {
         if expected != result {
             print(expected.hexEncodedString())
             print(result.hexEncodedString())

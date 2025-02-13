@@ -51,8 +51,7 @@ class MessagePackHubProtocolTests: XCTestCase {
             message: StreamInvocationMessage(
                 invocationId: "xyz", target: "method",
                 arguments: AnyEncodableArray([42]), streamIds: [],
-                headers: [:]))
-        {
+                headers: [:])) {
         case .data(let d):
             XCTAssertEqual(d, try BinaryMessageFormat.write(data))
         default:

@@ -49,8 +49,7 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
     }
 
     func container<Key>(keyedBy type: Key.Type) throws
-        -> KeyedDecodingContainer<Key> where Key: CodingKey
-    {
+    -> KeyedDecodingContainer<Key> where Key: CodingKey {
         guard let messagepackType = messagepackType else {
             throw MsgpackDecodingError.decoderNotInitialized
         }
@@ -95,8 +94,7 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
 }
 
 class MsgpackKeyedDecodingContainer<Key: CodingKey>:
-    KeyedDecodingContainerProtocol, MsgpackElementLoader
-{
+KeyedDecodingContainerProtocol, MsgpackElementLoader {
     private var holder: [String: MsgpackElement] = [:]
     var codingPath: [any CodingKey]
     var userInfo: [CodingUserInfoKey: Any]
@@ -159,8 +157,7 @@ class MsgpackKeyedDecodingContainer<Key: CodingKey>:
     }
 
     func nestedUnkeyedContainer(forKey key: Key) throws
-        -> any UnkeyedDecodingContainer
-    {
+    -> any UnkeyedDecodingContainer {
         let v = try getMsgpackElement(key)
         let decoder = try initDecoder(key: key, value: v)
         let container = try decoder.unkeyedContainer()
@@ -193,8 +190,7 @@ class MsgpackKeyedDecodingContainer<Key: CodingKey>:
     }
 
     private func initDecoder(key: CodingKey, value: MsgpackElement) throws
-        -> MsgpackDecoder
-    {
+    -> MsgpackDecoder {
         let decoder = MsgpackDecoder(
             codingPath: subCodingPath(key: key), userInfo: self.userInfo)
         try decoder.loadMsgpackElement(from: value)
@@ -265,8 +261,7 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
     }
 
     func nestedContainer<NestedKey>(keyedBy keyType: NestedKey.Type) throws
-        -> KeyedDecodingContainer<NestedKey> where NestedKey: CodingKey
-    {
+    -> KeyedDecodingContainer<NestedKey> where NestedKey: CodingKey {
         let msgpackElement = try getMsgpackElement(
             KeyedDecodingContainer<NestedKey>.self)
         let decoder = try initDecoder(value: msgpackElement)
@@ -314,8 +309,7 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
 }
 
 class MsgpackSingleValueDecodingContainer: SingleValueDecodingContainer,
-    MsgpackElementLoader
-{
+MsgpackElementLoader {
     private var holder: MsgpackElement = .null
     var codingPath: [any CodingKey]
     var userInfo: [CodingUserInfoKey: Any]
@@ -368,16 +362,13 @@ extension MsgpackElement {
         if first <= 0x7f || first >= 0xe0 || (first >= 0xcc && first <= 0xd3) {
             return try parseNumber(data: data)
         }
-        if (first >= 0xa0 && first <= 0xbf) || (first >= 0xd9 && first <= 0xdb)
-        {
+        if (first >= 0xa0 && first <= 0xbf) || (first >= 0xd9 && first <= 0xdb) {
             return try parseString(data: data)
         }
-        if (first >= 0x80 && first <= 0x8f) || (first >= 0xde && first <= 0xdf)
-        {
+        if (first >= 0x80 && first <= 0x8f) || (first >= 0xde && first <= 0xdf) {
             return try parseMap(data: data)
         }
-        if (first >= 0x90 && first <= 0x9f) || (first >= 0xdc && first <= 0xdd)
-        {
+        if (first >= 0x90 && first <= 0x9f) || (first >= 0xdc && first <= 0xdd) {
             return try parseArray(data: data)
         }
         if first >= 0xc4 && first <= 0xc6 {
@@ -612,8 +603,7 @@ extension MsgpackElement {
         return (MsgpackElement.array(array), remaining)
     }
 
-    private static func parseExtension(data: Data) throws -> (MsgpackElement, Data)
-    {
+    private static func parseExtension(data: Data) throws -> (MsgpackElement, Data) {
         try assertLength(data: data, length: 1)
         let first = data[0]
         var remaining = data.subdata(in: 1 ..< data.count)
@@ -807,8 +797,7 @@ extension MsgpackElement {
         return (uint8, remaining)
     }
 
-    fileprivate static func parseRawUInt16(data: Data) throws -> (UInt16, Data)
-    {
+    fileprivate static func parseRawUInt16(data: Data) throws -> (UInt16, Data) {
         try MsgpackElement.assertLength(data: data, length: 2)
         let uint16Data = data[..<2]
         let uint16 = uint16Data.withUnsafeBytes { pointer in
@@ -818,8 +807,7 @@ extension MsgpackElement {
         return (uint16, remaining)
     }
 
-    fileprivate static func parseRawUInt32(data: Data) throws -> (UInt32, Data)
-    {
+    fileprivate static func parseRawUInt32(data: Data) throws -> (UInt32, Data) {
         try MsgpackElement.assertLength(data: data, length: 4)
         let uint32Data = data[..<4]
         let uint32 = uint32Data.withUnsafeBytes { pointer in
@@ -829,8 +817,7 @@ extension MsgpackElement {
         return (uint32, remaining)
     }
 
-    fileprivate static func parseRawUInt64(data: Data) throws -> (UInt64, Data)
-    {
+    fileprivate static func parseRawUInt64(data: Data) throws -> (UInt64, Data) {
         try MsgpackElement.assertLength(data: data, length: 8)
         let uint64Data = data[..<8]
         let uint64 = uint64Data.withUnsafeBytes { pointer in

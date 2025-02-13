@@ -6,8 +6,7 @@ final class MessagePackHubProtocol: HubProtocol {
     let transferFormat: TransferFormat = .binary
 
     func parseMessages(input: StringOrData, binder: any InvocationBinder) throws
-        -> [any HubMessage]
-    {
+    -> [any HubMessage] {
         var data: Data
         switch input {
         case .string(_):
@@ -98,8 +97,7 @@ final class MessagePackHubProtocol: HubProtocol {
     }
 
     func parseMessage(message: Data, binder: any InvocationBinder)
-        throws -> HubMessage?
-    {
+    throws -> HubMessage? {
         let (msgpackElement, _) = try MsgpackElement.parse(data: message)
         let decoder = MsgpackDecoder()
         try decoder.loadMsgpackElement(from: msgpackElement)

@@ -109,8 +109,7 @@ actor LongPollingTransport: Transport {
                     )
                 } else {
                     if let err = error as? SignalRError,
-                       err == SignalRError.httpTimeoutError
-                    {
+                       err == SignalRError.httpTimeoutError {
                         // Ignore timeouts and reissue the poll.
                         logger.log(
                             level: .debug,

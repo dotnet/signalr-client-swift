@@ -59,8 +59,7 @@ extension HttpRequest {
 
 extension Data {
     func convertToStringOrData(transferFormat: TransferFormat) throws
-        -> StringOrData
-    {
+    -> StringOrData {
         switch transferFormat {
         case .text:
             guard

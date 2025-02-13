@@ -15,8 +15,7 @@ public protocol LogHandler: Sendable {
 
 // The current functionality is similar to String. It could be extended in the future.
 public struct LogMessage: ExpressibleByStringInterpolation,
-    CustomStringConvertible
-{
+CustomStringConvertible {
     private var value: String
 
     public init(stringLiteral value: String) {
