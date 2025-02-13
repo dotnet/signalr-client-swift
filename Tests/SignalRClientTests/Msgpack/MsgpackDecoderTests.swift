@@ -154,7 +154,7 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeExt() throws {
         let data: [Int] = [
             1, 2, 4, 8, 16, 0, 1 << 8 - 1, 1 << 8, 1 << 16 - 1, 1 << 16,
-            Int(UInt32.max),
+            Int(Int32.max),
         ]
         for len in data {
             let extData = Data(repeating: 1, count: len)

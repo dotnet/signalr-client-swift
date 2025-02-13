@@ -815,7 +815,7 @@ extension MsgpackElement {
         try MsgpackElement.assertLength(data: data, length: 2)
         let uint16Data = data[..<2]
         let uint16 = uint16Data.withUnsafeBytes { pointer in
-            return pointer.load(as: UInt16.self)
+            return pointer.loadUnaligned(as: UInt16.self)
         }.bigEndian
         let remaining = data.subdata(in: 2..<data.count)
         return (uint16, remaining)
@@ -826,7 +826,7 @@ extension MsgpackElement {
         try MsgpackElement.assertLength(data: data, length: 4)
         let uint32Data = data[..<4]
         let uint32 = uint32Data.withUnsafeBytes { pointer in
-            return pointer.load(as: UInt32.self)
+            return pointer.loadUnaligned(as: UInt32.self)
         }.bigEndian
         let remaining = data.subdata(in: 4..<data.count)
         return (uint32, remaining)
@@ -837,7 +837,7 @@ extension MsgpackElement {
         try MsgpackElement.assertLength(data: data, length: 8)
         let uint64Data = data[..<8]
         let uint64 = uint64Data.withUnsafeBytes { pointer in
-            return pointer.load(as: UInt64.self)
+            return pointer.loadUnaligned(as: UInt64.self)
         }.bigEndian
         let remaining = data.subdata(in: 8..<data.count)
         return (uint64, remaining)
@@ -847,7 +847,7 @@ extension MsgpackElement {
         try MsgpackElement.assertLength(data: data, length: 1)
         let int8Data = data[..<1]
         let int8 = int8Data.withUnsafeBytes { pointer in
-            return pointer.load(as: Int8.self)
+            return pointer.loadUnaligned(as: Int8.self)
         }.bigEndian
         let remaining = data.subdata(in: 1..<data.count)
         return (int8, remaining)
@@ -857,7 +857,7 @@ extension MsgpackElement {
         try MsgpackElement.assertLength(data: data, length: 2)
         let int16Data = data[..<2]
         let int16 = int16Data.withUnsafeBytes { pointer in
-            return pointer.load(as: Int16.self)
+            return pointer.loadUnaligned(as: Int16.self)
         }.bigEndian
         let remaining = data.subdata(in: 2..<data.count)
         return (int16, remaining)
@@ -867,7 +867,7 @@ extension MsgpackElement {
         try MsgpackElement.assertLength(data: data, length: 4)
         let int32Data = data[..<4]
         let int32 = int32Data.withUnsafeBytes { pointer in
-            return pointer.load(as: Int32.self)
+            return pointer.loadUnaligned(as: Int32.self)
         }.bigEndian
         let remaining = data.subdata(in: 4..<data.count)
         return (int32, remaining)
@@ -877,7 +877,7 @@ extension MsgpackElement {
         try MsgpackElement.assertLength(data: data, length: 8)
         let int64Data = data[..<8]
         let int64 = int64Data.withUnsafeBytes { pointer in
-            return pointer.load(as: Int64.self)
+            return pointer.loadUnaligned(as: Int64.self)
         }.bigEndian
         let remaining = data.subdata(in: 8..<data.count)
         return (int64, remaining)
