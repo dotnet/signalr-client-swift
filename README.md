@@ -176,3 +176,7 @@ let connection = HubConnectionBuilder()
 | JSON Protocol                   |✅|
 | MessagePack Protocol            |✅|
 | Client Results                  |✅|
+
+# License
+
+.NET (including the runtime repo) is licensed under the MIT license.
