@@ -219,7 +219,7 @@ actor LongPollingTransport: Transport {
         logger.log(
             level: .debug,
             message:
-            "(LongPolling transport) Firing onclose event.\(closeError == nil ? "":" Error: \(closeError!)")"
+            "(LongPolling transport) Firing onclose event.\(closeError == nil ? "" : " Error: \(closeError!)")"
         )
         await onCloseHandler(self.closeError)
     }
@@ -231,6 +231,6 @@ extension HttpRequest {
             self.url.append("&")
         }
         self.url = self.url.components(separatedBy: "_=").first!.appending(
-            "_=\(Int64((Date().timeIntervalSince1970*1000)))")
+            "_=\(Int64((Date().timeIntervalSince1970 * 1000)))")
     }
 }

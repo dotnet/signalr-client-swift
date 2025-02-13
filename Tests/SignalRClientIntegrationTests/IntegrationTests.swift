@@ -57,13 +57,13 @@ class IntegrationTests: XCTestCase {
             let count = 10 // DefaultUrlSession has 5 connections
             var connections: [HubConnection] = []
             do {
-                for _ in 0..<count {
+                for _ in 0 ..< count {
                     let connection = HubConnectionBuilder()
                         .withUrl(url: url!, transport: transport)
                         .withHubProtocol(hubProtocol: hubProtocol)
                         .withLogLevel(logLevel: logLevel)
                         .build()
-                    try await whenTaskTimeout(connection.start,timeout:1)
+                    try await whenTaskTimeout(connection.start, timeout: 1)
                     connections.append(connection)
                 }
             } catch {
@@ -83,7 +83,7 @@ class IntegrationTests: XCTestCase {
             try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: true) }, timeout: 1)
             try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: [1, 2, 3]) }, timeout: 1)
             try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: ["key": "value"]) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: CustomClass(str: "Hello, World!", arr: [1, 2, 3]))} , timeout: 1)
+            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: CustomClass(str: "Hello, World!", arr: [1, 2, 3]))}, timeout: 1)
         }
     }
 

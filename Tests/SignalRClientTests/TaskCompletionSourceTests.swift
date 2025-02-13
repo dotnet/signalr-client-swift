@@ -79,7 +79,7 @@ class TaskCompletionSourceTests: XCTestCase {
         let total = 10000
         var tcss: [TaskCompletionSource<Void>] = []
         tcss.reserveCapacity(total)
-        for _ in 1...total {
+        for _ in 1 ... total {
             tcss.append(TaskCompletionSource<Void>())
         }
         let start = Date()

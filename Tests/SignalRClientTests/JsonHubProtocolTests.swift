@@ -425,7 +425,7 @@ final class JsonHubProtocolTests: XCTestCase {
     }
 
     func testWriteCancelInvocationMessage() throws {
-        let message = CancelInvocationMessage(invocationId: "cancel123",headers: ["key1": "value1", "key2": "value2"])
+        let message = CancelInvocationMessage(invocationId: "cancel123", headers: ["key1": "value1", "key2": "value2"])
 
         try verifyWriteMessage(message: message, expectedJson: """
         {"type":5,"invocationId":"cancel123","headers":{"key2":"value2","key1":"value1"}}
@@ -482,7 +482,7 @@ final class JsonHubProtocolTests: XCTestCase {
     }
 }
 
-class TestInvocationBinder : InvocationBinder, @unchecked Sendable {
+class TestInvocationBinder: InvocationBinder, @unchecked Sendable {
     private let binderTypes: [Any.Type]
 
     init(binderTypes: [Any.Type]) {

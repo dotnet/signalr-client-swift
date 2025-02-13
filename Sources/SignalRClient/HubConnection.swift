@@ -396,7 +396,7 @@ public actor HubConnection {
         guard let handler = invocationBinder.getHandler(methodName: message.target) else {
             logger.log(level: .warning, message: "No handler registered for method: \(message.target)")
             if let invocationId = message.invocationId {
-                logger.log(level:.warning, message: "No result given for method: \(message.target), and invocationId: \(invocationId)")
+                logger.log(level: .warning, message: "No result given for method: \(message.target), and invocationId: \(invocationId)")
                 let completionMessage = CompletionMessage(invocationId: invocationId, error: "No handler registered for method: \(message.target)", result: AnyEncodable(nil), headers: nil)
                 let data = try hubProtocol.writeMessage(message: completionMessage)
                 try await sendMessageInternal(data)
@@ -574,7 +574,7 @@ public actor HubConnection {
         }
     }
 
-    private struct DefaultInvocationBinder : InvocationBinder, @unchecked Sendable {
+    private struct DefaultInvocationBinder: InvocationBinder, @unchecked Sendable {
         private let lock = DispatchSemaphore(value: 1)
         private var subscriptionHandlers: [String: SubscriptionEntity] = [:]
         private var returnValueHandler: [String: Any.Type] = [:]

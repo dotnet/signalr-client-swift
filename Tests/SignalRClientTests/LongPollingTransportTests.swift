@@ -347,9 +347,9 @@ class LongPollingTransportTests: XCTestCase {
     func testHttpRequestAppendDate() async throws {
         var request = HttpRequest(method: .DELETE, url: "http://abc", content: .string(""), responseType: .binary, headers: nil, timeout: nil)
         request.appendDateInUrl()
-        XCTAssertEqual(request.url.components(separatedBy: "&").count,2)
+        XCTAssertEqual(request.url.components(separatedBy: "&").count, 2)
         request.appendDateInUrl()
-        XCTAssertEqual(request.url.components(separatedBy: "&").count,2)
+        XCTAssertEqual(request.url.components(separatedBy: "&").count, 2)
     }
 }
 

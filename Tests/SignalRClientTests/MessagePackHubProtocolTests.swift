@@ -122,7 +122,7 @@ class MessagePackHubProtocolTests: XCTestCase {
 //            XCTAssertEqual(d, try BinaryMessageFormat.write(data))
             // Encoded to resultKind = 3
             XCTAssertEqual(d, try BinaryMessageFormat.write(Data([
-                0x95, 0x03, 0x80, 0xa3, 0x78, 0x79, 0x7a, 0x03,0xc0
+                0x95, 0x03, 0x80, 0xa3, 0x78, 0x79, 0x7a, 0x03, 0xc0
             ])))
         default:
             XCTFail("Wrong encoded typed")

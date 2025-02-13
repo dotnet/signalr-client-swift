@@ -139,7 +139,7 @@ final class DefaultEventSourceAdaptor: EventSourceAdaptor, @unchecked Sendable {
                     self.logger.log(
                         level: .debug,
                         message:
-                        "(Event Source) \(connectFail ? "Failed to open.": "Disconnected.").\(statusCode == nil ? "" : " StatusCode: \(statusCode!).") \(err == nil ? "": " Error: \(err!).")"
+                        "(Event Source) \(connectFail ? "Failed to open." : "Disconnected.").\(statusCode == nil ? "" : " StatusCode: \(statusCode!).") \(err == nil ? "" : " Error: \(err!).")"
                     )
                     continuation.finish()
                     await self.close(err: err)

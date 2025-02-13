@@ -128,7 +128,7 @@ class MsgpackEncoderTests: XCTestCase {
         var map: [String: MsgpackElement] = [:]
         var result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result, Data([0x80]))
-        for i in 0..<1 << 4 - 1 {
+        for i in 0 ..< 1 << 4 - 1 {
             map[String(i)] = MsgpackElement.bool(true)
         }
         result = try MsgpackElement.map(map).marshall()
@@ -136,28 +136,28 @@ class MsgpackEncoderTests: XCTestCase {
         XCTAssertEqual(result[0], 0x8f)
 
         map.removeAll()
-        for i in 0..<1 << 4 {
+        for i in 0 ..< 1 << 4 {
             map[String(i)] = MsgpackElement.bool(true)
         }
         result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result.count, 57)
-        XCTAssertEqual(result[0...2], Data([0xde, 0x00, 0x10]))
+        XCTAssertEqual(result[0 ... 2], Data([0xde, 0x00, 0x10]))
 
         map.removeAll()
-        for i in 0..<1 << 16 - 1 {
+        for i in 0 ..< 1 << 16 - 1 {
             map[String(i)] = MsgpackElement.bool(true)
         }
         result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result.count, 447_638)
-        XCTAssertEqual(result[0...2], Data([0xde, 0xff, 0xff]))
+        XCTAssertEqual(result[0 ... 2], Data([0xde, 0xff, 0xff]))
 
         map.removeAll()
-        for i in 0..<1 << 16 {
+        for i in 0 ..< 1 << 16 {
             map[String(i)] = MsgpackElement.bool(true)
         }
         result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result.count, 447_647)
-        XCTAssertEqual(result[0...4], Data([0xdf, 0x00, 0x01, 0x00, 0x00]))
+        XCTAssertEqual(result[0 ... 4], Data([0xdf, 0x00, 0x01, 0x00, 0x00]))
     }
 
     func testEncodeArray() throws {

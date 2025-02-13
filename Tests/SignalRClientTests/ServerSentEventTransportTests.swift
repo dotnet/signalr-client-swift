@@ -17,7 +17,7 @@
             self.disconnect = disconnect
         }
     
-        func start(url: String, headers: [String : String]) async throws {
+        func start(url: String, headers: [String: String]) async throws {
             guard self.canConnect else {
                 throw SignalRError.eventSourceFailedToConnect
             }
@@ -57,7 +57,7 @@
             let eventSource = MockEventSourceAdaptor(canConnect: true, sendMessage: false, disconnect: false)
             options.eventSource = eventSource
             let sse = ServerSentEventTransport(
-                httpClient: client,accessToken: "", logger: logger, options: options)
+                httpClient: client, accessToken: "", logger: logger, options: options)
             try await sse.connect(url: "https://www.bing.com/signalr", transferFormat: .text)
             logHandler.verifyLogged("Connecting")
             logHandler.verifyLogged("connected")
@@ -71,7 +71,7 @@
             let eventSource = MockEventSourceAdaptor(canConnect: true, sendMessage: false, disconnect: false)
             options.eventSource = eventSource
             let sse = ServerSentEventTransport(
-                httpClient: client,accessToken: "", logger: logger, options: options)
+                httpClient: client, accessToken: "", logger: logger, options: options)
             await sse.SetEventSource(eventSource: eventSource)
             do {
                 try await sse.connect(url: "https://abc", transferFormat: .binary)
@@ -89,7 +89,7 @@
             let eventSource = MockEventSourceAdaptor(canConnect: false, sendMessage: false, disconnect: false)
             options.eventSource = eventSource
             let sse = ServerSentEventTransport(
-                httpClient: client,accessToken: "", logger: logger, options: options)
+                httpClient: client, accessToken: "", logger: logger, options: options)
             do {
                 try await sse.connect(url: "https://abc", transferFormat: .text)
                 XCTFail("SSE connect should fail")
@@ -106,7 +106,7 @@
             let eventSource = MockEventSourceAdaptor(canConnect: true, sendMessage: true, disconnect: false)
             options.eventSource = eventSource
             let sse = ServerSentEventTransport(
-                httpClient: client,accessToken: "", logger: logger, options: options)
+                httpClient: client, accessToken: "", logger: logger, options: options)
             let expectation = XCTestExpectation(description: "Message should be received")
             await sse.onReceive() { message in
                 switch message {
@@ -131,7 +131,7 @@
             let eventSource = MockEventSourceAdaptor(canConnect: true, sendMessage: false, disconnect: true)
             options.eventSource = eventSource
             let sse = ServerSentEventTransport(
-                httpClient: client,accessToken: "", logger: logger, options: options)
+                httpClient: client, accessToken: "", logger: logger, options: options)
             let expectation = XCTestExpectation(description: "SSE should be disconnected")
             await sse.onClose() { err in
                 let err = err as? SignalRError
@@ -151,7 +151,7 @@
             let logger = Logger(logLevel: .debug, logHandler: logHandler)
             let options = HttpConnectionOptions()
             let sse = ServerSentEventTransport(
-                httpClient: client,accessToken: "", logger: logger, options: options)
+                httpClient: client, accessToken: "", logger: logger, options: options)
             let eventSource = MockEventSourceAdaptor(canConnect: false, sendMessage: false, disconnect: false)
             await sse.SetEventSource(eventSource: eventSource)
             await sse.SetUrl(url: "http://abc")
@@ -172,7 +172,7 @@
         func testAsyncStream() async {
             let stream: AsyncStream<Int> = AsyncStream { continuition in
                 Task {
-                    for i in 0...99 {
+                    for i in 0 ... 99 {
                         try await Task.sleep(for: .microseconds(100))
                         continuition.yield(i)
                     }

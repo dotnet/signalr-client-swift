@@ -120,7 +120,7 @@ class MsgpackKeyedDecodingContainer<Key: CodingKey>:
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                    "Expected to decode \([String:Any].self) but found \(data.typeDescription) instead."
+                    "Expected to decode \([String: Any].self) but found \(data.typeDescription) instead."
                 ))
 
         }
@@ -388,15 +388,15 @@ extension MsgpackElement {
         }
         switch first {
         case 0xca:
-            return try parseFloat32(data: data.subdata(in: 1..<data.count))
+            return try parseFloat32(data: data.subdata(in: 1 ..< data.count))
         case 0xcb:
-            return try parseFloat64(data: data.subdata(in: 1..<data.count))
+            return try parseFloat64(data: data.subdata(in: 1 ..< data.count))
         case 0xc2:
-            return (MsgpackElement.bool(false), data.subdata(in: 1..<data.count))
+            return (MsgpackElement.bool(false), data.subdata(in: 1 ..< data.count))
         case 0xc3:
-            return (MsgpackElement.bool(true), data.subdata(in: 1..<data.count))
+            return (MsgpackElement.bool(true), data.subdata(in: 1 ..< data.count))
         case 0xc0:
-            return (MsgpackElement.null, data.subdata(in: 1..<data.count))
+            return (MsgpackElement.null, data.subdata(in: 1 ..< data.count))
         default:
             throw MsgpackDecodingError.decdoeWithUnexpectedMsgpackElement(first)
         }
@@ -405,7 +405,7 @@ extension MsgpackElement {
     private static func parseNumber(data: Data) throws -> (MsgpackElement, Data) {
         try assertLength(data: data, length: 1)
         let first = data[0]
-        let remaining = data.subdata(in: 1..<data.count)
+        let remaining = data.subdata(in: 1 ..< data.count)
         // Fixed positive int
         if first >= 0x00 && first <= 0x7f {
             let uint8 = UInt8(first)
@@ -468,7 +468,7 @@ extension MsgpackElement {
         try assertLength(data: data, length: 1)
         var length: Int = 0
         let first = data[0]
-        var remaining = data.subdata(in: 1..<data.count)
+        var remaining = data.subdata(in: 1 ..< data.count)
         if first >= 0xa0 && first <= 0xbf {
             length = Int(first & 0x1f)
         } else {
@@ -500,7 +500,7 @@ extension MsgpackElement {
         }
         return (
             MsgpackElement.string(str),
-            remaining.subdata(in: length..<remaining.count)
+            remaining.subdata(in: length ..< remaining.count)
         )
     }
 
@@ -508,7 +508,7 @@ extension MsgpackElement {
         try assertLength(data: data, length: 1)
         var length: Int = 0
         let first = data[0]
-        var remaining = data.subdata(in: 1..<data.count)
+        var remaining = data.subdata(in: 1 ..< data.count)
         switch first {
         case 0xc4: //bin8
             var uint8: UInt8
@@ -529,10 +529,10 @@ extension MsgpackElement {
             throw MsgpackDecodingError.decdoeWithUnexpectedMsgpackElement(first)
         }
         try assertLength(data: remaining, length: length)
-        let binary = remaining.subdata(in: 0..<length)
+        let binary = remaining.subdata(in: 0 ..< length)
         return (
             MsgpackElement.bin(binary),
-            remaining.subdata(in: length..<remaining.count)
+            remaining.subdata(in: length ..< remaining.count)
         )
     }
 
@@ -540,7 +540,7 @@ extension MsgpackElement {
         try assertLength(data: data, length: 1)
         var length: Int = 0
         let first = data[0]
-        var remaining = data.subdata(in: 1..<data.count)
+        var remaining = data.subdata(in: 1 ..< data.count)
         if first >= 0x80 && first <= 0x8f {
             length = Int(first & 0x0f)
         } else {
@@ -563,7 +563,7 @@ extension MsgpackElement {
         }
 
         var map: [String: MsgpackElement] = [:]
-        for _ in 0..<length {
+        for _ in 0 ..< length {
             var wrappedKey: MsgpackElement
             (wrappedKey, remaining) = try parseString(data: remaining)
             guard case .string(let key) = wrappedKey else {
@@ -580,7 +580,7 @@ extension MsgpackElement {
         try assertLength(data: data, length: 1)
         var length: Int = 0
         let first = data[0]
-        var remaining = data.subdata(in: 1..<data.count)
+        var remaining = data.subdata(in: 1 ..< data.count)
         if first >= 0x90 && first <= 0x9f {
             length = Int(first & 0x0f)
         } else {
@@ -604,7 +604,7 @@ extension MsgpackElement {
 
         var array: [MsgpackElement] = []
         array.reserveCapacity(length)
-        for _ in 0..<length {
+        for _ in 0 ..< length {
             var value: MsgpackElement
             (value, remaining) = try parse(data: remaining)
             array.append(value)
@@ -616,7 +616,7 @@ extension MsgpackElement {
     {
         try assertLength(data: data, length: 1)
         let first = data[0]
-        var remaining = data.subdata(in: 1..<data.count)
+        var remaining = data.subdata(in: 1 ..< data.count)
         var extType: Int8
         var extLength: Int
         switch first {
@@ -651,8 +651,8 @@ extension MsgpackElement {
 
         (extType, remaining) = try Self.parseRawInt8(data: remaining)
         try assertLength(data: remaining, length: extLength)
-        let extData = remaining.subdata(in: 0..<extLength)
-        remaining = remaining.subdata(in: extLength..<remaining.count)
+        let extData = remaining.subdata(in: 0 ..< extLength)
+        remaining = remaining.subdata(in: extLength ..< remaining.count)
 
         return (MsgpackElement.ext(extType, extData), remaining)
     }
@@ -803,7 +803,7 @@ extension MsgpackElement {
         let uint8 = uint8Data.withUnsafeBytes { pointer in
             return pointer.load(as: UInt8.self)
         }
-        let remaining = data.subdata(in: 1..<data.count)
+        let remaining = data.subdata(in: 1 ..< data.count)
         return (uint8, remaining)
     }
 
@@ -814,7 +814,7 @@ extension MsgpackElement {
         let uint16 = uint16Data.withUnsafeBytes { pointer in
             return pointer.load(as: UInt16.self)
         }.bigEndian
-        let remaining = data.subdata(in: 2..<data.count)
+        let remaining = data.subdata(in: 2 ..< data.count)
         return (uint16, remaining)
     }
 
@@ -825,7 +825,7 @@ extension MsgpackElement {
         let uint32 = uint32Data.withUnsafeBytes { pointer in
             return pointer.load(as: UInt32.self)
         }.bigEndian
-        let remaining = data.subdata(in: 4..<data.count)
+        let remaining = data.subdata(in: 4 ..< data.count)
         return (uint32, remaining)
     }
 
@@ -836,7 +836,7 @@ extension MsgpackElement {
         let uint64 = uint64Data.withUnsafeBytes { pointer in
             return pointer.load(as: UInt64.self)
         }.bigEndian
-        let remaining = data.subdata(in: 8..<data.count)
+        let remaining = data.subdata(in: 8 ..< data.count)
         return (uint64, remaining)
     }
 
@@ -846,7 +846,7 @@ extension MsgpackElement {
         let int8 = int8Data.withUnsafeBytes { pointer in
             return pointer.load(as: Int8.self)
         }.bigEndian
-        let remaining = data.subdata(in: 1..<data.count)
+        let remaining = data.subdata(in: 1 ..< data.count)
         return (int8, remaining)
     }
 
@@ -856,7 +856,7 @@ extension MsgpackElement {
         let int16 = int16Data.withUnsafeBytes { pointer in
             return pointer.load(as: Int16.self)
         }.bigEndian
-        let remaining = data.subdata(in: 2..<data.count)
+        let remaining = data.subdata(in: 2 ..< data.count)
         return (int16, remaining)
     }
 
@@ -866,7 +866,7 @@ extension MsgpackElement {
         let int32 = int32Data.withUnsafeBytes { pointer in
             return pointer.load(as: Int32.self)
         }.bigEndian
-        let remaining = data.subdata(in: 4..<data.count)
+        let remaining = data.subdata(in: 4 ..< data.count)
         return (int32, remaining)
     }
 
@@ -876,7 +876,7 @@ extension MsgpackElement {
         let int64 = int64Data.withUnsafeBytes { pointer in
             return pointer.load(as: Int64.self)
         }.bigEndian
-        let remaining = data.subdata(in: 8..<data.count)
+        let remaining = data.subdata(in: 8 ..< data.count)
         return (int64, remaining)
     }
 }

@@ -1,6 +1,6 @@
 /// An abstraction over the behavior of transports.
 /// This is designed to support the framework and not intended for use by applications.
-protocol Transport : Sendable {
+protocol Transport: Sendable {
     /// Connects to the specified URL with the given transfer format.
     /// - Parameters:
     ///   - url: The URL to connect to.

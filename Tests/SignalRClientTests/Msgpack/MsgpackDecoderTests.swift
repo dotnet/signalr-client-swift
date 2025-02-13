@@ -121,7 +121,7 @@ class MsgpackDecoderTests: XCTestCase {
         let data = [0, 1 << 4 - 1, 1 << 4, 1 << 16 - 1, 1 << 16]
         for i in data {
             var map: [String: MsgpackElement] = [:]
-            for i in 0..<i {
+            for i in 0 ..< i {
                 map[String(i)] = MsgpackElement.bool(true)
             }
             let msgpackElement = MsgpackElement.map(map)
@@ -137,7 +137,7 @@ class MsgpackDecoderTests: XCTestCase {
         for i in data {
             var array: [MsgpackElement] = []
             array.reserveCapacity(i)
-            for _ in 0..<i {
+            for _ in 0 ..< i {
                 array.append(MsgpackElement.bool(true))
             }
             let msgpackElement = MsgpackElement.array(array)

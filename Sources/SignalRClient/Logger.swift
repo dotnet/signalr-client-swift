@@ -65,7 +65,7 @@ struct Logger: Sendable {
         ) {
             logger.log(
                 level: logLevel.toOSLogType(),
-                "[\(Date().description(with: Locale.current), privacy: .public)] [\(String(describing:logLevel), privacy: .public)] [\(file.fileNameWithoutPathAndSuffix(), privacy: .public):\(function, privacy: .public):\(line,privacy: .public)] - \(message,privacy: .public)"
+                "[\(Date().description(with: Locale.current), privacy: .public)] [\(String(describing: logLevel), privacy: .public)] [\(file.fileNameWithoutPathAndSuffix(), privacy: .public):\(function, privacy: .public):\(line, privacy: .public)] - \(message, privacy: .public)"
             )
         }
     }
@@ -92,7 +92,7 @@ struct Logger: Sendable {
             line: UInt
         ) {
             print(
-                "[\(Date().description(with: Locale.current))] [\(String(describing:logLevel))] [\(file.fileNameWithoutPathAndSuffix()):\(function):\(line)] - \(message)"
+                "[\(Date().description(with: Locale.current))] [\(String(describing: logLevel))] [\(file.fileNameWithoutPathAndSuffix()):\(function):\(line)] - \(message)"
             )
         }
     }
