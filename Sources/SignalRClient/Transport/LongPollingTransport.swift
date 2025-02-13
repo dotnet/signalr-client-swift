@@ -227,7 +227,7 @@ actor LongPollingTransport: Transport {
 
 extension HttpRequest {
     mutating func appendDateInUrl() {
-        if self.url.last != Character("&"){
+        if self.url.last != Character("&") {
             self.url.append("&")
         }
         self.url = self.url.components(separatedBy: "_=").first!.appending(

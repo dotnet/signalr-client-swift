@@ -176,7 +176,7 @@ class MessagePackHubProtocolTests: XCTestCase {
         do {
             try msgpack.parseMessage(message: data, binder: binder)
             XCTFail("Should throw when paring not decodable")
-        }catch SignalRError.invalidData(let errmsg){
+        } catch SignalRError.invalidData(let errmsg) {
             XCTAssertTrue(errmsg.contains("Decodable"))
         }
     }

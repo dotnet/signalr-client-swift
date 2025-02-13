@@ -13,13 +13,13 @@ public class HubConnectionBuilder {
 
     public init() {}
 
-    public func withLogLevel(logLevel: LogLevel) -> HubConnectionBuilder{
+    public func withLogLevel(logLevel: LogLevel) -> HubConnectionBuilder {
         self.logLevel = logLevel
         self.httpConnectionOptions.logLevel = logLevel
         return self
     }
 
-    public func withLogHandler(logHandler: LogHandler) -> HubConnectionBuilder{
+    public func withLogHandler(logHandler: LogHandler) -> HubConnectionBuilder {
         self.logHandler = logHandler
         return self
     }

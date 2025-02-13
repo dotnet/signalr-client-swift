@@ -131,7 +131,7 @@ final class DefaultEventSourceAdaptor: EventSourceAdaptor, @unchecked Sendable {
             }
         }
 
-        messageStream = AsyncStream{ continuation in
+        messageStream = AsyncStream { continuation in
             eventSource.onComplete { statusCode, err in
                 Task {
                     let connectFail = await openTcs.trySetResult(

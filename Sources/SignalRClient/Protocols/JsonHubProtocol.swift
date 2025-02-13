@@ -184,7 +184,7 @@ struct JsonHubProtocol: HubProtocol {
 
     private func DecodeCompletionResult(_ jsonObject: [String: Any], type: Any.Type?) throws -> AnyEncodable {
         let result = jsonObject["result"]
-        if isNil(result) || type == nil{
+        if isNil(result) || type == nil {
             return AnyEncodable(nil)
         }
 

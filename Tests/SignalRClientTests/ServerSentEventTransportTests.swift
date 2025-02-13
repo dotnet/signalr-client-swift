@@ -3,7 +3,7 @@
 
     @testable import SignalRClient
 
-    actor MockEventSourceAdaptor: EventSourceAdaptor{
+    actor MockEventSourceAdaptor: EventSourceAdaptor {
         let canConnect: Bool
         let sendMessage: Bool
         let disconnect: Bool
@@ -11,7 +11,7 @@
         var messageHandler: ((String) async -> Void)?
         var closeHandler: (((any Error)?) async -> Void)?
 
-        init(canConnect: Bool, sendMessage: Bool, disconnect: Bool){
+        init(canConnect: Bool, sendMessage: Bool, disconnect: Bool) {
             self.canConnect = canConnect
             self.sendMessage = sendMessage
             self.disconnect = disconnect
@@ -21,7 +21,7 @@
             guard self.canConnect else {
                 throw SignalRError.eventSourceFailedToConnect
             }
-            Task{
+            Task {
                 try await Task.sleep(for: .milliseconds(100))
                 if sendMessage {
                     await self.messageHandler?("123")
@@ -49,7 +49,7 @@
 
     class ServerSentEventTransportTests: XCTestCase {
         // MARK: connect
-        func testConnectSucceed() async throws{
+        func testConnectSucceed() async throws {
             let client = MockHttpClient()
             let logHandler = MockLogHandler()
             let logger = Logger(logLevel: .debug, logHandler: logHandler)
@@ -63,7 +63,7 @@
             logHandler.verifyLogged("connected")
         }
     
-        func testConnectWrongTranferformat() async throws{
+        func testConnectWrongTranferformat() async throws {
             let client = MockHttpClient()
             let logHandler = MockLogHandler()
             let logger = Logger(logLevel: .debug, logHandler: logHandler)
@@ -73,15 +73,15 @@
             let sse = ServerSentEventTransport(
                 httpClient: client,accessToken: "", logger: logger, options: options)
             await sse.SetEventSource(eventSource: eventSource)
-            do{
+            do {
                 try await sse.connect(url: "https://abc", transferFormat: .binary)
                 XCTFail("SSE connect should fail")
-            }catch SignalRError.eventSourceInvalidTransferFormat {
+            } catch SignalRError.eventSourceInvalidTransferFormat {
             }
             logHandler.verifyNotLogged("connected")
         }
     
-        func testConnectFail() async throws{
+        func testConnectFail() async throws {
             let client = MockHttpClient()
             let logHandler = MockLogHandler()
             let logger = Logger(logLevel: .debug, logHandler: logHandler)
@@ -90,15 +90,15 @@
             options.eventSource = eventSource
             let sse = ServerSentEventTransport(
                 httpClient: client,accessToken: "", logger: logger, options: options)
-            do{
+            do {
                 try await sse.connect(url: "https://abc", transferFormat: .text)
                 XCTFail("SSE connect should fail")
-            }catch SignalRError.eventSourceFailedToConnect {
+            } catch SignalRError.eventSourceFailedToConnect {
             }
             logHandler.verifyNotLogged("connected")
         }
     
-        func testConnectAndReceiveMessage() async throws{
+        func testConnectAndReceiveMessage() async throws {
             let client = MockHttpClient()
             let logHandler = MockLogHandler()
             let logger = Logger(logLevel: .debug, logHandler: logHandler)
@@ -108,10 +108,10 @@
             let sse = ServerSentEventTransport(
                 httpClient: client,accessToken: "", logger: logger, options: options)
             let expectation = XCTestExpectation(description: "Message should be received")
-            await sse.onReceive(){ message in
-                switch message{
+            await sse.onReceive() { message in
+                switch message {
                 case .string(let str):
-                    if str == "123"{
+                    if str == "123" {
                         expectation.fulfill()
                     }
                 default:
@@ -123,7 +123,7 @@
             await fulfillment(of: [expectation], timeout: 1)
         }
     
-        func testConnectAndDisconnect() async throws{
+        func testConnectAndDisconnect() async throws {
             let client = MockHttpClient()
             let logHandler = MockLogHandler()
             let logger = Logger(logLevel: .debug, logHandler: logHandler)
@@ -133,7 +133,7 @@
             let sse = ServerSentEventTransport(
                 httpClient: client,accessToken: "", logger: logger, options: options)
             let expectation = XCTestExpectation(description: "SSE should be disconnected")
-            await sse.onClose(){ err in
+            await sse.onClose() { err in
                 let err = err as? SignalRError
                 if err == SignalRError.connectionAborted {
                     expectation.fulfill()
@@ -170,9 +170,9 @@
     
         // MARK: asyncStream
         func testAsyncStream() async {
-            let stream: AsyncStream<Int> = AsyncStream{ continuition in
-                Task{
-                    for i in 0...99{
+            let stream: AsyncStream<Int> = AsyncStream { continuition in
+                Task {
+                    for i in 0...99 {
                         try await Task.sleep(for: .microseconds(100))
                         continuition.yield(i)
                     }
@@ -180,7 +180,7 @@
                 }
             }
             var count = 0
-            for await _ in stream{
+            for await _ in stream {
                 count += 1
             }
             XCTAssertEqual(count, 100)

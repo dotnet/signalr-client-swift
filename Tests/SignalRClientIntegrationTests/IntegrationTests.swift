@@ -45,7 +45,7 @@ class IntegrationTests: XCTestCase {
             .withLogLevel(logLevel: logLevel)
             .build()
 
-        try await run(){
+        try await run() {
             try await connection.start()
         } defer: {
             await connection.stop()

@@ -529,7 +529,7 @@ public actor HubConnection {
 
         do {
             (remainingData, handshakeResponse) = try HandshakeProtocol.parseHandshakeResponse(data: content)
-        } catch{
+        } catch {
             logger.log(level: .error, message: "Error parsing handshake response: \(error)")
             handshakeRejector!(error)
             throw error

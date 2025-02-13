@@ -131,7 +131,7 @@ actor HttpConnection: ConnectionProtocol {
         onReceive = handler
     }
 
-    func onClose(_ handler: @escaping Transport.OnCloseHander) async{
+    func onClose(_ handler: @escaping Transport.OnCloseHander) async {
         onClose = handler
     }
 

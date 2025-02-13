@@ -3,7 +3,7 @@ import XCTest
 @testable import SignalRClient
 
 class UtilsTest: XCTestCase {
-    func testHttpRequestExtention(){
+    func testHttpRequestExtention() {
         var options = HttpConnectionOptions()
         options.timeout = 123
         options.headers = ["a":"b","h":"i"]
@@ -14,7 +14,7 @@ class UtilsTest: XCTestCase {
         XCTAssertEqual(request.headers["h"], "i")
     }
 
-    func testStringOrDataIsEmpty(){
+    func testStringOrDataIsEmpty() {
         XCTAssertTrue(StringOrData.string("").isEmpty())
         XCTAssertFalse(StringOrData.string("1").isEmpty())
         XCTAssertTrue(StringOrData.data(Data()).isEmpty())

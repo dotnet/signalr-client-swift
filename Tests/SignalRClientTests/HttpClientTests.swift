@@ -49,8 +49,8 @@ actor MockHttpClient: HttpClient {
     }
 }
 
-class HttpRequestTests: XCTestCase{
-    func testResponseType(){
+class HttpRequestTests: XCTestCase {
+    func testResponseType() {
         var request = HttpRequest(method: .GET, url: "url")
         XCTAssertEqual(request.responseType, TransferFormat.text)
         request = HttpRequest(method: .GET, url: "url", content: StringOrData.string(""))
