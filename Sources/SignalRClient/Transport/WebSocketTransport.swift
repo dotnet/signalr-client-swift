@@ -5,7 +5,7 @@ import Foundation
 
 actor WebSocketTransport: Transport {
     private let logger: Logger
-    private let accessTokenFactory: (@Sendable() async throws -> String?)?
+    private let accessTokenFactory: (@Sendable () async throws -> String?)?
     private let headers: [String: String]
     private let webSocketConnection: WebSocketConnection
 
