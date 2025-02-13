@@ -28,6 +28,7 @@ public actor HubConnection {
     nonisolated(unsafe) private var handshakeRejector: ((Error) -> Void)?
     private var closedHandlers: [(Error?) async -> Void] = []
     private var reconnectingHandlers: [(Error?) async -> Void] = []
+    private var reconnectedHandlers: [() async -> Void] = []
 
     private var stopTask: Task<Void, Never>?
     private var startTask: Task<Void, Error>?
@@ -215,6 +216,16 @@ public actor HubConnection {
         }
     }
 
+    public func onReconnected(handler:@escaping () async -> Void) {
+        reconnectedHandlers.append(handler)
+    }
+
+    private func triggerReconnectedHandlers() async {
+        for handler in reconnectedHandlers {
+            await handler()
+        }
+    }
+
     public func state() -> HubConnectionState {
         return connectionStatus
     }
@@ -299,6 +310,9 @@ public actor HubConnection {
 
             do {
                 try await startInternal()
+
+                // ConnectionState updated inside
+                await triggerReconnectedHandlers()
                 return
             } catch {
                 lastError = error

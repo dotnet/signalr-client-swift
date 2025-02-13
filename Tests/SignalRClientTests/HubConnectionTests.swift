@@ -346,6 +346,11 @@ final class HubConnectionTests: XCTestCase {
             }
         }
 
+        let reconnectedExpectation = XCTestExpectation(description: "onReconnected() should be called")
+        await hubConnection.onReconnected {
+            reconnectedExpectation.fulfill()
+        }
+
         let startTask = Task { try await hubConnection.start() }
         defer { startTask.cancel() }
 
@@ -367,6 +372,7 @@ final class HubConnectionTests: XCTestCase {
         await handleCloseTask.value
         let state = await hubConnection.state()
         XCTAssertEqual(state, HubConnectionState.Connected)
+        await fulfillment(of: [reconnectedExpectation], timeout: 1.0)
     }
 
     func testReconnect_CustomPolicy() async throws {

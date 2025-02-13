@@ -112,6 +112,20 @@ Without any parameters, `WithAutomaticReconnect` configures the client to wait 0
 
 Before starting any reconnect attempts, the `HubConnection` transitions to the `Reconnecting` state and fires its `onReconnecting` callbacks.
 
+After the reconnection succeeds, the `HubConnection` transitions to the `connected` state and fires its `onReconnected` callbacks.
+
+A general way to use `onReconnecting` and `onReconnected` is to mark the connection state changes:
+
+```swift
+connection.onReconnecting { error in
+    // connection is disconnected because of error
+}
+
+connection.onReconnected {
+    // connection is connected back
+}
+```
+
 ### Configure strategy in automatic reconnect
 In order to configure a custom number of reconnect attempts before disconnecting or change the reconnect timing, `withAutomaticReconnect` accepts an array of numbers representing the delay in seconds to wait before starting each reconnect attempt. 
 
