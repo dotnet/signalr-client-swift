@@ -1,0 +1,31 @@
+# format options
+--indent 4 
+--xcodeindentation true
+--hexliteralcase lowercase
+--header Licensed to the .NET Foundation under one or more agreements.\nThe .NET Foundation licenses this file to you under the MIT license.
+
+# rules
+--disable all
+--enable consecutiveBlankLines
+--enable consecutiveSpaces
+--enable duplicateImports
+--enable indent
+--enable modifierOrder
+--enable numberFormatting
+--enable semicolons
+--enable spaceAroundBraces
+--enable spaceAroundBrackets
+--enable spaceAroundComments
+--enable spaceAroundGenerics
+--enable spaceAroundOperators
+--enable spaceAroundParens
+--enable spaceInsideBraces
+--enable spaceInsideBrackets
+--enable spaceInsideComments 
+--enable spaceInsideGenerics
+--enable spaceInsideParens
+--enable todos
+--enable blankLineAfterImports
+--enable braces 
+--enable fileHeader
+--enable wrapArguments
