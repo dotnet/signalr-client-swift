@@ -1,6 +1,3 @@
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-
 import Foundation
 
 // Messagepack protocol: https://github.com/msgpack/msgpack/blob/master/spec.md

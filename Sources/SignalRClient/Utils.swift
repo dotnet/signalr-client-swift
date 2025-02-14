@@ -1,6 +1,3 @@
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-
 import Foundation
 
 class Utils {
@@ -30,12 +27,10 @@ class Utils {
             return "Unknown OS"
         #endif
 
-        #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
-            let version = ProcessInfo.processInfo.operatingSystemVersion
-            let versionString =
-                "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
-            return "\(osName) \(versionString)"
-        #endif
+        let version = ProcessInfo.processInfo.operatingSystemVersion
+        let versionString =
+            "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
+        return "\(osName) \(versionString)"
     }
 }
 
