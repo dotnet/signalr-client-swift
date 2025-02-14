@@ -21,8 +21,8 @@ public actor HubConnection {
     private var connectionStatus: HubConnectionState = .Stopped
     private var stopping: Bool = false
     private var stopDuringStartError: Error?
-    nonisolated(unsafe) private var handshakeResolver: ((HandshakeResponseMessage) -> Void)?
-    nonisolated(unsafe) private var handshakeRejector: ((Error) -> Void)?
+    private nonisolated(unsafe) var handshakeResolver: ((HandshakeResponseMessage) -> Void)?
+    private nonisolated(unsafe) var handshakeRejector: ((Error) -> Void)?
     private var closedHandlers: [(Error?) async -> Void] = []
     private var reconnectingHandlers: [(Error?) async -> Void] = []
     private var reconnectedHandlers: [() async -> Void] = []
@@ -31,11 +31,11 @@ public actor HubConnection {
     private var startTask: Task<Void, Error>?
 
     internal init(connection: ConnectionProtocol,
-                logger: Logger,
-                hubProtocol: HubProtocol,
-                retryPolicy: RetryPolicy,
-                serverTimeout: TimeInterval?,
-                keepAliveInterval: TimeInterval?) {
+                  logger: Logger,
+                  hubProtocol: HubProtocol,
+                  retryPolicy: RetryPolicy,
+                  serverTimeout: TimeInterval?,
+                  keepAliveInterval: TimeInterval?) {
         self.serverTimeout = serverTimeout ?? HubConnection.defaultTimeout
         self.keepAliveInterval = keepAliveInterval ?? HubConnection.defaultPingInterval
         self.logger = logger
@@ -56,7 +56,7 @@ public actor HubConnection {
         }
 
         connectionStatus = .Connecting
-        
+
         startTask = Task {
             do {
                 await self.connection.onClose(handleConnectionClose)
@@ -92,7 +92,7 @@ public actor HubConnection {
         }
 
         stopping = true
-        
+
         // In this step, there's no other start running
         stopTask = Task {
             await stopInternal()
@@ -130,8 +130,8 @@ public actor HubConnection {
             invocationBinder.removeReturnValueType(invocationId: invocationId)
             throw error
         }
-        
-        if let returnVal =  (try await tcs.task()) as? TReturn {
+
+        if let returnVal = (try await tcs.task()) as? TReturn {
             return returnVal
         } else {
             throw SignalRError.invalidOperation("Cannot convert the result of the invocation to the specified type.")
@@ -156,7 +156,7 @@ public actor HubConnection {
             Task {
                 do {
                     for try await item in stream {
-                        if let returnVal =  item as? Element {
+                        if let returnVal = item as? Element {
                             continuation.yield(returnVal)
                         } else {
                             throw SignalRError.invalidOperation("Cannot convert the result of the invocation to the specified type.")
@@ -177,7 +177,7 @@ public actor HubConnection {
                 try await self.sendMessageInternal(data)
             } catch {}
         }
-        
+
         return streamResult
     }
 
@@ -213,7 +213,7 @@ public actor HubConnection {
         }
     }
 
-    public func onReconnected(handler:@escaping () async -> Void) {
+    public func onReconnected(handler: @escaping () async -> Void) {
         reconnectedHandlers.append(handler)
     }
 
@@ -288,10 +288,10 @@ public actor HubConnection {
 
         // reconnect
         while let interval = retryPolicy.nextRetryInterval(retryContext: RetryContext(
-                retryCount: retryCount,
-                elapsed: elapsed,
-                retryReason: lastError
-            )) {
+            retryCount: retryCount,
+            elapsed: elapsed,
+            retryReason: lastError
+        )) {
             try Task.checkCancellation()
             if (stopping) {
                 break
@@ -371,38 +371,38 @@ public actor HubConnection {
         await serverTimeoutScheduler.refreshSchduler()
 
         switch message {
-            case let message as InvocationMessage:
-                // Invoke a method
-                logger.log(level: .debug, message: "Invocation message received for method: \(message.target)")
-                do {
-                    try await invokeClientMethod(message: message)
-                } catch {
-                    logger.log(level: .error, message: "Error invoking method: \(error)")
-                }
-                break
-            case let message as StreamItemMessage:
-                logger.log(level: .debug, message: "Stream item message received for invocation: \(message.invocationId!)")
-                await invocationHandler.setStreamItem(message: message)
-                break
-            case let message as CompletionMessage:
-                logger.log(level: .debug, message: "Completion message received for invocation: \(message.invocationId!), error: \(message.error ?? "nil"), result: \(message.result.value ?? "nil")")
-                await invocationHandler.setResult(message: message)
-                invocationBinder.removeReturnValueType(invocationId: message.invocationId!)
-                break
-            case _ as PingMessage:
-                // Don't care about the content of ping
-                break
-            case _ as CloseMessage:
-                // Close
-                break
-            case _ as AckMessage:
-                // TODO: In stateful reconnect
-                break
-            case _ as SequenceMessage:
-                // TODO: In stateful reconnect
-                break
-            default:
-                logger.log(level: .warning, message: "Unknown message type: \(message)")
+        case let message as InvocationMessage:
+            // Invoke a method
+            logger.log(level: .debug, message: "Invocation message received for method: \(message.target)")
+            do {
+                try await invokeClientMethod(message: message)
+            } catch {
+                logger.log(level: .error, message: "Error invoking method: \(error)")
+            }
+            break
+        case let message as StreamItemMessage:
+            logger.log(level: .debug, message: "Stream item message received for invocation: \(message.invocationId!)")
+            await invocationHandler.setStreamItem(message: message)
+            break
+        case let message as CompletionMessage:
+            logger.log(level: .debug, message: "Completion message received for invocation: \(message.invocationId!), error: \(message.error ?? "nil"), result: \(message.result.value ?? "nil")")
+            await invocationHandler.setResult(message: message)
+            invocationBinder.removeReturnValueType(invocationId: message.invocationId!)
+            break
+        case _ as PingMessage:
+            // Don't care about the content of ping
+            break
+        case _ as CloseMessage:
+            // Close
+            break
+        case _ as AckMessage:
+            // TODO: In stateful reconnect
+            break
+        case _ as SequenceMessage:
+            // TODO: In stateful reconnect
+            break
+        default:
+            logger.log(level: .warning, message: "Unknown message type: \(message)")
         }
     }
 
@@ -410,14 +410,14 @@ public actor HubConnection {
         guard let handler = invocationBinder.getHandler(methodName: message.target) else {
             logger.log(level: .warning, message: "No handler registered for method: \(message.target)")
             if let invocationId = message.invocationId {
-                logger.log(level:.warning, message: "No result given for method: \(message.target), and invocationId: \(invocationId)")
+                logger.log(level: .warning, message: "No result given for method: \(message.target), and invocationId: \(invocationId)")
                 let completionMessage = CompletionMessage(invocationId: invocationId, error: "No handler registered for method: \(message.target)", result: AnyEncodable(nil), headers: nil)
                 let data = try hubProtocol.writeMessage(message: completionMessage)
                 try await sendMessageInternal(data)
             }
             return            
         }
-        
+
         let expectResponse = message.invocationId != nil
         if (expectResponse) {
             var result: Any? = try await handler(message.arguments.value ?? [])
@@ -524,7 +524,7 @@ public actor HubConnection {
             // Either the error throw by stopDuringStartError, either it's connected status so `handleConnectionClose` can call reconnect there.
 
             connectionStatus = .Connected
-            
+
             logger.log(level: .debug, message: "Handshake completed")
         } catch {
             logger.log(level: .error, message: "Handshake failed: \(error)")
@@ -543,12 +543,12 @@ public actor HubConnection {
 
         do {
             (remainingData, handshakeResponse) = try HandshakeProtocol.parseHandshakeResponse(data: content)
-        } catch{
+        } catch {
             logger.log(level: .error, message: "Error parsing handshake response: \(error)")
             handshakeRejector!(error)
             throw error
         }
-        
+
         if (handshakeResponse.error != nil) {
             logger.log(level: .error, message: "Server returned handshake error: \(handshakeResponse.error!)") 
             let error = SignalRError.handshakeError(handshakeResponse.error!)
@@ -588,56 +588,56 @@ public actor HubConnection {
         }
     }
 
-    private struct DefaultInvocationBinder : InvocationBinder, @unchecked Sendable {
+    private struct DefaultInvocationBinder: InvocationBinder, @unchecked Sendable {
         private let lock = DispatchSemaphore(value: 1)
         private var subscriptionHandlers: [String: SubscriptionEntity] = [:]
         private var returnValueHandler: [String: Any.Type] = [:]
 
         mutating func registerSubscription(methodName: String, types: [Any.Type], handler: @escaping ([Any]) async throws -> Any) {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             subscriptionHandlers[methodName] = SubscriptionEntity(types: types, callback: handler)
         }
 
         mutating func removeSubscrioption(methodName: String) {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             subscriptionHandlers[methodName] = nil
         }
 
         mutating func registerReturnValueType(invocationId: String, types: Any.Type) {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             returnValueHandler[invocationId] = types
         }
 
         mutating func removeReturnValueType(invocationId: String) {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             returnValueHandler[invocationId] = nil
         }
 
         func getHandler(methodName: String) -> (([Any]) async throws -> Any)? {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             return subscriptionHandlers[methodName]?.callback
         }
 
         func getReturnType(invocationId: String) -> (any Any.Type)? {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             return returnValueHandler[invocationId]
         }
 
         func getParameterTypes(methodName: String) -> [any Any.Type] {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             return subscriptionHandlers[methodName]?.types ?? []
         }
 
         func getStreamItemType(streamId: String) -> (any Any.Type)? {
             lock.wait()
-            defer {lock.signal()}
+            defer { lock.signal() }
             return returnValueHandler[streamId] 
         }   
     }

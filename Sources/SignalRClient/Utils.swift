@@ -5,7 +5,7 @@ class Utils {
         return
             "Microsoft SignalR Client/Swift \(PackageVersion); \(currentOSVersion())"
     }
-    
+
     static func currentOSVersion() -> String {
         #if os(macOS)
             let osName = "macOS"
@@ -46,7 +46,8 @@ extension HttpRequest {
         self.init(
             method: method, url: url, content: content,
             responseType: responseType, headers: headers,
-            timeout: timeout)
+            timeout: timeout
+        )
         if includeUserAgent {
             self.headers["User-Agent"] = Utils.getUserAgent()
         }
@@ -61,13 +62,13 @@ extension HttpRequest {
 
 extension Data {
     func convertToStringOrData(transferFormat: TransferFormat) throws
-        -> StringOrData
-    {
+    -> StringOrData {
         switch transferFormat {
         case .text:
             guard
                 let message = String(
-                    data: self, encoding: .utf8)
+                    data: self, encoding: .utf8
+                )
             else {
                 throw SignalRError.invalidTextMessageEncoding
             }
@@ -83,11 +84,11 @@ extension StringOrData {
         switch self {
         case .string(let str):
             return
-                "String data of length \(str.count)\(includeContent ? ". Content: \(str)":"")"
+                "String data of length \(str.count)\(includeContent ? ". Content: \(str)" : "")"
         case .data(let data):
             // TODO: data format?
             return
-                "Binary data of length \(data.count)\(includeContent ? ". Content: \(data)":"")"
+                "Binary data of length \(data.count)\(includeContent ? ". Content: \(data)" : "")"
         }
     }
 

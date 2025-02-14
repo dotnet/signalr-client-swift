@@ -20,7 +20,7 @@ let package = Package(
         .testTarget(
             name: "SignalRClientTests", dependencies: ["SignalRClient"],
             swiftSettings: [
-//                .enableExperimentalFeature("StrictConcurrency")
+                //                .enableExperimentalFeature("StrictConcurrency")
             ]
         ),
         .testTarget(

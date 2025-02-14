@@ -51,8 +51,8 @@ class MessagePackHubProtocolTests: XCTestCase {
             message: StreamInvocationMessage(
                 invocationId: "xyz", target: "method",
                 arguments: AnyEncodableArray([42]), streamIds: [],
-                headers: [:]))
-        {
+                headers: [:]
+            )) {
         case .data(let d):
             XCTAssertEqual(d, try BinaryMessageFormat.write(data))
         default:
@@ -122,7 +122,7 @@ class MessagePackHubProtocolTests: XCTestCase {
 //            XCTAssertEqual(d, try BinaryMessageFormat.write(data))
             // Encoded to resultKind = 3
             XCTAssertEqual(d, try BinaryMessageFormat.write(Data([
-                0x95, 0x03, 0x80, 0xa3, 0x78, 0x79, 0x7a, 0x03,0xc0
+                0x95, 0x03, 0x80, 0xa3, 0x78, 0x79, 0x7a, 0x03, 0xc0
             ])))
         default:
             XCTFail("Wrong encoded typed")
@@ -176,7 +176,7 @@ class MessagePackHubProtocolTests: XCTestCase {
         do {
             try msgpack.parseMessage(message: data, binder: binder)
             XCTFail("Should throw when paring not decodable")
-        }catch SignalRError.invalidData(let errmsg){
+        } catch SignalRError.invalidData(let errmsg) {
             XCTAssertTrue(errmsg.contains("Decodable"))
         }
     }
@@ -251,7 +251,8 @@ class MessagePackHubProtocolTests: XCTestCase {
                 try BinaryMessageFormat.write(
                     Data([
                         0x92, 0x07, 0xa3, 0x78, 0x79, 0x7a,
-                    ])))
+                    ]))
+            )
         default:
             XCTFail("Wrong encoded typed")
         }
@@ -270,7 +271,8 @@ class MessagePackHubProtocolTests: XCTestCase {
         switch try msgpack.writeMessage(message: message) {
         case .data(let d):
             XCTAssertEqual(
-                d, try BinaryMessageFormat.write(Data([0x92, 0x08, 0x24])))
+                d, try BinaryMessageFormat.write(Data([0x92, 0x08, 0x24]))
+            )
         default:
             XCTFail("Wrong encoded typed")
         }
@@ -289,7 +291,8 @@ class MessagePackHubProtocolTests: XCTestCase {
         switch try msgpack.writeMessage(message: message) {
         case .data(let d):
             XCTAssertEqual(
-                d, try BinaryMessageFormat.write(Data([0x92, 0x09, 0x13])))
+                d, try BinaryMessageFormat.write(Data([0x92, 0x09, 0x13]))
+            )
         default:
             XCTFail("Wrong encoded typed")
         }

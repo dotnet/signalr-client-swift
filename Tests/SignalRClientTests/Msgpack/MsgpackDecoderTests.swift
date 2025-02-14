@@ -121,7 +121,7 @@ class MsgpackDecoderTests: XCTestCase {
         let data = [0, 1 << 4 - 1, 1 << 4, 1 << 16 - 1, 1 << 16]
         for i in data {
             var map: [String: MsgpackElement] = [:]
-            for i in 0..<i {
+            for i in 0 ..< i {
                 map[String(i)] = MsgpackElement.bool(true)
             }
             let msgpackElement = MsgpackElement.map(map)
@@ -137,7 +137,7 @@ class MsgpackDecoderTests: XCTestCase {
         for i in data {
             var array: [MsgpackElement] = []
             array.reserveCapacity(i)
-            for _ in 0..<i {
+            for _ in 0 ..< i {
                 array.append(MsgpackElement.bool(true))
             }
             let msgpackElement = MsgpackElement.array(array)
@@ -167,10 +167,12 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeUInt8() throws {
         XCTAssertEqual(
             try MsgpackElement.int(Int64(UInt8.min)).decode(type: UInt8.self),
-            UInt8.min)
+            UInt8.min
+        )
         XCTAssertEqual(
             try MsgpackElement.int(Int64(UInt8.max)).decode(type: UInt8.self),
-            UInt8.max)
+            UInt8.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.int(Int64(UInt8.max) + 1).decode(type: UInt8.self))
         XCTAssertThrowsError(
@@ -178,10 +180,12 @@ class MsgpackDecoderTests: XCTestCase {
 
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(UInt8.min)).decode(type: UInt8.self),
-            UInt8.min)
+            UInt8.min
+        )
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(UInt8.max)).decode(type: UInt8.self),
-            UInt8.max)
+            UInt8.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(UInt8.max) + 1).decode(type: UInt8.self)
         )
@@ -190,10 +194,12 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeUInt16() throws {
         XCTAssertEqual(
             try MsgpackElement.int(Int64(UInt16.min)).decode(type: UInt16.self),
-            UInt16.min)
+            UInt16.min
+        )
         XCTAssertEqual(
             try MsgpackElement.int(Int64(UInt16.max)).decode(type: UInt16.self),
-            UInt16.max)
+            UInt16.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.int(Int64(UInt16.max) + 1).decode(type: UInt16.self)
         )
@@ -202,10 +208,12 @@ class MsgpackDecoderTests: XCTestCase {
 
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(UInt16.min)).decode(type: UInt16.self),
-            UInt16.min)
+            UInt16.min
+        )
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(UInt16.max)).decode(type: UInt16.self),
-            UInt16.max)
+            UInt16.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(UInt16.max) + 1).decode(
                 type: UInt16.self))
@@ -214,10 +222,12 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeUInt32() throws {
         XCTAssertEqual(
             try MsgpackElement.int(Int64(UInt32.min)).decode(type: UInt32.self),
-            UInt32.min)
+            UInt32.min
+        )
         XCTAssertEqual(
             try MsgpackElement.int(Int64(UInt32.max)).decode(type: UInt32.self),
-            UInt32.max)
+            UInt32.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.int(Int64(UInt32.max) + 1).decode(type: UInt32.self)
         )
@@ -226,10 +236,12 @@ class MsgpackDecoderTests: XCTestCase {
 
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(UInt32.min)).decode(type: UInt32.self),
-            UInt32.min)
+            UInt32.min
+        )
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(UInt32.max)).decode(type: UInt32.self),
-            UInt32.max)
+            UInt32.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(UInt32.max) + 1).decode(
                 type: UInt32.self))
@@ -238,28 +250,34 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeUInt64() throws {
         XCTAssertEqual(
             try MsgpackElement.int(Int64(UInt64.min)).decode(type: UInt64.self),
-            UInt64.min)
+            UInt64.min
+        )
         XCTAssertEqual(
             try MsgpackElement.int(Int64(Int64.max)).decode(type: UInt64.self),
-            UInt64(Int64.max))
+            UInt64(Int64.max)
+        )
         XCTAssertThrowsError(
             try MsgpackElement.int(Int64(-1)).decode(type: UInt64.self))
 
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(UInt64.min)).decode(type: UInt64.self),
-            UInt64.min)
+            UInt64.min
+        )
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(UInt64.max)).decode(type: UInt64.self),
-            UInt64.max)
+            UInt64.max
+        )
     }
 
     func testDecodeInt8() throws {
         XCTAssertEqual(
             try MsgpackElement.int(Int64(Int8.min)).decode(type: Int8.self),
-            Int8.min)
+            Int8.min
+        )
         XCTAssertEqual(
             try MsgpackElement.int(Int64(Int8.max)).decode(type: Int8.self),
-            Int8.max)
+            Int8.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.int(Int64(Int8.max) + 1).decode(type: Int8.self))
         XCTAssertThrowsError(
@@ -267,9 +285,11 @@ class MsgpackDecoderTests: XCTestCase {
 
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(Int8.max)).decode(type: Int8.self),
-            Int8.max)
+            Int8.max
+        )
         XCTAssertEqual(
-            try MsgpackElement.uint(UInt64(0)).decode(type: Int8.self), 0)
+            try MsgpackElement.uint(UInt64(0)).decode(type: Int8.self), 0
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(Int8.max) + 1).decode(type: Int8.self))
     }
@@ -277,20 +297,24 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeInt16() throws {
         XCTAssertEqual(
             try MsgpackElement.int(Int64(Int16.min)).decode(type: Int16.self),
-            Int16.min)
+            Int16.min
+        )
         XCTAssertEqual(
             try MsgpackElement.int(Int64(Int16.max)).decode(type: Int16.self),
-            Int16.max)
+            Int16.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.int(Int64(Int16.max) + 1).decode(type: Int16.self))
         XCTAssertThrowsError(
             try MsgpackElement.int(Int64(Int16.min) - 1).decode(type: Int16.self))
 
         XCTAssertEqual(
-            try MsgpackElement.uint(UInt64(0)).decode(type: Int16.self), 0)
+            try MsgpackElement.uint(UInt64(0)).decode(type: Int16.self), 0
+        )
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(Int16.max)).decode(type: Int16.self),
-            Int16.max)
+            Int16.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(Int16.max) + 1).decode(type: Int16.self)
         )
@@ -299,20 +323,24 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeInt32() throws {
         XCTAssertEqual(
             try MsgpackElement.int(Int64(Int32.min)).decode(type: Int32.self),
-            Int32.min)
+            Int32.min
+        )
         XCTAssertEqual(
             try MsgpackElement.int(Int64(Int32.max)).decode(type: Int32.self),
-            Int32.max)
+            Int32.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.int(Int64(Int32.max) + 1).decode(type: Int32.self))
         XCTAssertThrowsError(
             try MsgpackElement.int(Int64(Int32.min) - 1).decode(type: Int32.self))
 
         XCTAssertEqual(
-            try MsgpackElement.uint(UInt64(0)).decode(type: Int32.self), 0)
+            try MsgpackElement.uint(UInt64(0)).decode(type: Int32.self), 0
+        )
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(Int32.max)).decode(type: Int32.self),
-            Int32.max)
+            Int32.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(Int32.max) + 1).decode(type: Int32.self)
         )
@@ -321,16 +349,20 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeInt64() throws {
         XCTAssertEqual(
             try MsgpackElement.int(Int64(Int64.min)).decode(type: Int64.self),
-            Int64.min)
+            Int64.min
+        )
         XCTAssertEqual(
             try MsgpackElement.int(Int64(Int64.max)).decode(type: Int64.self),
-            Int64.max)
+            Int64.max
+        )
 
         XCTAssertEqual(
-            try MsgpackElement.uint(UInt64(0)).decode(type: Int64.self), 0)
+            try MsgpackElement.uint(UInt64(0)).decode(type: Int64.self), 0
+        )
         XCTAssertEqual(
             try MsgpackElement.uint(UInt64(Int64.max)).decode(type: Int64.self),
-            Int64.max)
+            Int64.max
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(Int64.max) + 1).decode(type: Int64.self)
         )
@@ -339,14 +371,16 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeBool() throws {
         XCTAssertEqual(try MsgpackElement.bool(true).decode(type: Bool.self), true)
         XCTAssertEqual(
-            try MsgpackElement.bool(false).decode(type: Bool.self), false)
+            try MsgpackElement.bool(false).decode(type: Bool.self), false
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(Int64.max)).decode(type: Bool.self))
     }
 
     func testDecodeString() throws {
         XCTAssertEqual(
-            try MsgpackElement.string("abc").decode(type: String.self), "abc")
+            try MsgpackElement.string("abc").decode(type: String.self), "abc"
+        )
         XCTAssertEqual(try MsgpackElement.string("").decode(type: String.self), "")
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(Int64.max)).decode(type: String.self))
@@ -355,9 +389,11 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeData() throws {
         XCTAssertEqual(
             try MsgpackElement.bin(Data([0x81])).decode(type: Data.self),
-            Data([0x81]))
+            Data([0x81])
+        )
         XCTAssertEqual(
-            try MsgpackElement.bin(Data()).decode(type: Data.self), Data())
+            try MsgpackElement.bin(Data()).decode(type: Data.self), Data()
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(Int64.max)).decode(type: Data.self))
     }
@@ -381,13 +417,16 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeFloat32() throws {
         XCTAssertEqual(
             try MsgpackElement.float32(Float32(1.0)).decode(type: Float32.self),
-            Float32(1.0))
+            Float32(1.0)
+        )
         XCTAssertEqual(
             try MsgpackElement.float64(Float64(1.0)).decode(type: Float32.self),
-            Float32(1.0))
+            Float32(1.0)
+        )
         XCTAssertEqual(
             try MsgpackElement.float64(Float64(1.1)).decode(type: Float32.self),
-            Float32(1.1))
+            Float32(1.1)
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(Int64.max)).decode(type: Float32.self))
     }
@@ -395,15 +434,18 @@ class MsgpackDecoderTests: XCTestCase {
     func testDecodeFloat64() throws {
         XCTAssertEqual(
             try MsgpackElement.float32(Float32(1.0)).decode(type: Float64.self),
-            Float64(1.0))
+            Float64(1.0)
+        )
         // Lose precision. But it should not throw
         XCTAssertNotEqual(
             try MsgpackElement.float32(Float32(1.1)).decode(type: Float64.self),
-            Float64(1.1))
+            Float64(1.1)
+        )
 
         XCTAssertEqual(
             try MsgpackElement.float64(Float64(1.0)).decode(type: Float64.self),
-            Float64(1.0))
+            Float64(1.0)
+        )
         XCTAssertThrowsError(
             try MsgpackElement.uint(UInt64(Int64.max)).decode(type: Float64.self))
     }
@@ -454,7 +496,8 @@ class MsgpackDecoderTests: XCTestCase {
         XCTAssertEqual(example, decodedExample1)
 
         let decodedExample2 = try decoder.decode(
-            Example1.self, from: encodedData)
+            Example1.self, from: encodedData
+        )
         XCTAssertEqual(example, decodedExample2)
     }
 
@@ -466,7 +509,8 @@ class MsgpackDecoderTests: XCTestCase {
             let container = try decoder.container(keyedBy: Keys.self)
             self.Key1 = try container.decode(Int.self, forKey: Keys.Key1)
             self.Key2 = try container.decode(
-                [String: String].self, forKey: .Key2)
+                [String: String].self, forKey: .Key2
+            )
             self.Key3 = try container.decode([Data].self, forKey: .Key3)
         }
 
@@ -528,7 +572,7 @@ class MsgpackDecoderTests: XCTestCase {
         }
     }
 
-    func testInherienceUsingSameTopContainer() throws {  // Undocumented behavior. Keep aligh with the jsonEncoder
+    func testInherienceUsingSameTopContainer() throws { // Undocumented behavior. Keep aligh with the jsonEncoder
         let encoder = MsgpackEncoder()
         let example = InherienceWithSameContainerExample()
         example.parent = "abc"
@@ -542,7 +586,8 @@ class MsgpackDecoderTests: XCTestCase {
         XCTAssertEqual(decodedExample.parent, "abc")
         XCTAssertEqual(decodedExample.child, "def")
         let decodedExample2 = try decoder.decode(
-            InherienceWithSameContainerExample.self, from: data)
+            InherienceWithSameContainerExample.self, from: data
+        )
         XCTAssertEqual(decodedExample2.parent, "abc")
         XCTAssertEqual(decodedExample2.child, "def")
     }
@@ -585,7 +630,8 @@ class MsgpackDecoderTests: XCTestCase {
         XCTAssertEqual(decodedExample.parent, "abc")
         XCTAssertEqual(decodedExample.child, "def")
         let decodedExample2 = try decoder.decode(
-            KeyedSuperExample.self, from: data)
+            KeyedSuperExample.self, from: data
+        )
         XCTAssertEqual(decodedExample2.parent, "abc")
         XCTAssertEqual(decodedExample2.child, "def")
     }
@@ -602,12 +648,14 @@ class MsgpackDecoderTests: XCTestCase {
                 ((time - Double(seconds)) * 1_000_000_000).rounded(
                     FloatingPointRoundingRule.down))
             let timestamp = MsgpackTimestamp(
-                seconds: seconds, nanoseconds: nanoseconds)
+                seconds: seconds, nanoseconds: nanoseconds
+            )
             let encoder = MsgpackEncoder()
             let content = try encoder.encode(timestamp)
             let decoder = MsgpackDecoder()
             let timestamp2 = try decoder.decode(
-                MsgpackTimestamp.self, from: content)
+                MsgpackTimestamp.self, from: content
+            )
             XCTAssertEqual(timestamp, timestamp2)
         }
     }
@@ -674,7 +722,8 @@ class MsgpackDecoderTests: XCTestCase {
             let superEncoder2 = container1.superEncoder(forKey: .superKey)
             _ = superEncoder2.singleValueContainer()
             var container2 = container1.nestedContainer(
-                keyedBy: Keys.self, forKey: .Key1)
+                keyedBy: Keys.self, forKey: .Key1
+            )
             var container3 = container2.nestedUnkeyedContainer(forKey: .Key2)
             _ = container3.nestedUnkeyedContainer()
         }
@@ -688,14 +737,16 @@ class MsgpackDecoderTests: XCTestCase {
             XCTAssertEqual(superDecoder.codingPath.count, 1)
             XCTAssertEqual(
                 superDecoder.codingPath[0] as! MsgpackCodingKey,
-                MsgpackCodingKey(stringValue: "super"))
+                MsgpackCodingKey(stringValue: "super")
+            )
 
             let superSingleValueContainer =
                 try superDecoder.singleValueContainer()
             XCTAssertEqual(superSingleValueContainer.codingPath.count, 1)
             XCTAssertEqual(
                 superSingleValueContainer.codingPath[0] as! MsgpackCodingKey,
-                MsgpackCodingKey(stringValue: "super"))
+                MsgpackCodingKey(stringValue: "super")
+            )
 
             let superDecoder2 = try container1.superDecoder(forKey: .superKey)
             XCTAssertEqual(superDecoder2.codingPath.count, 1)
@@ -709,7 +760,8 @@ class MsgpackDecoderTests: XCTestCase {
             )
 
             let container2 = try container1.nestedContainer(
-                keyedBy: Keys.self, forKey: .Key1)
+                keyedBy: Keys.self, forKey: .Key1
+            )
             XCTAssertEqual(container2.codingPath.count, 1)
             XCTAssertEqual(container2.codingPath[0] as! Keys, Keys.Key1)
 
@@ -725,7 +777,8 @@ class MsgpackDecoderTests: XCTestCase {
             XCTAssertEqual(container4.codingPath[1] as! Keys, Keys.Key2)
             XCTAssertEqual(
                 container4.codingPath[2] as! MsgpackCodingKey,
-                MsgpackCodingKey(intValue: 0))
+                MsgpackCodingKey(intValue: 0)
+            )
         }
 
         enum Keys: CodingKey {

@@ -15,14 +15,14 @@ public struct HttpTransportType: OptionSet {
 
     static func from(_ transportString: String) -> HttpTransportType? {
         switch transportString.lowercased() {
-            case "websockets":
-                return .webSockets
-            case "serversentevents":
-                return .serverSentEvents
-            case "longpolling":
-                return .longPolling
-            default:
-                return nil
+        case "websockets":
+            return .webSockets
+        case "serversentevents":
+            return .serverSentEvents
+        case "longpolling":
+            return .longPolling
+        default:
+            return nil
         }
     }
 }
@@ -36,12 +36,12 @@ public enum TransferFormat: Int, Codable, Sendable {
 
     init?(_ transferFormatString: String) {
         switch transferFormatString.lowercased() {
-            case "text":
-                self = .text
-            case "binary":
-                self = .binary
-            default:
-                return nil
+        case "text":
+            self = .text
+        case "binary":
+            self = .binary
+        default:
+            return nil
         }
     }
 }

@@ -12,7 +12,8 @@ extension HttpRequest {
     ) {
         self.init(
             method: method, url: url, content: content, headers: headers,
-            timeout: timeout)
+            timeout: timeout
+        )
         self.headers[mockKey] = mockId
     }
 }
@@ -49,8 +50,8 @@ actor MockHttpClient: HttpClient {
     }
 }
 
-class HttpRequestTests: XCTestCase{
-    func testResponseType(){
+class HttpRequestTests: XCTestCase {
+    func testResponseType() {
         var request = HttpRequest(method: .GET, url: "url")
         XCTAssertEqual(request.responseType, TransferFormat.text)
         request = HttpRequest(method: .GET, url: "url", content: StringOrData.string(""))
@@ -80,7 +81,8 @@ class HttpClientTests: XCTestCase {
         }
         logHandler.verifyLogged("Error")
         request = HttpRequest(
-            method: .GET, url: "https://www.bing.com", timeout: 0.00001)
+            method: .GET, url: "https://www.bing.com", timeout: 0.00001
+        )
         do {
             _ = try await client.send(request: request)
             XCTFail("Request should fail!")
@@ -98,7 +100,8 @@ class HttpClientTests: XCTestCase {
             )
         }
         let request = HttpRequest(
-            mockId: "bing", method: .GET, url: "https://www.bing.com")
+            mockId: "bing", method: .GET, url: "https://www.bing.com"
+        )
         let client = AccessTokenHttpClient(innerClient: mockClient) {
             return "token"
         }
@@ -128,7 +131,8 @@ class HttpClientTests: XCTestCase {
             )
         }
         let request = HttpRequest(
-            mockId: "bing", method: .GET, url: "https://www.bing.com")
+            mockId: "bing", method: .GET, url: "https://www.bing.com"
+        )
         let client = AccessTokenHttpClient(innerClient: mockClient) { "token" }
         await client.setAccessToken(accessToekn: "overdue")
         let (message, response) = try await client.send(request: request)

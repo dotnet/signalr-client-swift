@@ -24,7 +24,9 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "\(msgpackElement.typeDescription) is not extension type"))
+                    "\(msgpackElement.typeDescription) is not extension type"
+                )
+            )
         }
         return extType
     }
@@ -39,7 +41,9 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "\(msgpackElement.typeDescription) is not extension type"))
+                    "\(msgpackElement.typeDescription) is not extension type"
+                )
+            )
         }
         return data
     }
@@ -49,14 +53,14 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
     }
 
     func container<Key>(keyedBy type: Key.Type) throws
-        -> KeyedDecodingContainer<Key> where Key: CodingKey
-    {
+    -> KeyedDecodingContainer<Key> where Key: CodingKey {
         guard let messagepackType = messagepackType else {
             throw MsgpackDecodingError.decoderNotInitialized
         }
         let container = try MsgpackKeyedDecodingContainer<Key>(
             codingPath: codingPath, userInfo: userInfo,
-            msgpackValue: messagepackType)
+            msgpackValue: messagepackType
+        )
         return KeyedDecodingContainer(container)
     }
 
@@ -66,7 +70,8 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
         }
         let container = try MsgpackUnkeyedDecodingContainer(
             codingPath: codingPath, userInfo: userInfo,
-            msgpackValue: messagepackType)
+            msgpackValue: messagepackType
+        )
         return container
     }
 
@@ -76,7 +81,8 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
         }
         let container = try MsgpackSingleValueDecodingContainer(
             codingPath: codingPath, userInfo: userInfo,
-            msgpackValue: messagepackType)
+            msgpackValue: messagepackType
+        )
         return container
     }
 
@@ -95,8 +101,7 @@ class MsgpackDecoder: Decoder, MsgpackElementLoader {
 }
 
 class MsgpackKeyedDecodingContainer<Key: CodingKey>:
-    KeyedDecodingContainerProtocol, MsgpackElementLoader
-{
+KeyedDecodingContainerProtocol, MsgpackElementLoader {
     private var holder: [String: MsgpackElement] = [:]
     var codingPath: [any CodingKey]
     var userInfo: [CodingUserInfoKey: Any]
@@ -120,8 +125,9 @@ class MsgpackKeyedDecodingContainer<Key: CodingKey>:
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "Expected to decode \([String:Any].self) but found \(data.typeDescription) instead."
-                ))
+                    "Expected to decode \([String: Any].self) but found \(data.typeDescription) instead."
+                )
+            )
 
         }
     }
@@ -141,7 +147,8 @@ class MsgpackKeyedDecodingContainer<Key: CodingKey>:
     where T: Decodable {
         let v = try getMsgpackElement(key)
         let result = try v.decode(
-            type: value, codingPath: subCodingPath(key: key))
+            type: value, codingPath: subCodingPath(key: key)
+        )
         guard let result = result else {
             let decoder = try initDecoder(key: key, value: v)
             return try T.init(from: decoder)
@@ -159,8 +166,7 @@ class MsgpackKeyedDecodingContainer<Key: CodingKey>:
     }
 
     func nestedUnkeyedContainer(forKey key: Key) throws
-        -> any UnkeyedDecodingContainer
-    {
+    -> any UnkeyedDecodingContainer {
         let v = try getMsgpackElement(key)
         let decoder = try initDecoder(key: key, value: v)
         let container = try decoder.unkeyedContainer()
@@ -187,16 +193,18 @@ class MsgpackKeyedDecodingContainer<Key: CodingKey>:
                 key,
                 .init(
                     codingPath: subCodingPath(key: key),
-                    debugDescription: "No value associated with key \(key)."))
+                    debugDescription: "No value associated with key \(key)."
+                )
+            )
         }
         return v
     }
 
     private func initDecoder(key: CodingKey, value: MsgpackElement) throws
-        -> MsgpackDecoder
-    {
+    -> MsgpackDecoder {
         let decoder = MsgpackDecoder(
-            codingPath: subCodingPath(key: key), userInfo: self.userInfo)
+            codingPath: subCodingPath(key: key), userInfo: self.userInfo
+        )
         try decoder.loadMsgpackElement(from: value)
         return decoder
     }
@@ -238,8 +246,9 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "Expected to decode \([Any].self) but found \(data.typeDescription) instead."
-                ))
+                    "Expected to decode \([Any].self) but found \(data.typeDescription) instead."
+                )
+            )
         }
     }
 
@@ -254,7 +263,8 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
         let msgpackElement = try getMsgpackElement(T.self)
         guard
             let result = try msgpackElement.decode(
-                type: value, codingPath: subCodingPath())
+                type: value, codingPath: subCodingPath()
+            )
         else {
             let decoder = try initDecoder(value: msgpackElement)
             currentIndex += 1
@@ -265,8 +275,7 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
     }
 
     func nestedContainer<NestedKey>(keyedBy keyType: NestedKey.Type) throws
-        -> KeyedDecodingContainer<NestedKey> where NestedKey: CodingKey
-    {
+    -> KeyedDecodingContainer<NestedKey> where NestedKey: CodingKey {
         let msgpackElement = try getMsgpackElement(
             KeyedDecodingContainer<NestedKey>.self)
         let decoder = try initDecoder(value: msgpackElement)
@@ -294,14 +303,17 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
                 targetType,
                 .init(
                     codingPath: subCodingPath(),
-                    debugDescription: "Unkeyed container is at end."))
+                    debugDescription: "Unkeyed container is at end."
+                )
+            )
         }
         return holder[currentIndex]
     }
 
     private func initDecoder(value: MsgpackElement) throws -> MsgpackDecoder {
         let decoder = MsgpackDecoder(
-            codingPath: subCodingPath(), userInfo: self.userInfo)
+            codingPath: subCodingPath(), userInfo: self.userInfo
+        )
         try decoder.loadMsgpackElement(from: value)
         return decoder
     }
@@ -314,8 +326,7 @@ class MsgpackUnkeyedDecodingContainer: UnkeyedDecodingContainer {
 }
 
 class MsgpackSingleValueDecodingContainer: SingleValueDecodingContainer,
-    MsgpackElementLoader
-{
+MsgpackElementLoader {
     private var holder: MsgpackElement = .null
     var codingPath: [any CodingKey]
     var userInfo: [CodingUserInfoKey: Any]
@@ -349,7 +360,8 @@ class MsgpackSingleValueDecodingContainer: SingleValueDecodingContainer,
 
     private func initDecoder(value: MsgpackElement) throws -> MsgpackDecoder {
         let decoder = MsgpackDecoder(
-            codingPath: codingPath, userInfo: self.userInfo)
+            codingPath: codingPath, userInfo: self.userInfo
+        )
         try decoder.loadMsgpackElement(from: value)
         return decoder
     }
@@ -368,16 +380,13 @@ extension MsgpackElement {
         if first <= 0x7f || first >= 0xe0 || (first >= 0xcc && first <= 0xd3) {
             return try parseNumber(data: data)
         }
-        if (first >= 0xa0 && first <= 0xbf) || (first >= 0xd9 && first <= 0xdb)
-        {
+        if (first >= 0xa0 && first <= 0xbf) || (first >= 0xd9 && first <= 0xdb) {
             return try parseString(data: data)
         }
-        if (first >= 0x80 && first <= 0x8f) || (first >= 0xde && first <= 0xdf)
-        {
+        if (first >= 0x80 && first <= 0x8f) || (first >= 0xde && first <= 0xdf) {
             return try parseMap(data: data)
         }
-        if (first >= 0x90 && first <= 0x9f) || (first >= 0xdc && first <= 0xdd)
-        {
+        if (first >= 0x90 && first <= 0x9f) || (first >= 0xdc && first <= 0xdd) {
             return try parseArray(data: data)
         }
         if first >= 0xc4 && first <= 0xc6 {
@@ -388,15 +397,15 @@ extension MsgpackElement {
         }
         switch first {
         case 0xca:
-            return try parseFloat32(data: data.subdata(in: 1..<data.count))
+            return try parseFloat32(data: data.subdata(in: 1 ..< data.count))
         case 0xcb:
-            return try parseFloat64(data: data.subdata(in: 1..<data.count))
+            return try parseFloat64(data: data.subdata(in: 1 ..< data.count))
         case 0xc2:
-            return (MsgpackElement.bool(false), data.subdata(in: 1..<data.count))
+            return (MsgpackElement.bool(false), data.subdata(in: 1 ..< data.count))
         case 0xc3:
-            return (MsgpackElement.bool(true), data.subdata(in: 1..<data.count))
+            return (MsgpackElement.bool(true), data.subdata(in: 1 ..< data.count))
         case 0xc0:
-            return (MsgpackElement.null, data.subdata(in: 1..<data.count))
+            return (MsgpackElement.null, data.subdata(in: 1 ..< data.count))
         default:
             throw MsgpackDecodingError.decdoeWithUnexpectedMsgpackElement(first)
         }
@@ -405,7 +414,7 @@ extension MsgpackElement {
     private static func parseNumber(data: Data) throws -> (MsgpackElement, Data) {
         try assertLength(data: data, length: 1)
         let first = data[0]
-        let remaining = data.subdata(in: 1..<data.count)
+        let remaining = data.subdata(in: 1 ..< data.count)
         // Fixed positive int
         if first >= 0x00 && first <= 0x7f {
             let uint8 = UInt8(first)
@@ -421,28 +430,28 @@ extension MsgpackElement {
         }
 
         switch first {
-        case 0xcc:  // UInt8
+        case 0xcc: // UInt8
             let (uint8, remaining) = try parseRawUInt8(data: remaining)
             return (MsgpackElement.uint(UInt64(uint8)), remaining)
-        case 0xcd:  // UInt16
+        case 0xcd: // UInt16
             let (uint16, remaining) = try parseRawUInt16(data: remaining)
             return (MsgpackElement.uint(UInt64(uint16)), remaining)
-        case 0xce:  // UInt32
+        case 0xce: // UInt32
             let (uint32, remaining) = try parseRawUInt32(data: remaining)
             return (MsgpackElement.uint(UInt64(uint32)), remaining)
-        case 0xcf:  // UInt64
+        case 0xcf: // UInt64
             let (uint64, remaining) = try parseRawUInt64(data: remaining)
             return (MsgpackElement.uint(uint64), remaining)
-        case 0xd0:  //Int8
+        case 0xd0: // Int8
             let (int8, remaining) = try parseRawInt8(data: remaining)
             return (MsgpackElement.int(Int64(int8)), remaining)
-        case 0xd1:  //Int16
+        case 0xd1: // Int16
             let (int16, remaining) = try parseRawInt16(data: remaining)
             return (MsgpackElement.int(Int64(int16)), remaining)
-        case 0xd2:  //Int32
+        case 0xd2: // Int32
             let (int32, remaining) = try parseRawInt32(data: remaining)
             return (MsgpackElement.int(Int64(int32)), remaining)
-        case 0xd3:  //Int64
+        case 0xd3: // Int64
             let (int64, remaining) = try parseRawInt64(data: remaining)
             return (MsgpackElement.int(int64), remaining)
         default:
@@ -468,20 +477,20 @@ extension MsgpackElement {
         try assertLength(data: data, length: 1)
         var length: Int = 0
         let first = data[0]
-        var remaining = data.subdata(in: 1..<data.count)
+        var remaining = data.subdata(in: 1 ..< data.count)
         if first >= 0xa0 && first <= 0xbf {
             length = Int(first & 0x1f)
         } else {
             switch first {
-            case 0xd9:  //Str8
+            case 0xd9: // Str8
                 var uint8: UInt8
                 (uint8, remaining) = try parseRawUInt8(data: remaining)
                 length = Int(uint8)
-            case 0xda:  //str16
+            case 0xda: // str16
                 var uint16: UInt16
                 (uint16, remaining) = try parseRawUInt16(data: remaining)
                 length = Int(uint16)
-            case 0xdb:  //str32
+            case 0xdb: // str32
                 var uint32: UInt32
                 (uint32, remaining) = try parseRawUInt32(data: remaining)
                 guard uint32 <= Int.max else {
@@ -500,7 +509,7 @@ extension MsgpackElement {
         }
         return (
             MsgpackElement.string(str),
-            remaining.subdata(in: length..<remaining.count)
+            remaining.subdata(in: length ..< remaining.count)
         )
     }
 
@@ -508,17 +517,17 @@ extension MsgpackElement {
         try assertLength(data: data, length: 1)
         var length: Int = 0
         let first = data[0]
-        var remaining = data.subdata(in: 1..<data.count)
+        var remaining = data.subdata(in: 1 ..< data.count)
         switch first {
-        case 0xc4:  //bin8
+        case 0xc4: // bin8
             var uint8: UInt8
             (uint8, remaining) = try parseRawUInt8(data: remaining)
             length = Int(uint8)
-        case 0xc5:  //bin16
+        case 0xc5: // bin16
             var uint16: UInt16
             (uint16, remaining) = try parseRawUInt16(data: remaining)
             length = Int(uint16)
-        case 0xc6:  //bin32
+        case 0xc6: // bin32
             var uint32: UInt32
             (uint32, remaining) = try parseRawUInt32(data: remaining)
             guard uint32 <= Int.max else {
@@ -529,10 +538,10 @@ extension MsgpackElement {
             throw MsgpackDecodingError.decdoeWithUnexpectedMsgpackElement(first)
         }
         try assertLength(data: remaining, length: length)
-        let binary = remaining.subdata(in: 0..<length)
+        let binary = remaining.subdata(in: 0 ..< length)
         return (
             MsgpackElement.bin(binary),
-            remaining.subdata(in: length..<remaining.count)
+            remaining.subdata(in: length ..< remaining.count)
         )
     }
 
@@ -540,16 +549,16 @@ extension MsgpackElement {
         try assertLength(data: data, length: 1)
         var length: Int = 0
         let first = data[0]
-        var remaining = data.subdata(in: 1..<data.count)
+        var remaining = data.subdata(in: 1 ..< data.count)
         if first >= 0x80 && first <= 0x8f {
             length = Int(first & 0x0f)
         } else {
             switch first {
-            case 0xde:  //map16
+            case 0xde: // map16
                 var uint16: UInt16
                 (uint16, remaining) = try parseRawUInt16(data: remaining)
                 length = Int(uint16)
-            case 0xdf:  //map32
+            case 0xdf: // map32
                 var uint32: UInt32
                 (uint32, remaining) = try parseRawUInt32(data: remaining)
                 guard uint32 <= Int.max else {
@@ -563,7 +572,7 @@ extension MsgpackElement {
         }
 
         var map: [String: MsgpackElement] = [:]
-        for _ in 0..<length {
+        for _ in 0 ..< length {
             var wrappedKey: MsgpackElement
             (wrappedKey, remaining) = try parseString(data: remaining)
             guard case .string(let key) = wrappedKey else {
@@ -580,16 +589,16 @@ extension MsgpackElement {
         try assertLength(data: data, length: 1)
         var length: Int = 0
         let first = data[0]
-        var remaining = data.subdata(in: 1..<data.count)
+        var remaining = data.subdata(in: 1 ..< data.count)
         if first >= 0x90 && first <= 0x9f {
             length = Int(first & 0x0f)
         } else {
             switch first {
-            case 0xdc:  //array16
+            case 0xdc: // array16
                 var uint16: UInt16
                 (uint16, remaining) = try parseRawUInt16(data: remaining)
                 length = Int(uint16)
-            case 0xdd:  //array32
+            case 0xdd: // array32
                 var uint32: UInt32
                 (uint32, remaining) = try parseRawUInt32(data: remaining)
                 guard uint32 <= Int.max else {
@@ -604,7 +613,7 @@ extension MsgpackElement {
 
         var array: [MsgpackElement] = []
         array.reserveCapacity(length)
-        for _ in 0..<length {
+        for _ in 0 ..< length {
             var value: MsgpackElement
             (value, remaining) = try parse(data: remaining)
             array.append(value)
@@ -612,11 +621,10 @@ extension MsgpackElement {
         return (MsgpackElement.array(array), remaining)
     }
 
-    private static func parseExtension(data: Data) throws -> (MsgpackElement, Data)
-    {
+    private static func parseExtension(data: Data) throws -> (MsgpackElement, Data) {
         try assertLength(data: data, length: 1)
         let first = data[0]
-        var remaining = data.subdata(in: 1..<data.count)
+        var remaining = data.subdata(in: 1 ..< data.count)
         var extType: Int8
         var extLength: Int
         switch first {
@@ -651,8 +659,8 @@ extension MsgpackElement {
 
         (extType, remaining) = try Self.parseRawInt8(data: remaining)
         try assertLength(data: remaining, length: extLength)
-        let extData = remaining.subdata(in: 0..<extLength)
-        remaining = remaining.subdata(in: extLength..<remaining.count)
+        let extData = remaining.subdata(in: 0 ..< extLength)
+        remaining = remaining.subdata(in: extLength ..< remaining.count)
 
         return (MsgpackElement.ext(extType, extData), remaining)
     }
@@ -727,14 +735,18 @@ extension MsgpackElement {
                 T.self,
                 .init(
                     codingPath: codingPath,
-                    debugDescription: "Can't convert \(number) to \(T.self)"))
+                    debugDescription: "Can't convert \(number) to \(T.self)"
+                )
+            )
         } catch MsgpackDecodingError.decodeTypeNotMatch {
             throw DecodingError.typeMismatch(
                 T.self,
                 .init(
                     codingPath: codingPath,
                     debugDescription:
-                        "Can't convert \(self.typeDescription) to \(T.self)"))
+                    "Can't convert \(self.typeDescription) to \(T.self)"
+                )
+            )
         }
     }
 
@@ -803,40 +815,37 @@ extension MsgpackElement {
         let uint8 = uint8Data.withUnsafeBytes { pointer in
             return pointer.load(as: UInt8.self)
         }
-        let remaining = data.subdata(in: 1..<data.count)
+        let remaining = data.subdata(in: 1 ..< data.count)
         return (uint8, remaining)
     }
 
-    fileprivate static func parseRawUInt16(data: Data) throws -> (UInt16, Data)
-    {
+    fileprivate static func parseRawUInt16(data: Data) throws -> (UInt16, Data) {
         try MsgpackElement.assertLength(data: data, length: 2)
         let uint16Data = data[..<2]
         let uint16 = uint16Data.withUnsafeBytes { pointer in
             return pointer.loadUnaligned(as: UInt16.self)
         }.bigEndian
-        let remaining = data.subdata(in: 2..<data.count)
+        let remaining = data.subdata(in: 2 ..< data.count)
         return (uint16, remaining)
     }
 
-    fileprivate static func parseRawUInt32(data: Data) throws -> (UInt32, Data)
-    {
+    fileprivate static func parseRawUInt32(data: Data) throws -> (UInt32, Data) {
         try MsgpackElement.assertLength(data: data, length: 4)
         let uint32Data = data[..<4]
         let uint32 = uint32Data.withUnsafeBytes { pointer in
             return pointer.loadUnaligned(as: UInt32.self)
         }.bigEndian
-        let remaining = data.subdata(in: 4..<data.count)
+        let remaining = data.subdata(in: 4 ..< data.count)
         return (uint32, remaining)
     }
 
-    fileprivate static func parseRawUInt64(data: Data) throws -> (UInt64, Data)
-    {
+    fileprivate static func parseRawUInt64(data: Data) throws -> (UInt64, Data) {
         try MsgpackElement.assertLength(data: data, length: 8)
         let uint64Data = data[..<8]
         let uint64 = uint64Data.withUnsafeBytes { pointer in
             return pointer.loadUnaligned(as: UInt64.self)
         }.bigEndian
-        let remaining = data.subdata(in: 8..<data.count)
+        let remaining = data.subdata(in: 8 ..< data.count)
         return (uint64, remaining)
     }
 
@@ -846,7 +855,7 @@ extension MsgpackElement {
         let int8 = int8Data.withUnsafeBytes { pointer in
             return pointer.loadUnaligned(as: Int8.self)
         }.bigEndian
-        let remaining = data.subdata(in: 1..<data.count)
+        let remaining = data.subdata(in: 1 ..< data.count)
         return (int8, remaining)
     }
 
@@ -856,7 +865,7 @@ extension MsgpackElement {
         let int16 = int16Data.withUnsafeBytes { pointer in
             return pointer.loadUnaligned(as: Int16.self)
         }.bigEndian
-        let remaining = data.subdata(in: 2..<data.count)
+        let remaining = data.subdata(in: 2 ..< data.count)
         return (int16, remaining)
     }
 
@@ -866,7 +875,7 @@ extension MsgpackElement {
         let int32 = int32Data.withUnsafeBytes { pointer in
             return pointer.loadUnaligned(as: Int32.self)
         }.bigEndian
-        let remaining = data.subdata(in: 4..<data.count)
+        let remaining = data.subdata(in: 4 ..< data.count)
         return (int32, remaining)
     }
 
@@ -876,7 +885,7 @@ extension MsgpackElement {
         let int64 = int64Data.withUnsafeBytes { pointer in
             return pointer.loadUnaligned(as: Int64.self)
         }.bigEndian
-        let remaining = data.subdata(in: 8..<data.count)
+        let remaining = data.subdata(in: 8 ..< data.count)
         return (int64, remaining)
     }
 }
@@ -891,8 +900,9 @@ extension MsgpackTimestamp: Decodable {
                 .init(
                     codingPath: decoder.codingPath,
                     debugDescription:
-                        "The extension type is not -1 when decoding \(MsgpackTimestamp.self)"
-                ))
+                    "The extension type is not -1 when decoding \(MsgpackTimestamp.self)"
+                )
+            )
         }
         let extData = try decoder.getMsgpackExtData()
         switch extData.count {

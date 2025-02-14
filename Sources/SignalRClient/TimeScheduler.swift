@@ -14,7 +14,7 @@ actor TimeScheduler {
         timer = DispatchSource.makeTimerSource(queue: queue)
         guard let timer = timer else { return }
         
-        timer.schedule(deadline: .now() + interval, repeating: .infinity) //trigger only once here
+        timer.schedule(deadline: .now() + interval, repeating: .infinity) // trigger only once here
         timer.setEventHandler { [weak self] in
             guard let self = self else { return }
 

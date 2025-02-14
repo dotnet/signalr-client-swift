@@ -81,7 +81,7 @@ class MsgpackEncoderTests: XCTestCase {
             [0xda, 0xff, 0xff] + Data(repeating: 0x61, count: 1 << 16 - 1)
         data[1 << 16] =
             [0xdb, 0x00, 0x01, 0x00, 0x00]
-            + Data(repeating: 0x61, count: 1 << 16)
+                + Data(repeating: 0x61, count: 1 << 16)
         for (length, expected) in data {
             let string = String(repeating: Character("a"), count: length)
             let result = try MsgpackElement.string(string).marshall()
@@ -116,7 +116,7 @@ class MsgpackEncoderTests: XCTestCase {
             [0xc5, 0xff, 0xff] + Data(repeating: UInt8(1), count: 1 << 16 - 1)
         data[1 << 16] =
             [0xc6, 0x00, 0x01, 0x00, 0x00]
-            + Data(repeating: UInt8(1), count: 1 << 16)
+                + Data(repeating: UInt8(1), count: 1 << 16)
         for (length, expected) in data {
             let data = Data(repeating: UInt8(1), count: length)
             let result = try MsgpackElement.bin(data).marshall()
@@ -128,7 +128,7 @@ class MsgpackEncoderTests: XCTestCase {
         var map: [String: MsgpackElement] = [:]
         var result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result, Data([0x80]))
-        for i in 0..<1 << 4 - 1 {
+        for i in 0 ..< 1 << 4 - 1 {
             map[String(i)] = MsgpackElement.bool(true)
         }
         result = try MsgpackElement.map(map).marshall()
@@ -136,28 +136,28 @@ class MsgpackEncoderTests: XCTestCase {
         XCTAssertEqual(result[0], 0x8f)
 
         map.removeAll()
-        for i in 0..<1 << 4 {
+        for i in 0 ..< 1 << 4 {
             map[String(i)] = MsgpackElement.bool(true)
         }
         result = try MsgpackElement.map(map).marshall()
         XCTAssertEqual(result.count, 57)
-        XCTAssertEqual(result[0...2], Data([0xde, 0x00, 0x10]))
+        XCTAssertEqual(result[0 ... 2], Data([0xde, 0x00, 0x10]))
 
         map.removeAll()
-        for i in 0..<1 << 16 - 1 {
+        for i in 0 ..< 1 << 16 - 1 {
             map[String(i)] = MsgpackElement.bool(true)
         }
         result = try MsgpackElement.map(map).marshall()
-        XCTAssertEqual(result.count, 447638)
-        XCTAssertEqual(result[0...2], Data([0xde, 0xff, 0xff]))
+        XCTAssertEqual(result.count, 447_638)
+        XCTAssertEqual(result[0 ... 2], Data([0xde, 0xff, 0xff]))
 
         map.removeAll()
-        for i in 0..<1 << 16 {
+        for i in 0 ..< 1 << 16 {
             map[String(i)] = MsgpackElement.bool(true)
         }
         result = try MsgpackElement.map(map).marshall()
-        XCTAssertEqual(result.count, 447647)
-        XCTAssertEqual(result[0...4], Data([0xdf, 0x00, 0x01, 0x00, 0x00]))
+        XCTAssertEqual(result.count, 447_647)
+        XCTAssertEqual(result[0 ... 4], Data([0xdf, 0x00, 0x01, 0x00, 0x00]))
     }
 
     func testEncodeArray() throws {
@@ -168,25 +168,29 @@ class MsgpackEncoderTests: XCTestCase {
         data = [MsgpackElement](repeating: .bool(true), count: 1 << 4 - 1)
         result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
-            result, [0x9f] + Data(repeating: 0xc3, count: 1 << 4 - 1))
+            result, [0x9f] + Data(repeating: 0xc3, count: 1 << 4 - 1)
+        )
 
         data = [MsgpackElement](repeating: .bool(true), count: 1 << 4)
         result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
-            result, [0xdc, 0x00, 0x10] + Data(repeating: 0xc3, count: 1 << 4))
+            result, [0xdc, 0x00, 0x10] + Data(repeating: 0xc3, count: 1 << 4)
+        )
 
         data = [MsgpackElement](repeating: .bool(true), count: 1 << 16 - 1)
         result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
             result,
-            [0xdc, 0xff, 0xff] + Data(repeating: 0xc3, count: 1 << 16 - 1))
+            [0xdc, 0xff, 0xff] + Data(repeating: 0xc3, count: 1 << 16 - 1)
+        )
 
         data = [MsgpackElement](repeating: .bool(true), count: 1 << 16)
         result = try MsgpackElement.array(data).marshall()
         XCTAssertEqual(
             result,
             [0xdd, 0x00, 0x01, 0x00, 0x00]
-                + Data(repeating: 0xc3, count: 1 << 16))
+                + Data(repeating: 0xc3, count: 1 << 16)
+        )
     }
 
     func testEncodeExtension() throws {
@@ -212,8 +216,7 @@ class MsgpackEncoderTests: XCTestCase {
     }
 
     // Used for debugging
-    func testAgainstExpected(v: Encodable, expected: Data, result: Data) throws
-    {
+    func testAgainstExpected(v: Encodable, expected: Data, result: Data) throws {
         if expected != result {
             print(expected.hexEncodedString())
             print(result.hexEncodedString())
@@ -344,7 +347,8 @@ class MsgpackEncoderTests: XCTestCase {
             var container = encoder.container(keyedBy: Keys.self)
             try container.encode(123, forKey: .Key1)
             var nestedKeyedContainer1 = container.nestedContainer(
-                keyedBy: Keys.self, forKey: Keys.Key2)
+                keyedBy: Keys.self, forKey: Keys.Key2
+            )
             try nestedKeyedContainer1.encode("123", forKey: Keys.nestedKey1)
             var nestedUnkeyedContainer = container.nestedUnkeyedContainer(
                 forKey: Keys.Key3)
@@ -397,7 +401,7 @@ class MsgpackEncoderTests: XCTestCase {
         }
     }
 
-    func testInherienceUsingSameTopContainer() throws {  // Undocumented behavior. Keep aligh with the jsonEncoder
+    func testInherienceUsingSameTopContainer() throws { // Undocumented behavior. Keep aligh with the jsonEncoder
         let encoder = MsgpackEncoder()
         let example = InherienceWithSameContainerExample()
         _ = try encoder.encode(example)
@@ -505,7 +509,8 @@ class MsgpackEncoderTests: XCTestCase {
                 ((time - Double(seconds)) * 1_000_000_000).rounded(
                     FloatingPointRoundingRule.down))
             let timestamp = MsgpackTimestamp(
-                seconds: seconds, nanoseconds: nanoseconds)
+                seconds: seconds, nanoseconds: nanoseconds
+            )
             let encoder = MsgpackEncoder()
             _ = try encoder.encode(timestamp)
             let msgpackElement = try encoder.convertToMsgpackElement()
@@ -568,12 +573,14 @@ class MsgpackEncoderTests: XCTestCase {
             XCTAssertEqual(superEncoder.codingPath.count, 1)
             XCTAssertEqual(
                 superEncoder.codingPath[0] as! MsgpackCodingKey,
-                MsgpackCodingKey(stringValue: "super"))
+                MsgpackCodingKey(stringValue: "super")
+            )
             let superSingleValueContainer = superEncoder.singleValueContainer()
             XCTAssertEqual(superSingleValueContainer.codingPath.count, 1)
             XCTAssertEqual(
                 superSingleValueContainer.codingPath[0] as! MsgpackCodingKey,
-                MsgpackCodingKey(stringValue: "super"))
+                MsgpackCodingKey(stringValue: "super")
+            )
 
             let superEncoder2 = container1.superEncoder(forKey: .superKey)
             XCTAssertEqual(superEncoder2.codingPath.count, 1)
@@ -587,7 +594,8 @@ class MsgpackEncoderTests: XCTestCase {
 
             XCTAssertEqual(container1.codingPath.count, 0)
             var container2 = container1.nestedContainer(
-                keyedBy: Keys.self, forKey: .Key1)
+                keyedBy: Keys.self, forKey: .Key1
+            )
             XCTAssertEqual(container2.codingPath.count, 1)
             XCTAssertEqual(container2.codingPath[0] as! Keys, Keys.Key1)
 
@@ -602,7 +610,8 @@ class MsgpackEncoderTests: XCTestCase {
             XCTAssertEqual(container4.codingPath[1] as! Keys, Keys.Key2)
             XCTAssertEqual(
                 container4.codingPath[2] as! MsgpackCodingKey,
-                MsgpackCodingKey(intValue: 0))
+                MsgpackCodingKey(intValue: 0)
+            )
         }
 
         enum Keys: CodingKey {

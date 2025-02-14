@@ -6,18 +6,18 @@ class IntegrationTests: XCTestCase {
     private var url: String?
     private let logLevel: LogLevel = .debug
     #if os(Linux)
-    private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-        (.longPolling, .messagePack),
-        (.longPolling, .json),
-    ]
+        private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
+            (.longPolling, .messagePack),
+            (.longPolling, .json),
+        ]
     #else
-    private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-        (.webSockets, .json),
-        (.serverSentEvents, .json),
-        (.longPolling, .json),
-        (.webSockets, .messagePack),
-        (.longPolling, .messagePack),
-    ]
+        private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
+            (.webSockets, .json),
+            (.serverSentEvents, .json),
+            (.longPolling, .json),
+            (.webSockets, .messagePack),
+            (.longPolling, .messagePack),
+        ]
     #endif
 
     override func setUpWithError() throws {
@@ -45,25 +45,25 @@ class IntegrationTests: XCTestCase {
             .withLogLevel(logLevel: logLevel)
             .build()
 
-        try await run(){
+        try await run() {
             try await connection.start()
         } defer: {
             await connection.stop()
         }
     }
-    
+
     func testMultipleConnectection() async throws {
         for (transport, hubProtocol) in testCombinations {
             let count = 10 // DefaultUrlSession has 5 connections
             var connections: [HubConnection] = []
             do {
-                for _ in 0..<count {
+                for _ in 0 ..< count {
                     let connection = HubConnectionBuilder()
                         .withUrl(url: url!, transport: transport)
                         .withHubProtocol(hubProtocol: hubProtocol)
                         .withLogLevel(logLevel: logLevel)
                         .build()
-                    try await whenTaskTimeout(connection.start,timeout:1)
+                    try await whenTaskTimeout(connection.start, timeout: 1)
                     connections.append(connection)
                 }
             } catch {
@@ -74,16 +74,16 @@ class IntegrationTests: XCTestCase {
             }
         }
     }
-    
+
     func testSendAndOn() async throws {
         for (transport, hubProtocol) in testCombinations {
-            try await whenTaskTimeout({try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: "hello")}, timeout: 1)
+            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: "hello") }, timeout: 1)
             try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: 1) }, timeout: 1)
             try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: 1.2) }, timeout: 1)
             try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: true) }, timeout: 1)
             try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: [1, 2, 3]) }, timeout: 1)
             try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: ["key": "value"]) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: CustomClass(str: "Hello, World!", arr: [1, 2, 3]))} , timeout: 1)
+            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: CustomClass(str: "Hello, World!", arr: [1, 2, 3])) }, timeout: 1)
         }
     }
 
@@ -110,7 +110,7 @@ class IntegrationTests: XCTestCase {
             } catch {
                 XCTFail("Failed to send and receive messages with transport: \(transport) and hubProtocol: \(hubProtocol)")
             }
-            
+
             await fulfillment(of: [expectation], timeout: 1)
         } defer: {
             await connection.stop()
@@ -135,7 +135,7 @@ class IntegrationTests: XCTestCase {
             .withHubProtocol(hubProtocol: hubProtocol)
             .withLogLevel(logLevel: logLevel)
             .build()
-        
+
         try await connection.start()
 
         try await run() {
@@ -159,7 +159,7 @@ class IntegrationTests: XCTestCase {
             .withHubProtocol(hubProtocol: hubProtocol)
             .withLogLevel(logLevel: logLevel)
             .build()
-        
+
         try await connection.start()
 
         try await run() {
@@ -257,7 +257,7 @@ class IntegrationTests: XCTestCase {
                 XCTAssertEqual(expectMessage, message)
                 return
             }
-            
+
             try await connection.invoke(method: "invokeWithEmptyClientResult", arguments: expectMessage)
             await fulfillment(of: [expectation], timeout: 1.0)
         } defer: {
@@ -291,8 +291,8 @@ class IntegrationTests: XCTestCase {
     }
 
     func run<T>(_ operation: () async throws -> T,
-            defer deferredOperation: () async throws -> Void,
-            line: UInt = #line) async throws -> T {
+                defer deferredOperation: () async throws -> Void,
+                line: UInt = #line) async throws -> T {
         do {
             let result = try await operation()
             try await deferredOperation()

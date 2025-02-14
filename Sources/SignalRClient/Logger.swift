@@ -1,6 +1,6 @@
 import Foundation
 #if canImport(os)
-import os
+    import os
 #endif
 
 public enum LogLevel: Int, Sendable {
@@ -10,13 +10,13 @@ public enum LogLevel: Int, Sendable {
 public protocol LogHandler: Sendable {
     func log(
         logLevel: LogLevel, message: LogMessage, file: String, function: String,
-        line: UInt)
+        line: UInt
+    )
 }
 
 // The current functionality is similar to String. It could be extended in the future.
 public struct LogMessage: ExpressibleByStringInterpolation,
-    CustomStringConvertible
-{
+CustomStringConvertible {
     private var value: String
 
     public init(stringLiteral value: String) {
@@ -47,55 +47,57 @@ struct Logger: Sendable {
         }
         logHandler.log(
             logLevel: level, message: message, file: file,
-            function: function, line: line)
+            function: function, line: line
+        )
     }
 }
 
 #if canImport(os)
-struct DefaultLogHandler: LogHandler {
-    var logger: os.Logger
-    init() {
-        self.logger = os.Logger(
-            subsystem: "com.microsoft.signalr.client", category: "")
-    }
+    struct DefaultLogHandler: LogHandler {
+        var logger: os.Logger
+        init() {
+            self.logger = os.Logger(
+                subsystem: "com.microsoft.signalr.client", category: ""
+            )
+        }
 
-    public func log(
-        logLevel: LogLevel, message: LogMessage, file: String, function: String,
-        line: UInt
-    ) {
-        logger.log(
-            level: logLevel.toOSLogType(),
-            "[\(Date().description(with: Locale.current), privacy: .public)] [\(String(describing:logLevel), privacy: .public)] [\(file.fileNameWithoutPathAndSuffix(), privacy: .public):\(function, privacy: .public):\(line,privacy: .public)] - \(message,privacy: .public)"
-        )
-    }
-}
-
-extension LogLevel {
-    fileprivate func toOSLogType() -> OSLogType {
-        switch self {
-        case .debug:
-            return .debug
-        case .information:
-            return .info
-        case .warning:
-            // OSLog has no warning type
-            return .info
-        case .error:
-            return .error
+        public func log(
+            logLevel: LogLevel, message: LogMessage, file: String, function: String,
+            line: UInt
+        ) {
+            logger.log(
+                level: logLevel.toOSLogType(),
+                "[\(Date().description(with: Locale.current), privacy: .public)] [\(String(describing: logLevel), privacy: .public)] [\(file.fileNameWithoutPathAndSuffix(), privacy: .public):\(function, privacy: .public):\(line, privacy: .public)] - \(message, privacy: .public)"
+            )
         }
     }
-}
-#else
-struct DefaultLogHandler: LogHandler {
-    public func log(
-        logLevel: LogLevel, message: LogMessage, file: String, function: String,
-        line: UInt
-    ) {
-        print(
-            "[\(Date().description(with: Locale.current))] [\(String(describing:logLevel))] [\(file.fileNameWithoutPathAndSuffix()):\(function):\(line)] - \(message)"
-        )
+
+    extension LogLevel {
+        fileprivate func toOSLogType() -> OSLogType {
+            switch self {
+            case .debug:
+                return .debug
+            case .information:
+                return .info
+            case .warning:
+                // OSLog has no warning type
+                return .info
+            case .error:
+                return .error
+            }
+        }
     }
-}
+#else
+    struct DefaultLogHandler: LogHandler {
+        public func log(
+            logLevel: LogLevel, message: LogMessage, file: String, function: String,
+            line: UInt
+        ) {
+            print(
+                "[\(Date().description(with: Locale.current))] [\(String(describing: logLevel))] [\(file.fileNameWithoutPathAndSuffix()):\(function):\(line)] - \(message)"
+            )
+        }
+    }
 #endif
 
 extension String {
