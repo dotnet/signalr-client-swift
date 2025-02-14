@@ -50,7 +50,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $isShowingUsernameSheet) {
             UsernameEntryView(username: $username, isPresented: $isShowingUsernameSheet, viewModel: viewModel)
-                .frame(width: 300, height: 200) // 设定弹窗大小
+                .frame(width: 300, height: 200) 
         }
     }
 }
