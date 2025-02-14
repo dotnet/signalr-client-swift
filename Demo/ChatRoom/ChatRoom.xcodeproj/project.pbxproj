@@ -187,7 +187,7 @@
 			mainGroup = E3090A942D5358B7002B986C;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				E3D7F2792D59D2560002FC3B /* XCRemoteSwiftPackageReference "signalr-swift" */,
+				E3D7F2792D59D2560002FC3B /* XCRemoteSwiftPackageReference "signalr-client-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E3090A9E2D5358B7002B986C /* Products */;
@@ -582,9 +582,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		E3D7F2792D59D2560002FC3B /* XCRemoteSwiftPackageReference "signalr-swift" */ = {
+		E3D7F2792D59D2560002FC3B /* XCRemoteSwiftPackageReference "signalr-client-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Azure/signalr-swift";
+			repositoryURL = "https://github.com/dotnet/signalr-client-swift";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -595,7 +595,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		E3D7F27A2D59D2560002FC3B /* SignalRClient */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = E3D7F2792D59D2560002FC3B /* XCRemoteSwiftPackageReference "signalr-swift" */;
+			package = E3D7F2792D59D2560002FC3B /* XCRemoteSwiftPackageReference "signalr-client-swift" */;
 			productName = SignalRClient;
 		};
 /* End XCSwiftPackageProductDependency section */

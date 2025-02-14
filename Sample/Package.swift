@@ -7,12 +7,12 @@ let package = Package(
         .macOS(.v10_15)
     ],
     dependencies: [
-        .package(name: "signalr-swift", path: "../")
+        .package(name: "signalr-client-swift", path: "../")
     ],
     targets: [
         .executableTarget(
             name: "Sample",
-            dependencies: [.product(name: "SignalRClient", package: "signalr-swift")]
+            dependencies: [.product(name: "SignalRClient", package: "signalr-client-swift")]
         )
     ]
 )

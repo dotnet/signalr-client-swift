@@ -20,10 +20,10 @@ import PackageDescription
 let package = Package(
     name: "signalr-client-app",
     dependencies: [
-        .package(url: "https://github.com/Azure/signalr-swift")
+        .package(url: "https://github.com/dotnet/signalr-client-swift")
     ],
     targets: [
-        .target(name: "YourTargetName", dependencies: [.product(name: "SignalRClient", package: "signalr-swift")])
+        .target(name: "YourTargetName", dependencies: [.product(name: "SignalRClient", package: "signalr-client-swift")])
     ]
 )
 ```

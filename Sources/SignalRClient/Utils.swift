@@ -27,10 +27,12 @@ class Utils {
             return "Unknown OS"
         #endif
 
-        let version = ProcessInfo.processInfo.operatingSystemVersion
-        let versionString =
-            "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
-        return "\(osName) \(versionString)"
+        #if os(macOS) || os(iOS) || os(tvOS) || os(watchOS)
+            let version = ProcessInfo.processInfo.operatingSystemVersion
+            let versionString =
+                "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
+            return "\(osName) \(versionString)"
+        #endif
     }
 }
 
