@@ -7,7 +7,7 @@ let package = Package(
         .macOS(.v10_15)
     ],
     dependencies: [
-        .package(name: "signalr-client-swift", path: "../")
+        .package(url: "https://github.com/dotnet/signalr-client-swift", branch: "main")
     ],
     targets: [
         .executableTarget(

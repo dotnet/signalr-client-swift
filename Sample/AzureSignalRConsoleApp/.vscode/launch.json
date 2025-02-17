@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:AzureSignalRConsoleApp}",
+            "name": "Debug Sample",
+            "program": "${workspaceFolder:AzureSignalRConsoleApp}/.build/debug/Sample",
+            "preLaunchTask": "swift: Build Debug Sample"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:AzureSignalRConsoleApp}",
+            "name": "Release Sample",
+            "program": "${workspaceFolder:AzureSignalRConsoleApp}/.build/release/Sample",
+            "preLaunchTask": "swift: Build Release Sample"
+        }
+    ]
+}
