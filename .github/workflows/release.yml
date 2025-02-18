@@ -1,0 +1,66 @@
+name: Release version (tag)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tag-and-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Get current version
+        id: get_version
+        run: |
+          current_version=$(grep 'let PackageVersion' Sources/SignalRClient/Version.swift | sed 's/.*"//;s/".*//')
+          echo "Current Version: $current_version"
+          echo "current_version=$current_version" >> "$GITHUB_OUTPUT"
+
+      - name: Get next version
+        id: calc_next
+        run: |
+          current=${{ steps.get_version.outputs.current_version }}
+          if [[ "$current" == *"-preview."* ]]; then
+              base=${current%-preview.*}
+              preview_num=${current##*-preview.}
+              next_preview=$((preview_num + 1))
+              next_version="${base}-preview.${next_preview}"
+          else
+              IFS='.' read -r major minor patch <<< "$current"
+              next_patch=$((patch + 1))
+              next_version="${major}.${minor}.${next_patch}"
+          fi
+          echo "Next Version: $next_version"
+          echo "next_version=$next_version" >> "$GITHUB_OUTPUT"
+      
+      - name: Tag and release
+        run: |
+          version=${{ steps.get_version.outputs.current_version }}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v$version"
+          git push origin "v$version"
+
+      - name: Create a branch for bumping version
+        id: create_branch
+        run: |
+          next=${{ steps.calc_next.outputs.next_version }}
+          branch="bump-version-$next"
+          echo "branch_name=$branch" >> $GITHUB_OUTPUT
+          git checkout -b "$branch"
+          sed -i "s/\(let PackageVersion = \"\).*\(\"\)/\1$next\2/" Sources/SignalRClient/Version.swift
+          git add Sources/SignalRClient/Version.swift
+          git commit -m "Bump version to $next"
+          git push origin "$branch"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ steps.create_branch.outputs.branch_name }}
+          title: "Bump version to ${{ steps.calc_next.outputs.next_version }}"
+          commit-message: "Bump version to ${{ steps.calc_next.outputs.next_version }}"
+          body: "Bump version to ${{ steps.calc_next.outputs.next_version }} after release"
