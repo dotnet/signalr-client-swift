@@ -1,1 +1,1 @@
-let PackageVersion = "0.9.0-preview.1"
+let PackageVersion = "0.9.0-preview.2"
