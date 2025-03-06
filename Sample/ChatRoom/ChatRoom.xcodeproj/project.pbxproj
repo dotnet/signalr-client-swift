@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E3D7F27B2D59D2560002FC3B /* SignalRClient in Frameworks */ = {isa = PBXBuildFile; productRef = E3D7F27A2D59D2560002FC3B /* SignalRClient */; };
+		E3A4BDA42D7947DC00F68850 /* SignalRClient in Frameworks */ = {isa = PBXBuildFile; productRef = E3A4BDA32D7947DC00F68850 /* SignalRClient */; };
 		E3D7F27D2D5C47C10002FC3B /* ReadMe.md in Sources */ = {isa = PBXBuildFile; fileRef = E3D7F27C2D5C47B70002FC3B /* ReadMe.md */; };
 /* End PBXBuildFile section */
 
@@ -48,7 +48,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E3D7F27B2D59D2560002FC3B /* SignalRClient in Frameworks */,
+				E3A4BDA42D7947DC00F68850 /* SignalRClient in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,6 +74,7 @@
 			children = (
 				E3D7F27C2D5C47B70002FC3B /* ReadMe.md */,
 				E3090A9F2D5358B7002B986C /* ChatRoom */,
+				E3A4BDA22D7947DC00F68850 /* Frameworks */,
 				E3090A9E2D5358B7002B986C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -86,6 +87,13 @@
 				E3090AB82D5358B9002B986C /* ChatRoomUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		E3A4BDA22D7947DC00F68850 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -108,7 +116,7 @@
 			);
 			name = ChatRoom;
 			packageProductDependencies = (
-				E3D7F27A2D59D2560002FC3B /* SignalRClient */,
+				E3A4BDA32D7947DC00F68850 /* SignalRClient */,
 			);
 			productName = ChatRoom;
 			productReference = E3090A9D2D5358B7002B986C /* ChatRoom.app */;
@@ -187,7 +195,7 @@
 			mainGroup = E3090A942D5358B7002B986C;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				E3D7F2792D59D2560002FC3B /* XCRemoteSwiftPackageReference "signalr-client-swift" */,
+				E3A4BDA12D7947A100F68850 /* XCRemoteSwiftPackageReference "signalr-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E3090A9E2D5358B7002B986C /* Products */;
@@ -267,6 +275,7 @@
 		E3090AC02D5358B9002B986C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -320,6 +329,8 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				SUPPORTED_PLATFORMS = "xrsimulator xros watchsimulator watchos macosx iphonesimulator iphoneos driverkit appletvsimulator appletvos";
+				SUPPORTS_MACCATALYST = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -328,6 +339,7 @@
 		E3090AC12D5358B9002B986C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -374,6 +386,8 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				SUPPORTED_PLATFORMS = "xrsimulator xros watchsimulator watchos macosx iphonesimulator iphoneos driverkit appletvsimulator appletvos";
+				SUPPORTS_MACCATALYST = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -400,15 +414,16 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MACOSX_DEPLOYMENT_TARGET = 12.4;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = Dotnet.ChatRoom;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
@@ -438,15 +453,16 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 15.2;
+				MACOSX_DEPLOYMENT_TARGET = 12.4;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = Dotnet.ChatRoom;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = macosx;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
@@ -582,9 +598,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		E3D7F2792D59D2560002FC3B /* XCRemoteSwiftPackageReference "signalr-client-swift" */ = {
+		E3A4BDA12D7947A100F68850 /* XCRemoteSwiftPackageReference "signalr-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/dotnet/signalr-client-swift";
+			repositoryURL = "https://github.com/Azure/signalr-swift";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -593,9 +609,9 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		E3D7F27A2D59D2560002FC3B /* SignalRClient */ = {
+		E3A4BDA32D7947DC00F68850 /* SignalRClient */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = E3D7F2792D59D2560002FC3B /* XCRemoteSwiftPackageReference "signalr-client-swift" */;
+			package = E3A4BDA12D7947A100F68850 /* XCRemoteSwiftPackageReference "signalr-swift" */;
 			productName = SignalRClient;
 		};
 /* End XCSwiftPackageProductDependency section */
