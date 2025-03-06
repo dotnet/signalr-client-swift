@@ -1,10 +1,10 @@
 {
-  "originHash" : "dad3ea5705eeefc253017273d581894773ef4fccd9f3663e937ae37d28b5b1ea",
+  "originHash" : "089e8a98d8934104d085ef56f4bf4fdd7a860571d17e10aca6bc14cea5ca4409",
   "pins" : [
     {
-      "identity" : "signalr-swift",
+      "identity" : "signalr-client-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Azure/signalr-swift",
+      "location" : "https://github.com/dotnet/signalr-client-swift.git",
       "state" : {
         "branch" : "main",
         "revision" : "0046cec26c8c0b252778373c4b1ad3b303ba7956"

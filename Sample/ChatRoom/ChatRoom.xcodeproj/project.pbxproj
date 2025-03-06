@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E3A4BDA42D7947DC00F68850 /* SignalRClient in Frameworks */ = {isa = PBXBuildFile; productRef = E3A4BDA32D7947DC00F68850 /* SignalRClient */; };
+		E3A4BDA72D794A8500F68850 /* SignalRClient in Frameworks */ = {isa = PBXBuildFile; productRef = E3A4BDA62D794A8500F68850 /* SignalRClient */; };
 		E3D7F27D2D5C47C10002FC3B /* ReadMe.md in Sources */ = {isa = PBXBuildFile; fileRef = E3D7F27C2D5C47B70002FC3B /* ReadMe.md */; };
 /* End PBXBuildFile section */
 
@@ -48,7 +48,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E3A4BDA42D7947DC00F68850 /* SignalRClient in Frameworks */,
+				E3A4BDA72D794A8500F68850 /* SignalRClient in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -116,7 +116,7 @@
 			);
 			name = ChatRoom;
 			packageProductDependencies = (
-				E3A4BDA32D7947DC00F68850 /* SignalRClient */,
+				E3A4BDA62D794A8500F68850 /* SignalRClient */,
 			);
 			productName = ChatRoom;
 			productReference = E3090A9D2D5358B7002B986C /* ChatRoom.app */;
@@ -195,7 +195,7 @@
 			mainGroup = E3090A942D5358B7002B986C;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				E3A4BDA12D7947A100F68850 /* XCRemoteSwiftPackageReference "signalr-swift" */,
+				E3A4BDA52D794A8500F68850 /* XCRemoteSwiftPackageReference "signalr-client-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E3090A9E2D5358B7002B986C /* Products */;
@@ -598,9 +598,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		E3A4BDA12D7947A100F68850 /* XCRemoteSwiftPackageReference "signalr-swift" */ = {
+		E3A4BDA52D794A8500F68850 /* XCRemoteSwiftPackageReference "signalr-client-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Azure/signalr-swift";
+			repositoryURL = "https://github.com/dotnet/signalr-client-swift.git";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -609,9 +609,9 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		E3A4BDA32D7947DC00F68850 /* SignalRClient */ = {
+		E3A4BDA62D794A8500F68850 /* SignalRClient */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = E3A4BDA12D7947A100F68850 /* XCRemoteSwiftPackageReference "signalr-swift" */;
+			package = E3A4BDA52D794A8500F68850 /* XCRemoteSwiftPackageReference "signalr-client-swift" */;
 			productName = SignalRClient;
 		};
 /* End XCSwiftPackageProductDependency section */
