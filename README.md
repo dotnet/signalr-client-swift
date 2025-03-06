@@ -8,10 +8,28 @@ SignalR Swift is a client library for connecting to SignalR servers from Swift a
 
 - Swift >= 5.10
 - macOS >= 11.0
+- iOS >= 14
 
 ### Swift Package Manager
 
-Add the project as a dependency to your Package.swift from a git branch:
+Add the project as a dependency to your Package.swift from a verion:
+
+```swift
+// swift-tools-version: 5.10
+import PackageDescription
+
+let package = Package(
+    name: "signalr-client-app",
+    dependencies: [
+        .package(url: "https://github.com/dotnet/signalr-client-swift", .upToNextMinor(from: "0.9.0-preview.2"))
+    ],
+    targets: [
+        .executableTarget(name: "YourTargetName", dependencies: [.product(name: "SignalRClient", package: "signalr-client-swift")])
+    ]
+)
+```
+
+Also you can add the project as a dependency to your Package.swift from a git branch:
 
 ```swift
 // swift-tools-version: 5.10
