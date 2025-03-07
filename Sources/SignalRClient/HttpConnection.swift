@@ -84,7 +84,7 @@ actor HttpConnection: ConnectionProtocol {
     private let negotiationRedirectionLimit = 100
 
     private var connectionState: ConnectionState = .disconnected
-    private var connectionStarted: Bool = false
+    private var connectionStartedSuccessfully: Bool = false
     private let httpClient: AccessTokenHttpClient
     private let logger: Logger
     private var options: HttpConnectionOptions
@@ -107,6 +107,7 @@ actor HttpConnection: ConnectionProtocol {
     private var onReceive: Transport.OnReceiveHandler?
     private var onClose: Transport.OnCloseHander?
     private let negotiateVersion = 1
+    private var closeDuringStartError: Error? = nil
 
     // MARK: - Initialization
 
@@ -142,39 +143,27 @@ actor HttpConnection: ConnectionProtocol {
         // - If startInternalTask is nil, start will directly stop
         // - If startInternalTask is not nil, wait it finish and then call the stop
         guard connectionState == .disconnected else {
-            throw SignalRError.invalidOperation("Cannot start an HttpConnection that is not in the 'Disconnected' state.")
+            throw SignalRError.invalidOperation("Cannot start an HttpConnection that is not in the 'Disconnected' state. Currently it's \(connectionState)")
         }
 
         connectionState = .connecting
 
         startInternalTask = Task {
-            try await self.startInternal(transferFormat: transferFormat)
+            do {
+                try await self.startInternal(transferFormat: transferFormat)
+                connectionStartedSuccessfully = true
+            } catch {
+                connectionState = .disconnected
+                throw error
+            }
         }
 
-        do {
-            try await startInternalTask?.value
-        } catch {
-            connectionState = .disconnected
-            throw error
-        }
-
-        if connectionState == .disconnecting {
-            let message = "Failed to start the HttpConnection before stop() was called."
-            logger.log(level: .error, message: "\(message)")
-            await stopTask?.value
-            throw SignalRError.failedToStartConnection(message)
-        } else if connectionState != .connected {
-            let message = "HttpConnection.startInternal completed gracefully but didn't enter the connection into the connected state!"
-            logger.log(level: .error, message: "\(message)")
-            throw SignalRError.failedToStartConnection(message)
-        }
-
-        connectionStarted = true
+        try await startInternalTask?.value
     }
 
     func send(_ data: StringOrData) async throws {
         guard connectionState == .connected else {
-            throw SignalRError.invalidOperation("Cannot send data if the connection is not in the 'Connected' State.")
+            throw SignalRError.invalidOperation("Cannot send data if the connection is not in the 'Connected' State. Currently it's \(connectionState)")
         }
 
         try await transport?.send(data)
@@ -204,6 +193,11 @@ actor HttpConnection: ConnectionProtocol {
     // MARK: - Private Methods
 
     private func startInternal(transferFormat: TransferFormat) async throws {
+        guard connectionState == .connecting else {
+            throw SignalRError.connectionAborted
+        }
+        closeDuringStartError = nil
+        
         var url = baseUrl
         await httpClient.setAccessTokenFactory(factory: accessTokenFactory)
 
@@ -252,10 +246,14 @@ actor HttpConnection: ConnectionProtocol {
                 inherentKeepAlivePrivate = true
             }
 
-            if connectionState == .connecting {
-                logger.log(level: .debug, message: "The HttpConnection connected successfully.")
-                connectionState = .connected
+            guard closeDuringStartError == nil else {
+                throw closeDuringStartError!
             }
+
+            // IMPORTANT: There should be no async code start from here. Otherwise, we may lost the control of the connection lifecycle
+
+            connectionState = .connected
+            logger.log(level: .debug, message: "The HttpConnection connected successfully.")
         } catch {
             logger.log(level: .error, message: "Failed to start the connection: \(error)")
             connectionState = .disconnected
@@ -265,9 +263,17 @@ actor HttpConnection: ConnectionProtocol {
     }
 
     private func stopInternal(error: Error?) async {
+        guard connectionState != .disconnected else {
+            return
+        }
+
         stopError = error
+        closeDuringStartError = error ?? SignalRError.connectionAborted
 
         do {
+            // startInternalTask may have several cases:
+            // 1. Already finished. Just return immediately
+            // 2. Still in progress. Caused by closeDuringStartError, it will throw and set transport to nil
             try await startInternalTask?.value
         } catch {
             // Ignore errors from startInternal
@@ -278,9 +284,8 @@ actor HttpConnection: ConnectionProtocol {
                 try await transport?.stop(error: nil)
             } catch {
                 logger.log(level: .error, message: "HttpConnection.transport.stop() threw error '\(error)'.")
-                await stopConnection(error: error)
+                await handleConnectionClose(error: error)
             }
-            transport = nil
         } else {
             logger.log(level: .debug, message: "HttpConnection.transport is undefined in HttpConnection.stop() because start() failed.")
         }
@@ -367,32 +372,36 @@ actor HttpConnection: ConnectionProtocol {
         await transport!.onReceive(self.onReceive)
         await transport!.onClose { [weak self] error in
             guard let self = self else { return }
-            await self.stopConnection(error: error)
+            await self.handleConnectionClose(error: error)
         }
 
-        try await transport!.connect(url: url, transferFormat: transferFormat)
+        do {
+            try await transport!.connect(url: url, transferFormat: transferFormat)
+        } catch {
+            await transport!.onReceive(nil)
+            await transport!.onClose(nil)
+            throw error
+        }
     }
 
-    private func stopConnection(error: Error?) async {
+    private func handleConnectionClose(error: Error?) async {
         logger.log(level: .debug, message: "HttpConnection.stopConnection(\(String(describing: error))) called while in state \(connectionState).")
 
         transport = nil
 
         let finalError = stopError ?? error
         stopError = nil
+        closeDuringStartError = finalError ?? SignalRError.connectionAborted
 
         if connectionState == .disconnected {
             logger.log(level: .debug, message: "Call to HttpConnection.stopConnection(\(String(describing: finalError))) was ignored because the connection is already in the disconnected state.")
             return
         }
 
-        if connectionState == .connecting {
-            logger.log(level: .warning, message: "Call to HttpConnection.stopConnection(\(String(describing: finalError))) was ignored because the connection is still in the connecting state.")
+        if (connectionState == .connecting) {
+            // connecting means start still control the lifetime. As we set closeDuringStartError, it throws there.
+            logger.log(level: .debug, message: "Call to HttpConnection.stopConnection(\(String(describing: finalError))) was ignored because the connection is already in the connecting state.")
             return
-        }
-
-        if connectionState == .disconnecting {
-            // Any stop() awaiters will be scheduled to continue after the onClose callback fires.
         }
 
         if let error = finalError {
@@ -402,11 +411,21 @@ actor HttpConnection: ConnectionProtocol {
         }
 
         connectionId = nil
+        await completeConnectionClose(error: finalError)
+    }
+
+    // Should be called whenever connection is started (start() doesn't throw and connection is closed)
+    private func completeConnectionClose(error: Error?) async {
         connectionState = .disconnected
 
-        if connectionStarted {
-            connectionStarted = false
-            await onClose?(finalError)
+        // There's a chance that we call close() and status changed to disconnecting and startinteral throws.
+        // We should not call onclose again
+        if connectionStartedSuccessfully {
+            connectionStartedSuccessfully = false
+            Task { [weak self] () in 
+                guard let self = self else { return }
+                await self.onClose?(error)
+            }
         }
     }
 

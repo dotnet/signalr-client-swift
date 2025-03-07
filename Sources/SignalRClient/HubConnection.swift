@@ -29,6 +29,7 @@ public actor HubConnection {
 
     private var stopTask: Task<Void, Never>?
     private var startTask: Task<Void, Error>?
+    private var startSuccessfully = false
 
     internal init(connection: ConnectionProtocol,
                   logger: Logger,
@@ -64,6 +65,7 @@ public actor HubConnection {
 
                 try await startInternal()
                 logger.log(level: .debug, message: "HubConnection started")
+                startSuccessfully = true
             } catch {
                 connectionStatus = .Stopped
                 stopping = false
@@ -252,8 +254,10 @@ public actor HubConnection {
         logger.log(level: .information, message: "Connection closed")
         stopDuringStartError = error ?? SignalRError.connectionAborted
 
+        // Should not happen? It should either changed to stopped in another complete (which has called close handler) or in start() via throw
         if (connectionStatus == .Stopped) {
-            await completeClose(error: error)
+            // await completeClose(error: error)
+            logger.log(level: .warning, message: "Connection is stopped during connection close. It won't trigger close handlers.")
             return
         }
 
@@ -438,7 +442,12 @@ public actor HubConnection {
         stopping = false
         await keepAliveScheduler.stop()
         await serverTimeoutScheduler.stop()
-        await triggerClosedHandlers(error: error)
+
+        // Either throw from start(), either call close handlers
+        if (startSuccessfully) {
+            startSuccessfully = false
+            await triggerClosedHandlers(error: error)
+        }
     }
 
     private func startInternal() async throws {
