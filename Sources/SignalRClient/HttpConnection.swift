@@ -107,7 +107,7 @@ actor HttpConnection: ConnectionProtocol {
     private var onReceive: Transport.OnReceiveHandler?
     private var onClose: Transport.OnCloseHander?
     private let negotiateVersion = 1
-    private var closeBeforeStartError: Error? = nil
+    private var closeDuringStartError: Error? = nil
 
     // MARK: - Initialization
 
@@ -193,6 +193,11 @@ actor HttpConnection: ConnectionProtocol {
     // MARK: - Private Methods
 
     private func startInternal(transferFormat: TransferFormat) async throws {
+        guard connectionState == .connecting else {
+            throw SignalRError.connectionAborted
+        }
+        closeDuringStartError = nil
+        
         var url = baseUrl
         await httpClient.setAccessTokenFactory(factory: accessTokenFactory)
 
@@ -241,8 +246,8 @@ actor HttpConnection: ConnectionProtocol {
                 inherentKeepAlivePrivate = true
             }
 
-            guard closeBeforeStartError == nil else {
-                throw closeBeforeStartError!
+            guard closeDuringStartError == nil else {
+                throw closeDuringStartError!
             }
 
             // IMPORTANT: There should be no async code start from here. Otherwise, we may lost the control of the connection lifecycle
@@ -263,12 +268,12 @@ actor HttpConnection: ConnectionProtocol {
         }
 
         stopError = error
-        closeBeforeStartError = error ?? SignalRError.connectionAborted
+        closeDuringStartError = error ?? SignalRError.connectionAborted
 
         do {
             // startInternalTask may have several cases:
             // 1. Already finished. Just return immediately
-            // 2. Still in progress. Caused by closeBeforeStartError, it will throw and set transport to nil
+            // 2. Still in progress. Caused by closeDuringStartError, it will throw and set transport to nil
             try await startInternalTask?.value
         } catch {
             // Ignore errors from startInternal
@@ -386,7 +391,7 @@ actor HttpConnection: ConnectionProtocol {
 
         let finalError = stopError ?? error
         stopError = nil
-        closeBeforeStartError = finalError ?? SignalRError.connectionAborted
+        closeDuringStartError = finalError ?? SignalRError.connectionAborted
 
         if connectionState == .disconnected {
             logger.log(level: .debug, message: "Call to HttpConnection.stopConnection(\(String(describing: finalError))) was ignored because the connection is already in the disconnected state.")
@@ -394,7 +399,7 @@ actor HttpConnection: ConnectionProtocol {
         }
 
         if (connectionState == .connecting) {
-            // connecting means start still control the lifetime. As we set closeBeforeStartError, it throws there.
+            // connecting means start still control the lifetime. As we set closeDuringStartError, it throws there.
             logger.log(level: .debug, message: "Call to HttpConnection.stopConnection(\(String(describing: finalError))) was ignored because the connection is already in the connecting state.")
             return
         }
@@ -412,6 +417,9 @@ actor HttpConnection: ConnectionProtocol {
     // Should be called whenever connection is started (start() doesn't throw and connection is closed)
     private func completeConnectionClose(error: Error?) async {
         connectionState = .disconnected
+
+        // There's a chance that we call close() and status changed to disconnecting and startinteral throws.
+        // We should not call onclose again
         if connectionStartedSuccessfully {
             connectionStartedSuccessfully = false
             Task { [weak self] () in 
