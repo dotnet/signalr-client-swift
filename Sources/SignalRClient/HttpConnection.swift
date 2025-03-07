@@ -279,7 +279,7 @@ actor HttpConnection: ConnectionProtocol {
                 try await transport?.stop(error: nil)
             } catch {
                 logger.log(level: .error, message: "HttpConnection.transport.stop() threw error '\(error)'.")
-                await stopConnection(error: error)
+                await handleConnectionClose(error: error)
             }
         } else {
             logger.log(level: .debug, message: "HttpConnection.transport is undefined in HttpConnection.stop() because start() failed.")
@@ -367,7 +367,7 @@ actor HttpConnection: ConnectionProtocol {
         await transport!.onReceive(self.onReceive)
         await transport!.onClose { [weak self] error in
             guard let self = self else { return }
-            await self.stopConnection(error: error)
+            await self.handleConnectionClose(error: error)
         }
 
         do {
@@ -379,16 +379,23 @@ actor HttpConnection: ConnectionProtocol {
         }
     }
 
-    private func stopConnection(error: Error?) async {
+    private func handleConnectionClose(error: Error?) async {
         logger.log(level: .debug, message: "HttpConnection.stopConnection(\(String(describing: error))) called while in state \(connectionState).")
 
         transport = nil
 
         let finalError = stopError ?? error
         stopError = nil
+        closeBeforeStartError = finalError ?? SignalRError.connectionAborted
 
         if connectionState == .disconnected {
             logger.log(level: .debug, message: "Call to HttpConnection.stopConnection(\(String(describing: finalError))) was ignored because the connection is already in the disconnected state.")
+            return
+        }
+
+        if (connectionState == .connecting) {
+            // connecting means start still control the lifetime. As we set closeBeforeStartError, it throws there.
+            logger.log(level: .debug, message: "Call to HttpConnection.stopConnection(\(String(describing: finalError))) was ignored because the connection is already in the connecting state.")
             return
         }
 
