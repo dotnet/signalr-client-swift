@@ -21,7 +21,7 @@ import PackageDescription
 let package = Package(
     name: "signalr-client-app",
     dependencies: [
-        .package(url: "https://github.com/dotnet/signalr-client-swift", .upToNextMinor(from: "0.9.0-preview.2"))
+        .package(url: "https://github.com/dotnet/signalr-client-swift", .upToNextMinor(from: "0.9.0-preview.3"))
     ],
     targets: [
         .executableTarget(name: "YourTargetName", dependencies: [.product(name: "SignalRClient", package: "signalr-client-swift")])
