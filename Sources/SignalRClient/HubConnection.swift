@@ -268,7 +268,10 @@ public actor HubConnection {
 
         if (stopping) {
             await completeClose(error: error)
+            return
         }
+        
+      
 
         // Several status possible
         // 1. Connecting: In this case, we're still in the control of start(), don't reconnect here but let start() fail (throw error in startInternal())
@@ -276,12 +279,10 @@ public actor HubConnection {
         // 3. Reconnecting: In this case, we're in the control of previous reconnect(), let that function handle the reconnection
 
         if (connectionStatus == .Connected) {
-            Task {
-                do {
-                    try await reconnect(error: error)
-                } catch {
-                    logger.log(level: .warning, message: "Connection reconnect failed: \(error)")
-                }
+            do {
+                try await reconnect(error: error)
+            } catch {
+                logger.log(level: .warning, message: "Connection reconnect failed: \(error)")
             }
         }
     }
