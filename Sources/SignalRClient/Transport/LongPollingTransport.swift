@@ -224,7 +224,7 @@ actor LongPollingTransport: Transport {
         guard let onCloseHandler = self.onCloseHandler else {
             return
         }
-
+        self.onCloseHandler = nil
         logger.log(
             level: .debug,
             message:

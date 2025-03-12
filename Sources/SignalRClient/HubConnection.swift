@@ -276,10 +276,12 @@ public actor HubConnection {
         // 3. Reconnecting: In this case, we're in the control of previous reconnect(), let that function handle the reconnection
 
         if (connectionStatus == .Connected) {
-            do {
-                try await reconnect(error: error)
-            } catch {
-                logger.log(level: .warning, message: "Connection reconnect failed: \(error)")
+            Task {
+                do {
+                    try await reconnect(error: error)
+                } catch {
+                    logger.log(level: .warning, message: "Connection reconnect failed: \(error)")
+                }
             }
         }
     }
