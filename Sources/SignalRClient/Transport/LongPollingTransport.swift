@@ -163,6 +163,7 @@ actor LongPollingTransport: Transport {
         logger.log(
             level: .debug, message: "(LongPolling transport) Stopping polling."
         )
+        let triggerClose = self.running
         self.running = false
         self.receiving?.cancel()
 
@@ -208,8 +209,10 @@ actor LongPollingTransport: Transport {
         logger.log(
             level: .debug, message: "(LongPolling transport) Stop finished."
         )
-
-        await raiseClose()
+        
+        if(triggerClose){
+            await raiseClose()
+        }
     }
 
     func onReceive(_ handler: OnReceiveHandler?) {
