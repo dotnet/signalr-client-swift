@@ -256,7 +256,6 @@ public actor HubConnection {
 
         // Should not happen? It should either changed to stopped in another complete (which has called close handler) or in start() via throw
         if (connectionStatus == .Stopped) {
-            // await completeClose(error: error)
             logger.log(level: .warning, message: "Connection is stopped during connection close. It won't trigger close handlers.")
             return
         }
@@ -268,6 +267,7 @@ public actor HubConnection {
 
         if (stopping) {
             await completeClose(error: error)
+            return
         }
 
         // Several status possible
