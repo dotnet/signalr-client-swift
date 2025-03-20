@@ -27,7 +27,7 @@ class ViewModel: ObservableObject {
             .build()
         
         await connection!.on("NewMessage") { (user: String, message: String) in
-            self.addMessage(id: nil, sender: user, content: message)
+            self.addMessage(id: UUID().uuidString, sender: user, content: message)
         }
         
         await connection!.on("newMessageWithId") { (user: String, id: String, chunk: String) in

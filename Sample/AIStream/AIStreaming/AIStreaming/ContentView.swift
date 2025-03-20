@@ -25,7 +25,7 @@ struct ChatView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(viewModel.messages) { message in
-                            MessageView(message: message)
+                            MessageView(message: message, selfUser: viewModel.username)
                         }
                     }
                     .padding()
@@ -71,6 +71,7 @@ struct ChatView: View {
     private func sendMessage() {
         guard !inputText.isEmpty else { return }
         Task {
+            viewModel.addMessage(id: UUID().uuidString, sender: viewModel.username, content: inputText)
             try await viewModel.sendMessage(message: inputText)
             inputText = ""
         }
@@ -79,19 +80,39 @@ struct ChatView: View {
 
 struct MessageView: View {
     let message: Message
+    let selfUser: String
     
     var body: some View {
-        VStack(alignment: .leading) {
-            Text(message.sender)
-                .font(.caption)
-                .bold()
-                .foregroundColor(.blue)
-            Text(message.content)
-                .padding(8)
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(8)
+        HStack {
+            let isSelf = message.sender == selfUser
+            if isSelf {
+                Spacer()
+                VStack(alignment: .trailing) {
+                    Text(message.sender)
+                        .font(.caption)
+                        .bold()
+                        .foregroundColor(.green)
+                    Text(message.content)
+                        .padding(8)
+                        .background(Color.green.opacity(0.2))
+                        .cornerRadius(8)
+                }
+                .frame(maxWidth: 250, alignment: .trailing)
+            } else {
+                VStack(alignment: .leading) {
+                    Text(message.sender)
+                        .font(.caption)
+                        .bold()
+                        .foregroundColor(.blue)
+                    Text(message.content)
+                        .padding(8)
+                        .background(Color(NSColor.controlBackgroundColor))
+                        .cornerRadius(8)
+                }
+                .frame(maxWidth: 250, alignment: .leading)
+                Spacer()
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
