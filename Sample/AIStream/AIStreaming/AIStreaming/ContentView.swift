@@ -48,6 +48,7 @@ struct ChatView: View {
                     sendMessage()
                 }
                 .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
                 .padding(8)
             }
             .padding()

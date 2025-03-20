@@ -22,7 +22,7 @@ class ViewModel: ObservableObject {
         }
         
         connection = HubConnectionBuilder()
-            .withUrl(url: "http://localhost:8080/chat")
+            .withUrl(url: "http://localhost:8080/groupChat")
             .withAutomaticReconnect()
             .build()
         
@@ -39,7 +39,7 @@ class ViewModel: ObservableObject {
     }
     
     func sendMessage(message: String) async throws {
-        try await connection?.invoke(method: "Chat", arguments: self.username, message)
+        try await connection?.send(method: "Chat", arguments: self.username, message)
     }
     
     func joinGroup() async throws {
@@ -55,7 +55,7 @@ class ViewModel: ObservableObject {
     func addOrUpdateMessage(id: String, sender: String, chunk: String) {
         DispatchQueue.main.async {
             if let index = self.messages.firstIndex(where: {$0.id == id}) {
-                self.messages[index].content.append(chunk)
+                self.messages[index].content = chunk
             } else {
                 self.messages.append(Message(id: id, sender: sender, content: chunk))
             }

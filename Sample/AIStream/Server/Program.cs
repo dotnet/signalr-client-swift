@@ -11,8 +11,6 @@ builder.Services.AddSingleton<GroupAccessor>()
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
-
 app.UseRouting();
 
 app.MapHub<GroupChatHub>("/groupChat");
