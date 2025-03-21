@@ -2,7 +2,7 @@
 --indent 4 
 --xcodeindentation true
 --hexliteralcase lowercase
-# --header Licensed to the .NET Foundation under one or more agreements.\nThe .NET Foundation licenses this file to you under the MIT license.
+--header Licensed to the .NET Foundation under one or more agreements.\nThe .NET Foundation licenses this file to you under the MIT license.
 
 # rules
 --disable all
