@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 extension HubConnection {
     public func on<Result>(_ methodName: String, handler: @escaping () async -> Result) {
         self.on(method: methodName, types: [], handler: { _ in

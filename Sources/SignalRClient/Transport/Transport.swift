@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 /// An abstraction over the behavior of transports.
 /// This is designed to support the framework and not intended for use by applications.
 protocol Transport: Sendable {
