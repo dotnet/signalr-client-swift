@@ -4,7 +4,7 @@
 import Foundation
 
 // Define error types for better error handling
-public enum SignalRError: Error, Equatable {
+public enum SignalRError: Error, Equatable, CustomStringConvertible {
     case incompleteMessage
     case invalidDataType
     case failedToEncodeHandshakeRequest
@@ -33,7 +33,7 @@ public enum SignalRError: Error, Equatable {
     case streamCancelled
     case serverTimeout(TimeInterval)
 
-    var localizedDescription: String {
+    public var description: String {
         switch self {
         case .incompleteMessage:
             return "Message is incomplete."

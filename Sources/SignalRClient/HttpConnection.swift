@@ -30,10 +30,6 @@ public struct HttpConnectionOptions {
     var useStatefulReconnect: Bool? // Not supported yet
 }
 
-struct HttpError: Error {
-    var statusCode: Int
-}
-
 // MARK: - Models
 
 struct NegotiateResponse: Decodable {
@@ -290,7 +286,11 @@ actor HttpConnection: ConnectionProtocol {
             let (message, response) = try await httpClient.send(request: request)
 
             if response.statusCode != 200 {
-                throw SignalRError.negotiationError("Unexpected status code returned from negotiate '\(response.statusCode)'")
+                var exceptionMsg = "Unexpected status code returned from negotiate '\(response.statusCode)'"
+                if response.statusCode == 404 {
+                    exceptionMsg += " Either this is not a SignalR endpoint or there is a proxy blocking the connection."
+                }
+                throw SignalRError.negotiationError(exceptionMsg)
             }
 
             let decoder = JSONDecoder()
@@ -306,10 +306,7 @@ actor HttpConnection: ConnectionProtocol {
 
             return negotiateResponse
         } catch {
-            var errorMessage = "Failed to complete negotiation with the server: \(error)"
-            if let httpError = error as? HttpError, httpError.statusCode == 404 {
-                errorMessage += " Either this is not a SignalR endpoint or there is a proxy blocking the connection."
-            }
+            let errorMessage = "Failed to complete negotiation with the server: \(error)"
             logger.log(level: .error, message: "\(errorMessage)")
             throw SignalRError.negotiationError(errorMessage)
         }
