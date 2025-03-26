@@ -27,7 +27,7 @@ public struct HttpConnectionOptions {
     public var logMessageContent: Bool?
     var webSocket: AnyObject? // Placeholder for WebSocket type
     var eventSource: EventSourceAdaptor?
-    public var useStatefulReconnect: Bool?
+    var useStatefulReconnect: Bool? // Not supported yet
 }
 
 struct HttpError: Error {
