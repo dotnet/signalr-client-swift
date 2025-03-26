@@ -9,11 +9,11 @@ import Foundation
 
 // MARK: - HttpRequest and HttpResponse
 
-enum HttpMethod: String, Sendable {
+public enum HttpMethod: String, Sendable {
     case GET, PUT, PATCH, POST, DELETE
 }
 
-struct HttpRequest: Sendable {
+public struct HttpRequest: Sendable {
     var method: HttpMethod
     var url: String
     var content: StringOrData?
@@ -44,13 +44,13 @@ struct HttpRequest: Sendable {
     }
 }
 
-struct HttpResponse {
+public struct HttpResponse {
     public let statusCode: Int
 }
 
 // MARK: - HttpClient Protocol
 
-protocol HttpClient: Sendable {
+public protocol HttpClient: Sendable {
     // Don't throw if the http call returns a status code out of [200, 299]
     func send(request: HttpRequest) async throws -> (StringOrData, HttpResponse)
 }
