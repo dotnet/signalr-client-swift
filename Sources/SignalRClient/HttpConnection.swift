@@ -15,31 +15,19 @@ private enum ConnectionState: String {
     case disconnecting = "Disconnecting"
 }
 
-struct HttpConnectionOptions {
-    var logHandler: LogHandler?
-    var logLevel: LogLevel = .information
-    var accessTokenFactory: (@Sendable () async throws -> String?)?
-    var httpClient: HttpClient?
-    var transport: HttpTransportType?
-    var skipNegotiation: Bool
-    var headers: [String: String]?
-    var withCredentials: Bool?
-    var timeout: TimeInterval?
-    var logMessageContent: Bool?
+public struct HttpConnectionOptions {
+    public var logHandler: LogHandler?
+    public var logLevel: LogLevel = .information
+    public var accessTokenFactory: (@Sendable () async throws -> String?)?
+    public var httpClient: HttpClient?
+    public var transport: HttpTransportType?
+    public var skipNegotiation: Bool = false
+    public var headers: [String: String]?
+    public var timeout: TimeInterval?
+    public var logMessageContent: Bool?
     var webSocket: AnyObject? // Placeholder for WebSocket type
     var eventSource: EventSourceAdaptor?
-    var useStatefulReconnect: Bool?
-
-    init() {
-        self.skipNegotiation = false
-    }
-}
-
-struct HttpOptions {
-    var content: String
-    var headers: [String: String]
-    var timeout: TimeInterval
-    var withCredentials: Bool
+    public var useStatefulReconnect: Bool?
 }
 
 struct HttpError: Error {
@@ -122,11 +110,10 @@ actor HttpConnection: ConnectionProtocol {
         self.options = options
 
         self.options.logMessageContent = options.logMessageContent ?? false
-        self.options.withCredentials = options.withCredentials ?? true
         self.options.timeout = options.timeout ?? 100
 
         self.accessTokenFactory = options.accessTokenFactory
-        self.httpClient = AccessTokenHttpClient(innerClient: options.httpClient ?? DefaultHttpClient(logger: logger), accessTokenFactory: self.accessTokenFactory)
+        self.httpClient = AccessTokenHttpClient(innerClient: options.httpClient ?? DefaultHttpClient(logger: logger), accessTokenFactory: options.accessTokenFactory)
     }
 
     // MARK: - Public Methods

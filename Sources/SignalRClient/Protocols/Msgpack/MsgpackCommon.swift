@@ -8,8 +8,8 @@ import Foundation
 // MARK: Public
 // Predefined Timestamp Extension
 public struct MsgpackTimestamp: Equatable {
-    var seconds: Int64
-    var nanoseconds: UInt32
+    public var seconds: Int64
+    public var nanoseconds: UInt32
 }
 
 // Those encoding extension methods are rarely used unless you want to encode to messagepack extension type

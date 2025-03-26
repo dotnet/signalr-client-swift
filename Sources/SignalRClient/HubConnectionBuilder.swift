@@ -57,6 +57,12 @@ public class HubConnectionBuilder {
         self.httpConnectionOptions.transport = transport
         return self
     }
+    
+    public func withUrl(url: String, options: HttpConnectionOptions) -> HubConnectionBuilder {
+        self.url = url
+        self.httpConnectionOptions = options
+        return self
+    }
 
     public func withAutomaticReconnect() -> HubConnectionBuilder {
         self.retryPolicy = DefaultRetryPolicy(retryDelays: [0, 2, 10, 30])
