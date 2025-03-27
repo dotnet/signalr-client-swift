@@ -160,6 +160,9 @@ actor LongPollingTransport: Transport {
             message:
             "(LongPolling transport) request complete. Response status: \(response.statusCode)."
         )
+        if !response.ok() {
+            throw SignalRError.unexpectedResponseCode(response.statusCode)
+        }
     }
 
     func stop(error: (any Error)?) async throws {
@@ -212,8 +215,8 @@ actor LongPollingTransport: Transport {
         logger.log(
             level: .debug, message: "(LongPolling transport) Stop finished."
         )
-        
-        if(triggerClose){
+
+        if (triggerClose) {
             await raiseClose()
         }
     }

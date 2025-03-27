@@ -238,7 +238,7 @@ class LongPollingTransportTests: XCTestCase {
     }
 
     // MARK: send
-    func testSend() async throws {
+    func testSendOK() async throws {
         let client = MockHttpClient()
         let logHandler = MockLogHandler()
         let logger = Logger(logLevel: .debug, logHandler: logHandler)
@@ -259,6 +259,38 @@ class LongPollingTransportTests: XCTestCase {
         await lpt.SetMockId(mockId: "string")
         try await lpt.send(.string("stringbody"))
         logHandler.verifyLogged("200")
+    }
+    
+    func testSend403() async throws {
+        let client = MockHttpClient()
+        let logHandler = MockLogHandler()
+        let logger = Logger(logLevel: .debug, logHandler: logHandler)
+        let options = HttpConnectionOptions()
+        let lpt = LongPollingTransport(
+            httpClient: client, logger: logger, options: options
+        )
+        await lpt.SetRunning(running: true)
+        await lpt.SetUrl(url: "http://abc")
+        await client.mock(mockId: "string") { request in
+            XCTAssertEqual(request.content, StringOrData.string("stringbody"))
+            try await Task.sleep(for: .milliseconds(100))
+            return (
+                StringOrData.string(""),
+                HttpResponse(statusCode: 403)
+            )
+        }
+        await lpt.SetMockId(mockId: "string")
+        do{
+            try await lpt.send(.string("stringbody"))
+            XCTFail("Long polling send should fail when getting 403")
+        }catch{
+            guard let err = error as? SignalRError else{
+                XCTFail("Long polling send should throw SignalRError when getting 403")
+                return
+            }
+            XCTAssertEqual(err, SignalRError.unexpectedResponseCode(403))
+        }
+        logHandler.verifyLogged("403")
     }
 
     // MARK: stop
