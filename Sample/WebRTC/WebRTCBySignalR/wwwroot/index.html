@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>WebRTC Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+
+</head>
+<body>
+    <h1>WebRTC Demo</h1>
+    <label for="username">Username:</label>
+    <input type="text" id="username">
+    <button id="connectSignalRButton">Connect SignalR</button>
+    <hr>
+    <label for="userList">User List:</label>
+    <select id="userList"></select>
+    <button id="callUserButton" disabled>Call User</button>
+    <hr>
+    <video id="localVideo" autoplay playsinline></video>
+    <video id="remoteVideo" autoplay playsinline></video>
+    <button id="hangupButton" disabled>Hang Up</button>
+
+    <script>
+        let localStream;
+        let pc;
+        let connection;
+        let incomingOffer;
+        let incomingUser;
+
+        const hangupButton = document.getElementById('hangupButton');
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const usernameInput = document.getElementById('username');
+        const connectSignalRButton = document.getElementById('connectSignalRButton');
+        const userList = document.getElementById('userList');
+        const callUserButton = document.getElementById('callUserButton');
+
+        connectSignalRButton.onclick = async () => {
+            const username = usernameInput.value;
+            if (!username) {
+                alert('Please enter a username.');
+                return;
+            }
+            usernameInput.disabled = true;
+            connectSignalRButton.disabled = true;
+
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/signalingHub?username=" + username)
+                .build();
+
+            connection.onclose(() => {
+                usernameInput.disabled = false;
+                connectSignalRButton.disabled = false;
+                alert('SignalR connection closed. Please reconnect.');
+            });
+
+            connection.on("ReceiveMessage", async (user, messageJson) => {
+                const message = JSON.parse(messageJson);
+                if (message.type === 'offer') {
+                    incomingOffer = message;
+                    incomingUser = user;
+                    const acceptCall = confirm(`Incoming call from ${user}. Do you want to accept?`);
+                    if (acceptCall) {
+                        pc = new RTCPeerConnection();
+                        pc.user = user;
+                        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+                        pc.ontrack = event => {
+                            remoteVideo.srcObject = event.streams[0];
+                        };
+                        await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        connection.send("SendMessage", incomingOffer.user, JSON.stringify(answer));
+                        hangupButton.disabled = false;
+                    } else {
+                        connection.send("Hangup", user);
+                    }
+                    await pc.setRemoteDescription(new RTCSessionDescription(message));
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    connection.send("SendMessage", user, JSON.stringify(answer));
+                } else if (message.type === 'answer') {
+                    await pc.setRemoteDescription(new RTCSessionDescription(message));
+                    hangupButton.disabled = false;
+                } else if (message.type === 'candidate') {
+                    const candidate = new RTCIceCandidate(message.candidate);
+                    await pc.addIceCandidate(candidate);
+                } else if (message.type === 'hangup') {
+                    if (pc) {
+                        pc.close();
+                    }
+                    hangupButton.disabled = true;
+                    callUserButton.disabled = false;
+                }
+            });
+
+            connection.on("UserConnected", (user) => {
+                if (user === usernameInput.value) {
+                    return;
+                }
+                if (!Array.from(userList.options).some(option => option.value === user)) {
+                    const option = document.createElement('option');
+                    option.value = user;
+                    option.textContent = user;
+                    userList.appendChild(option);
+                    connection.send("Online", user);
+                }
+                callUserButton.disabled = false;
+            });
+
+            connection.on("UserDisconnected", (user) => {
+                if (user === usernameInput.value) {
+                    return;
+                }
+                Array.from(userList.options).forEach(option => {
+                    if (option.value === user) {
+                        userList.removeChild(option);
+                    }
+                });
+                if (userList.options.length === 0) {
+                    callUserButton.disabled = true;
+                }
+            });
+
+            try {
+                await connection.start();
+                console.log("SignalR Connected.");
+            } catch (err) {
+                console.error(err.toString());
+            }
+            connectSignalRButton.disabled = false;
+        };
+
+        callUserButton.onclick = async () => {
+            selectedUser = userList.value;
+            if (!selectedUser) {
+                alert('Please select a user to call.');
+                return;
+            }
+            pc = new RTCPeerConnection();
+            pc.user = selectedUser;
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            pc.ontrack = event => {
+                remoteVideo.srcObject = event.streams[0];
+            };
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            // Send the offer to the selected user through your signaling server
+            connection.send("SendMessage", selectedUser, JSON.stringify(offer));
+        };
+
+        hangupButton.onclick = () => {
+            if (pc) {
+                pc.close();
+            }
+            connection.send("Hangup", pc.user);
+            hangupButton.disabled = true;
+        };
+
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+            localStream = stream;
+            localVideo.srcObject = stream;
+        }).catch(error => {
+            console.error('Error accessing media devices.', error);
+        });
+    </script>
+</body>
+</html>
