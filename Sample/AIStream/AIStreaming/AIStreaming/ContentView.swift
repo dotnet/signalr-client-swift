@@ -30,7 +30,7 @@ struct ChatView: View {
                     }
                     .padding()
                 }
-                .background(Color(NSColor.windowBackgroundColor))
+                .background(Color.platformBackground)
                 .onChange(of: viewModel.messages) { _, _ in
                     scrollToBottom(proxy: proxy)
                 }
@@ -106,7 +106,7 @@ struct MessageView: View {
                         .foregroundColor(.blue)
                     Text(message.content)
                         .padding(8)
-                        .background(Color(NSColor.controlBackgroundColor))
+                        .background(Color.platformBackground)
                         .cornerRadius(8)
                 }
                 .frame(maxWidth: 250, alignment: .leading)
@@ -144,7 +144,6 @@ struct UserEntryView: View {
      
                         Task {
                             try await viewModel.setupConnection()
-                            try await viewModel.joinGroup()
                         }
                     }
                 }) {
@@ -161,4 +160,14 @@ struct UserEntryView: View {
 
 #Preview {
     ContentView()
+}
+
+extension Color {
+    static var platformBackground : Color {
+#if os(macOS)
+        return Color(NSColor.windowBackgroundColor)
+#else
+        return Color(UIColor.systemBackground)
+#endif
+    }
 }
