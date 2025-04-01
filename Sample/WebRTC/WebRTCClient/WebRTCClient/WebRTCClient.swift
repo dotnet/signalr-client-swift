@@ -29,6 +29,7 @@ final class WebRTCClient: NSObject {
     private var remoteVideoTrack: RTCVideoTrack?
     private var localDataChannel: RTCDataChannel?
     private var remoteDataChannel: RTCDataChannel?
+    private var videoSource: RTCVideoSource?
 
     @available(*, unavailable)
     override init() {
@@ -101,6 +102,7 @@ final class WebRTCClient: NSObject {
     // MARK: Media
     func startCaptureLocalVideo(renderer: RTCVideoRenderer) {
         guard let capturer = self.videoCapturer as? RTCCameraVideoCapturer else {
+            print("No video capture")
             return
         }
 
@@ -169,15 +171,15 @@ final class WebRTCClient: NSObject {
     }
     
     private func createVideoTrack() -> RTCVideoTrack {
-        let videoSource = WebRTCClient.factory.videoSource()
+        self.videoSource = WebRTCClient.factory.videoSource()
         
         #if targetEnvironment(simulator)
-        self.videoCapturer = RTCFileVideoCapturer(delegate: videoSource)
+        self.videoCapturer = RTCFileVideoCapturer(delegate: self.videoSource!)
         #else
-        self.videoCapturer = RTCCameraVideoCapturer(delegate: videoSource)
+        self.videoCapturer = RTCCameraVideoCapturer(delegate: self.videoSource!)
         #endif
         
-        let videoTrack = WebRTCClient.factory.videoTrack(with: videoSource, trackId: "video0")
+        let videoTrack = WebRTCClient.factory.videoTrack(with: self.videoSource!, trackId: "video0")
         return videoTrack
     }
     

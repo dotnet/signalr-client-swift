@@ -24,7 +24,6 @@ struct ContentView: View {
             Button("Connect SignalR") {
                 Task {
                     try await viewModel.connectSignalR()
-                    viewModel.startLocalCapture(renderer: localRendererView.renderer)
                 }
             }
             .disabled(viewModel.username.isEmpty || viewModel.isConnected)
@@ -34,7 +33,7 @@ struct ContentView: View {
             HStack {
                 Text("User List:")
                 Picker("Select a user", selection: $viewModel.selectedUser) {
-                    Text("None").tag(nil as String?)
+                    Text("--").tag(Optional<String>.none)
                     ForEach(viewModel.userList, id: \.self) { user in
                         Text(user).tag(Optional(user))
                     }
@@ -68,6 +67,7 @@ struct ContentView: View {
         }
         .onAppear {
             viewModel.setupWebRTC()
+            viewModel.startLocalCapture(renderer: localRendererView.renderer)
         }
         .onChange(of: viewModel.isCallActive) {active in
             if active {
@@ -88,7 +88,6 @@ final class VideoRendererView {
     }
 }
 
-/// UIViewRepresentable 包装 VideoRendererView 以在 SwiftUI 中展示
 struct VideoRendererViewWrapper: UIViewRepresentable {
     let videoRendererView: VideoRendererView
     
@@ -96,7 +95,5 @@ struct VideoRendererViewWrapper: UIViewRepresentable {
         videoRendererView.view
     }
     
-    func updateUIView(_ uiView: UIView, context: Context) {
-        // 无需更新
-    }
+    func updateUIView(_ uiView: UIView, context: Context) {}
 }
