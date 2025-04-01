@@ -1,0 +1,24 @@
+{
+  "originHash" : "5a128822e264fe98e91a2692a4d9aee766171259ff1b59439a3310e0e8c9a4b8",
+  "pins" : [
+    {
+      "identity" : "signalr-client-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/dotnet/signalr-client-swift.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "03fe1aa46bfee6d9f20f6c054913a08df994fc8d"
+      }
+    },
+    {
+      "identity" : "webrtc",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stasel/WebRTC.git",
+      "state" : {
+        "revision" : "5b2eb61cace7d62726b29a38b768b07d6bc55c45",
+        "version" : "134.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}
