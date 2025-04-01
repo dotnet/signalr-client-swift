@@ -34,7 +34,17 @@ class ViewModel: ObservableObject {
             self.addOrUpdateMessage(id: id, sender: user, chunk: chunk)
         }
         
+        await connection!.onReconnected { [weak self] in
+            guard let self = self else { return }
+            do {
+                try await self.joinGroup()
+            } catch {
+                print(error)
+            }
+        }
+        
         try await connection!.start()
+        try await joinGroup()
         isConnected = true
     }
     
