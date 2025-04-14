@@ -83,7 +83,7 @@ class WebSocketTransportTests: XCTestCase {
         let url = "http://example.com"
         try await webSocketTransport.connect(url: url, transferFormat: .text)
         XCTAssertTrue(mockWebSocketConnection.connectCalled)
-        XCTAssertEqual(mockWebSocketConnection.request?.url?.query, "access_token=test_token")
+        XCTAssertEqual(mockWebSocketConnection.request?.value(forHTTPHeaderField: "Authorization"), "Bearer test_token")
     }
 }
 
