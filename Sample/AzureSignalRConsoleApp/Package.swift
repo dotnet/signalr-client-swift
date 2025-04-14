@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "Sample",
     platforms: [
-        .macOS(.v10_15)
+        .macOS(.v11)
     ],
     dependencies: [
         .package(url: "https://github.com/dotnet/signalr-client-swift", branch: "main")
