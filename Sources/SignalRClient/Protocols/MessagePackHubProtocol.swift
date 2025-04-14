@@ -5,7 +5,7 @@ import Foundation
 
 final class MessagePackHubProtocol: HubProtocol {
     let name = "messagepack"
-    let version = 0
+    let version = 1
     let transferFormat: TransferFormat = .binary
 
     func parseMessages(input: StringOrData, binder: any InvocationBinder) throws

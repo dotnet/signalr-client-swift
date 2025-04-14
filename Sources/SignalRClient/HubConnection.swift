@@ -470,8 +470,8 @@ public actor HubConnection {
 
         // After connection open, perform handshake
         let version = hubProtocol.version
-        // As we only support 0 now
-        guard version == 0 else {
+        // As we only support 1 now
+        guard version == 1 else {
             logger.log(level: .error, message: "Unsupported handshake version: \(version)")
             throw SignalRError.unsupportedHandshakeVersion
         }
