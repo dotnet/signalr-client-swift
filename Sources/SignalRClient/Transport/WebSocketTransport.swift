@@ -43,18 +43,20 @@ actor WebSocketTransport: Transport {
             urlComponents.scheme = "wss"
         }
 
-        // Add token to query
-        if let factory = accessTokenFactory {
-            let token = try await factory()
-            urlComponents.queryItems = [URLQueryItem(name: "access_token", value: token)]
-        }
-
         var request = URLRequest(url: urlComponents.url!)
 
         // Add headeres
         for (key, value) in headers {
             request.addValue(value, forHTTPHeaderField: key)
         }
+
+        // Add token to header
+        if let factory = accessTokenFactory, let token = try await factory() {
+            request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        // Add user-agent
+        request.addValue(Utils.getUserAgent(), forHTTPHeaderField: "User-Agent")
 
         try await webSocketConnection.connect(request: request, transferFormat: transferFormat)
     }
