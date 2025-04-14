@@ -55,6 +55,9 @@ actor WebSocketTransport: Transport {
             request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
+        // Add user-agent
+        request.addValue(Utils.getUserAgent(), forHTTPHeaderField: "User-Agent")
+
         try await webSocketConnection.connect(request: request, transferFormat: transferFormat)
     }
 
