@@ -1,5 +1,11 @@
 # Release History
 
+## 1.0.0-preview.3
+
+### Bugs Fixed
+
+- Fix the WebSocketTransport query issue
+
 ## 1.0.0-preview.2
 
 ### Bugs Fixed
