@@ -31,7 +31,8 @@ final class HubConnectionOnResultTests: XCTestCase {
             hubProtocol: hubProtocol,
             retryPolicy: DefaultRetryPolicy(retryDelays: []), // No retry
             serverTimeout: nil,
-            keepAliveInterval: nil
+            keepAliveInterval: nil,
+            statefulReconnectBufferSize: nil
         )
 
         mockConnection.onSend = { data in

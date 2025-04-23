@@ -6,6 +6,8 @@ import Foundation
 public actor HubConnection {
     private static let defaultTimeout: TimeInterval = 30
     private static let defaultPingInterval: TimeInterval = 15
+    private static let defaultStatefulReconnectBufferSize: Int = 100_000_000 // bytes of messages
+
     private var invocationBinder: DefaultInvocationBinder
     private var invocationHandler: InvocationHandler
 
@@ -17,6 +19,7 @@ public actor HubConnection {
     private let retryPolicy: RetryPolicy
     private let keepAliveScheduler: TimeScheduler
     private let serverTimeoutScheduler: TimeScheduler
+    private let statefulReconnectBufferSize: Int
 
     private var connectionStarted: Bool = false
     private var receivedHandshakeResponse: Bool = false
@@ -39,9 +42,12 @@ public actor HubConnection {
                   hubProtocol: HubProtocol,
                   retryPolicy: RetryPolicy,
                   serverTimeout: TimeInterval?,
-                  keepAliveInterval: TimeInterval?) {
+                  keepAliveInterval: TimeInterval?,
+                  statefulReconnectBufferSize: Int?) {
         self.serverTimeout = serverTimeout ?? HubConnection.defaultTimeout
         self.keepAliveInterval = keepAliveInterval ?? HubConnection.defaultPingInterval
+        self.statefulReconnectBufferSize = statefulReconnectBufferSize ?? HubConnection.defaultStatefulReconnectBufferSize
+
         self.logger = logger
         self.retryPolicy = retryPolicy
 
