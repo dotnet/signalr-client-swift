@@ -9,8 +9,8 @@ actor MessageBuffer {
     private var bufferedByteCount: Int = 0
     private var totalMessageCount: Int = 0
     private var lastSendSequenceId: Int = 0
-    private var lastSendIdx = 0
-    private var dequeueContinuation: CheckedContinuation<Bool, Never>?
+    private var nextSendIdx = 0
+    private var dequeueContinuations: [CheckedContinuation<Bool, Never>] = []
     private var closed: Bool = false
 
     init(bufferSize: Int) {
@@ -43,7 +43,8 @@ actor MessageBuffer {
                 continuation.resume()
             }
 
-            if let continuation = dequeueContinuation {
+            while !dequeueContinuations.isEmpty {
+                let continuation = dequeueContinuations.removeFirst()
                 continuation.resume(returning: true)
             }
         }
@@ -60,9 +61,9 @@ actor MessageBuffer {
         // make sure remove before any async operation for concurrency issue
         messages = Array(messages.dropFirst(pfx.count))
         // sending idx will change because we changes the array
-        lastSendIdx = lastSendIdx - pfx.count
+        nextSendIdx = nextSendIdx - pfx.count
 
-        guard lastSendIdx >= 0 else {
+        guard nextSendIdx >= 0 else {
             throw SignalRError.invalidOperation("Index of the ack < 0, fatal error")
         }
 
@@ -76,20 +77,19 @@ actor MessageBuffer {
     }
 
     public func WaitToDequeue() async throws -> Bool {
-        let lastEnqueuedIdx = messages.count - 1
-        if (lastSendIdx <= lastEnqueuedIdx) {
+        if (nextSendIdx < messages.count) {
             return true
         }
+
         return await withCheckedContinuation { continuation in
-            dequeueContinuation = continuation
+            dequeueContinuations.append(continuation)
         }
     }
 
     public func TryDequeue() throws -> StringOrData? {
-        let lastEnqueuedIdx = messages.count - 1
-        if (lastSendIdx <= lastEnqueuedIdx) {
-            let item =  messages[lastSendIdx]
-            lastSendIdx = lastSendIdx + 1
+        if (nextSendIdx < messages.count) {
+            let item =  messages[nextSendIdx]
+            nextSendIdx = nextSendIdx + 1
             lastSendSequenceId = item.id
             return item.content
         }
@@ -97,18 +97,20 @@ actor MessageBuffer {
     }
 
     public func ResetDequeue() async throws -> Void {
-        lastSendIdx = 0
+        nextSendIdx = 0
         lastSendSequenceId = messages.count > 0 ? messages[0].id : 0
-        if let continuation = dequeueContinuation {
+        while !dequeueContinuations.isEmpty {
+            let continuation = dequeueContinuations.removeFirst()
             continuation.resume(returning: true)
         }
     }
 
     public func close() {
         closed = true
-        if let continuation = dequeueContinuation {
+        while !dequeueContinuations.isEmpty {
+            let continuation = dequeueContinuations.removeFirst()
             continuation.resume(returning: false)
-        } 
+        }
     }
 
     private func isInvocationMessage(message: HubMessage) -> Bool {

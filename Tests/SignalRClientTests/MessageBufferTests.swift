@@ -54,12 +54,30 @@ class MessageBufferTest: XCTestCase {
 
     func testWaitToDequeueFirst() async throws {
         let buffer = MessageBuffer(bufferSize: 100)
-        async let dqueue = try buffer.WaitToDequeue()
+        async let dqueue: Bool = try await buffer.WaitToDequeue()
+        try await Task.sleep(for: .milliseconds(10))
 
-        _ = try await buffer.enqueue(content: .string("test"))
+        try await buffer.enqueue(content: .string("test"))
+        try await buffer.enqueue(content: .string("test2"))
 
         let rst = try await dqueue
         XCTAssertTrue(rst)
+        let content = try await buffer.TryDequeue()
+        XCTAssertEqual("test", content?.convertToString())
+    }
+
+    func testMultipleDequeueWait() async throws {
+        let buffer = MessageBuffer(bufferSize: 100)
+        async let dqueue1: Bool = try await buffer.WaitToDequeue()
+        async let dqueue2: Bool = try await buffer.WaitToDequeue()
+        try await Task.sleep(for: .milliseconds(10))
+
+        try await buffer.enqueue(content: .string("test"))
+
+        let rst = try await dqueue1
+        XCTAssertTrue(rst)
+        let rst2 = try await dqueue2
+        XCTAssertTrue(rst2)
         let content = try await buffer.TryDequeue()
         XCTAssertEqual("test", content?.convertToString())
     }
@@ -81,6 +99,7 @@ class MessageBufferTest: XCTestCase {
 
         // wait here
         async let dq = try await buffer.WaitToDequeue()
+        try await Task.sleep(for: .milliseconds(10))
         Task {
             try await buffer.ResetDequeue()
         }
