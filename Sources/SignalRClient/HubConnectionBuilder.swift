@@ -12,6 +12,7 @@ public class HubConnectionBuilder {
     private var keepAliveInterval: TimeInterval?
     private var url: String?
     private var retryPolicy: RetryPolicy?
+    private var statefulReconnectBufferSize: Int?
     private var httpConnectionOptions: HttpConnectionOptions = HttpConnectionOptions()
 
     public init() {}
@@ -79,6 +80,16 @@ public class HubConnectionBuilder {
         return self
     }
 
+    public func withStatefulReconnect() -> HubConnectionBuilder {
+        return withStatefulReconnect(options: StatefulReconnectOptions())
+    }
+
+    public func withStatefulReconnect(options: StatefulReconnectOptions) -> HubConnectionBuilder {
+        self.statefulReconnectBufferSize = options.bufferSize
+        self.httpConnectionOptions.useStatefulReconnect = true
+        return self
+    }
+
     public func build() -> HubConnection {
         guard let url = url else {
             fatalError("url must be set with .withUrl(String:)")
@@ -94,7 +105,8 @@ public class HubConnectionBuilder {
                              hubProtocol: hubProtocol,
                              retryPolicy: retryPolicy,
                              serverTimeout: serverTimeout,
-                             keepAliveInterval: keepAliveInterval)
+                             keepAliveInterval: keepAliveInterval,
+                             statefulReconnectBufferSize: statefulReconnectBufferSize)
     }
 }
 
