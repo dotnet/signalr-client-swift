@@ -206,7 +206,50 @@ class IntegrationTests: XCTestCase {
             try await whenTaskTimeout({ try await self.testClientResultCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
         }
     }
+    
+    func testClientToServerStream() async throws {
+        for (transport, hubProtocol) in testCombinations {
+            try await whenTaskTimeout({ try await self.testClientToServerStreamCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
+        }
+    }
 
+    private func testClientToServerStreamCore(transport: HttpTransportType, hubProtocol: HubProtocolType) async throws {
+        let connection = HubConnectionBuilder()
+            .withUrl(url: url!, transport: transport)
+            .withHubProtocol(hubProtocol: hubProtocol)
+            .withLogLevel(logLevel: logLevel)
+            .build()
+
+        try await connection.start()
+        
+        func createClientStream() -> AsyncStream<Int> {
+            let (stream, continuation) = AsyncStream.makeStream(of: Int.self)
+            Task {
+                for value in 0 ... 5 {
+                    try? await Task.sleep(nanoseconds: 10_000_000)
+                    continuation.yield(value)
+                }
+                continuation.finish()
+            }
+            return stream
+        }
+
+        try await run(){
+            try await connection.send(method: "AddNumbers", arguments: 10, createClientStream())
+            try await connection.invoke(method: "AddNumbers", arguments: 10, createClientStream())
+            let result: Int = try await connection.invoke(method: "AddNumbers", arguments: 10, createClientStream())
+            XCTAssertEqual(result, 25)
+            let streamResult: any StreamResult<Int> = try await connection.stream(method: "Count", arguments: 10, createClientStream())
+            var counterTarget = 10
+            for try await counter in streamResult.stream {
+                counterTarget += 1
+                XCTAssertEqual(counter, counterTarget)
+            }
+        } defer: {
+            await connection.stop()
+        }
+    }
+     
     private func testClientResultCore(transport: HttpTransportType, hubProtocol: HubProtocolType) async throws {
         let connection = HubConnectionBuilder()
             .withUrl(url: url!, transport: transport)
