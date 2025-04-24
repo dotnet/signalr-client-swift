@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.SignalR;
 
 namespace IntegrationTest.Hubs;
@@ -26,6 +27,28 @@ public class TestHub : Hub
         Console.WriteLine("ClientResult invoked");
         Console.WriteLine(rst);
         await Clients.Client(Context.ConnectionId).SendAsync("EchoBack", "received");
+    }
+    
+    public async Task<int> AddNumbers(int basic, IAsyncEnumerable<int> stream)
+    {
+        int sum = basic;
+        await foreach (var number in stream)
+        {
+                sum += number;
+                Console.WriteLine(sum);
+        }
+        return sum;
+    }
+    
+    public async IAsyncEnumerable<int> Count(int basic, IAsyncEnumerable<int> stream)
+    {
+        int counter = basic;
+        await foreach (var number in stream)
+        {
+            counter ++;
+            Console.WriteLine(counter);
+            yield return counter;
+        }
     }
 
     public async IAsyncEnumerable<string> Stream()

@@ -113,6 +113,18 @@ for try await item in stream.stream {
 }
 ```
 
+## Client-to-server streaming
+To send a stream of data from the client to the server, use the `AsyncStream`:
+
+```swift
+let (clientStream, continuation) = AsyncStream.makeStream(of: Int.self)
+try await connection.send("UploadStream", arguments: clientStream)
+for i in 1...100 {
+    continuation.yield(i)
+}
+continuation.finish()
+``` 
+
 ## Handle lost connection
 
 ### Automatic reconnect
