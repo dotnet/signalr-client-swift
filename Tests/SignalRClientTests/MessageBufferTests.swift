@@ -32,6 +32,66 @@ class MessageBufferTest: XCTestCase {
         await fulfillment(of: [expectation2], timeout: 1)
     }
 
+    func testBackPressureAndRelease() async throws {
+        let buffer = MessageBuffer(bufferSize: 10)
+        try await buffer.enqueue(content: .string("1234567890"))
+        async let eq1 = buffer.enqueue(content: .string("1"))
+        async let eq2 = buffer.enqueue(content: .string("2"))
+
+        try await Task.sleep(for: .microseconds(10))
+        try await buffer.TryDequeue() // 1234567890
+        try await buffer.TryDequeue() // 1
+        try await buffer.TryDequeue() // 2
+        
+        // ack 1 and all should be below 
+        try await buffer.ack(sequenceId: 1)
+
+        try await eq1
+        try await eq2
+    }
+
+    func testBackPressureAndRelease2() async throws {
+        let buffer = MessageBuffer(bufferSize: 10)
+        let expect1 = XCTestExpectation(description: "Should not release 1")
+        expect1.isInverted = true
+        let expect2 = XCTestExpectation(description: "Should not release 2")
+        expect2.isInverted = true
+        let expect3 = XCTestExpectation(description: "Should not release 3")
+        expect3.isInverted = true
+
+        try await buffer.enqueue(content: .string("1234567890")) //10
+        try await Task.sleep(for: .microseconds(10)) 
+        let t1 = Task { 
+            try await buffer.enqueue(content: .string("1"))
+            expect1.fulfill()
+        }// 11
+        try await Task.sleep(for: .microseconds(10))
+        let t2 = Task { 
+            try await buffer.enqueue(content: .string("2")) 
+            expect2.fulfill()
+        }// 12
+        try await Task.sleep(for: .microseconds(10))
+        let t3 = Task {
+            try await buffer.enqueue(content: .string("123456789")) 
+            expect3.fulfill()
+        }// 21
+        try await Task.sleep(for: .microseconds(10))
+
+        try await buffer.TryDequeue() // 1234567890
+        try await buffer.TryDequeue() // 1
+        try await buffer.TryDequeue() // 2
+        try await buffer.TryDequeue() // 1234567890
+        
+        // ack 1 and all should be below 
+        try await buffer.ack(sequenceId: 1) // remain 11, nothing will release
+
+        await fulfillment(of: [expect1, expect2, expect3], timeout: 0.5)
+        try await buffer.ack(sequenceId: 2) // remain 10, all released
+        await t1.result
+        await t2.result
+        await t3.result
+    }
+
     func testAckInvalidSequenceIdIgnored() async throws {
         let buffer = MessageBuffer(bufferSize: 100)
         let rst = try await buffer.ack(sequenceId: 1) // without any send

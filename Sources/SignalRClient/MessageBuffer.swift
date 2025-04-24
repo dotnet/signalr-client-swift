@@ -56,23 +56,26 @@ actor MessageBuffer {
             return false
         }
 
-        let pfx = messages.prefix {$0.id <= sequenceId}
-        let itemsToProcess = Array(pfx)
-        // make sure remove before any async operation for concurrency issue
-        messages = Array(messages.dropFirst(pfx.count))
-        // sending idx will change because we changes the array
-        nextSendIdx = nextSendIdx - pfx.count
-
-        guard nextSendIdx >= 0 else {
-            throw SignalRError.invalidOperation("Index of the ack < 0, fatal error")
-        }
-
-        for item in itemsToProcess {
-            bufferedByteCount = bufferedByteCount - item.size
-            if let ctu = item.continuation {
-                ctu.resume()
+        var ackedCount: Int = 0
+        for item in messages {
+            if (item.id <= sequenceId) {
+                ackedCount = ackedCount + 1
+                bufferedByteCount = bufferedByteCount - item.size
+                if let ctu = item.continuation {
+                    ctu.resume()
+                }
+            } else if (bufferedByteCount <= maxBufferSize) {
+                if let ctu = item.continuation {
+                    ctu.resume()
+                }
+            } else {
+                break
             }
         }
+
+        messages = Array(messages.dropFirst(ackedCount))
+        // sending idx will change because we changes the array
+        nextSendIdx = nextSendIdx - ackedCount
         return true
     }
 
