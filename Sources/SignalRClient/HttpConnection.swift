@@ -28,6 +28,8 @@ public struct HttpConnectionOptions {
     var webSocket: AnyObject? // Placeholder for WebSocket type
     var eventSource: EventSourceAdaptor?
     var useStatefulReconnect: Bool? // Not supported yet
+    
+    public init() {}
 }
 
 // MARK: - Models
