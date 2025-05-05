@@ -213,7 +213,7 @@ let connection = HubConnectionBuilder()
 | Automatic Reconnection          |✅|
 | Stateful Reconnect              ||
 | Server to Client Streaming      |✅|
-| Client to Server Streaming      ||
+| Client to Server Streaming      |✅|
 | Long Polling                    |✅|
 | Server-Sent Events              |✅|
 | WebSockets                      |✅|
