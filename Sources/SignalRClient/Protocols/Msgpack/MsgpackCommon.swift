@@ -10,6 +10,11 @@ import Foundation
 public struct MsgpackTimestamp: Equatable {
     public var seconds: Int64
     public var nanoseconds: UInt32
+
+    public init(seconds: Int64, nanoseconds: UInt32) {
+        self.seconds = seconds
+        self.nanoseconds = nanoseconds
+    }
 }
 
 // Those encoding extension methods are rarely used unless you want to encode to messagepack extension type

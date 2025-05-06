@@ -80,15 +80,15 @@ public class HubConnectionBuilder {
         return self
     }
 
-    public func withStatefulReconnect() -> HubConnectionBuilder {
-        return withStatefulReconnect(options: StatefulReconnectOptions())
-    }
-
-    public func withStatefulReconnect(options: StatefulReconnectOptions) -> HubConnectionBuilder {
-        self.statefulReconnectBufferSize = options.bufferSize
-        self.httpConnectionOptions.useStatefulReconnect = true
-        return self
-    }
+//    public func withStatefulReconnect() -> HubConnectionBuilder {
+//        return withStatefulReconnect(options: StatefulReconnectOptions())
+//    }
+//
+//    public func withStatefulReconnect(options: StatefulReconnectOptions) -> HubConnectionBuilder {
+//        self.statefulReconnectBufferSize = options.bufferSize
+//        self.httpConnectionOptions.useStatefulReconnect = true
+//        return self
+//    }
 
     public func build() -> HubConnection {
         guard let url = url else {
