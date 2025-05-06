@@ -67,7 +67,8 @@ final class HubConnectionTests: XCTestCase {
             hubProtocol: hubProtocol,
             retryPolicy: DefaultRetryPolicy(retryDelays: []), // No retry
             serverTimeout: nil,
-            keepAliveInterval: nil
+            keepAliveInterval: nil,
+            statefulReconnectBufferSize: nil
         )
     }
 
@@ -178,7 +179,8 @@ final class HubConnectionTests: XCTestCase {
             hubProtocol: hubProtocol,
             retryPolicy: DefaultRetryPolicy(retryDelays: [1, 2, 3]), // Add some retry, but in this case, it shouldn't have effect
             serverTimeout: nil,
-            keepAliveInterval: nil
+            keepAliveInterval: nil,
+            statefulReconnectBufferSize: nil
         )
 
         let expectation = XCTestExpectation(description: "send() should be called")
@@ -206,7 +208,8 @@ final class HubConnectionTests: XCTestCase {
             hubProtocol: hubProtocol,
             retryPolicy: DefaultRetryPolicy(retryDelays: []),
             serverTimeout: nil,
-            keepAliveInterval: nil
+            keepAliveInterval: nil,
+            statefulReconnectBufferSize: nil
         )
 
         let sendExpectation = XCTestExpectation(description: "send() should be called")
@@ -247,7 +250,8 @@ final class HubConnectionTests: XCTestCase {
             hubProtocol: hubProtocol,
             retryPolicy: DefaultRetryPolicy(retryDelays: [0.1, 0.2, 0.3]), // Add some retry
             serverTimeout: nil,
-            keepAliveInterval: nil
+            keepAliveInterval: nil,
+            statefulReconnectBufferSize: nil
         )
 
         let sendExpectation = XCTestExpectation(description: "send() should be called")
@@ -314,7 +318,8 @@ final class HubConnectionTests: XCTestCase {
             hubProtocol: hubProtocol,
             retryPolicy: DefaultRetryPolicy(retryDelays: [0.1, 0.2]), // Limited retries
             serverTimeout: nil,
-            keepAliveInterval: nil
+            keepAliveInterval: nil,
+            statefulReconnectBufferSize: nil
         )
 
         let sendExpectation = XCTestExpectation(description: "send() should be called")
@@ -391,7 +396,8 @@ final class HubConnectionTests: XCTestCase {
             hubProtocol: hubProtocol,
             retryPolicy: retryPolicy, // Limited retries
             serverTimeout: nil,
-            keepAliveInterval: nil
+            keepAliveInterval: nil,
+            statefulReconnectBufferSize: nil
         )
 
         let sendExpectation = XCTestExpectation(description: "send() should be called")
@@ -480,7 +486,8 @@ final class HubConnectionTests: XCTestCase {
             hubProtocol: hubProtocol,
             retryPolicy: DefaultRetryPolicy(retryDelays: []), // No retry
             serverTimeout: nil,
-            keepAliveInterval: keepAliveInterval
+            keepAliveInterval: keepAliveInterval,
+            statefulReconnectBufferSize: nil
         )
 
         let handshakeExpectation = XCTestExpectation(description: "handshake should be called")
@@ -530,7 +537,8 @@ final class HubConnectionTests: XCTestCase {
             hubProtocol: hubProtocol,
             retryPolicy: DefaultRetryPolicy(retryDelays: []), // No retry
             serverTimeout: 0.1,
-            keepAliveInterval: 99
+            keepAliveInterval: 99,
+            statefulReconnectBufferSize: nil
         )
 
         let handshakeExpectation = XCTestExpectation(description: "handshake should be called")
@@ -582,15 +590,33 @@ final class HubConnectionTests: XCTestCase {
         mockConnection.onSend = { data in
             sendExpectation.fulfill()
         }
-
+        let (clientStream, continuation)  = AsyncStream.makeStream(of: Int.self)
+       
         let sendTask = Task {
-            try await hubConnection.send(method: "testMethod", arguments: "arg1", "arg2")
+            try await hubConnection.send(method: "testMethod", arguments: "arg1", "arg2", clientStream)
         }
 
         await fulfillment(of: [sendExpectation], timeout: 1.0)
 
         // Assert
         await whenTaskWithTimeout(sendTask, timeout: 1.0)
+        
+        var count = 0
+        let streamExpectation = XCTestExpectation(description: "clientStream should trigger send 10 times")
+        mockConnection.onSend = { data in
+            count += 1
+            if count == 10 {
+                streamExpectation.fulfill()
+            } 
+        }
+
+        for i in 0 ..< 9 {
+            continuation.yield(i)
+        }
+        continuation.finish()
+        // Assert
+        await fulfillment(of: [streamExpectation], timeout: 1.0)
+        mockConnection.onSend = nil
     }
 
     func testInvoke_Success() async throws {

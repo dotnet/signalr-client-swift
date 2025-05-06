@@ -6,6 +6,8 @@ import Foundation
 public actor HubConnection {
     private static let defaultTimeout: TimeInterval = 30
     private static let defaultPingInterval: TimeInterval = 15
+    private static let defaultStatefulReconnectBufferSize: Int = 100_000_000 // bytes of messages
+
     private var invocationBinder: DefaultInvocationBinder
     private var invocationHandler: InvocationHandler
 
@@ -17,6 +19,7 @@ public actor HubConnection {
     private let retryPolicy: RetryPolicy
     private let keepAliveScheduler: TimeScheduler
     private let serverTimeoutScheduler: TimeScheduler
+    private let statefulReconnectBufferSize: Int
 
     private var connectionStarted: Bool = false
     private var receivedHandshakeResponse: Bool = false
@@ -39,9 +42,12 @@ public actor HubConnection {
                   hubProtocol: HubProtocol,
                   retryPolicy: RetryPolicy,
                   serverTimeout: TimeInterval?,
-                  keepAliveInterval: TimeInterval?) {
+                  keepAliveInterval: TimeInterval?,
+                  statefulReconnectBufferSize: Int?) {
         self.serverTimeout = serverTimeout ?? HubConnection.defaultTimeout
         self.keepAliveInterval = keepAliveInterval ?? HubConnection.defaultPingInterval
+        self.statefulReconnectBufferSize = statefulReconnectBufferSize ?? HubConnection.defaultStatefulReconnectBufferSize
+
         self.logger = logger
         self.retryPolicy = retryPolicy
 
@@ -107,29 +113,77 @@ public actor HubConnection {
     }
 
     public func send(method: String, arguments: Any...) async throws {
-        let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil, invocationId: nil)
+        let (nonstreamArguments, streamArguments) = splitStreamArguments(arguments: arguments)
+        let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
+        let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil, invocationId: nil)
         let data = try hubProtocol.writeMessage(message: invocationMessage)
         logger.log(level: .debug, message: "Sending message to target: \(method)")
         try await sendMessageInternal(data)
+        launchStreams(streamIds: streamIds, clientStreams: streamArguments)
+    }
+    
+    private func splitStreamArguments(arguments: Any...) -> ([Any], [any AsyncSequence]) {
+        var nonstreamArguments: [Any] = []
+        var streamArguments: [any AsyncSequence] = []
+        for argument in arguments {
+            if let stream = argument as? (any AsyncSequence) {
+                streamArguments.append(stream)
+            } else {
+                nonstreamArguments.append(argument)
+            }
+        }
+        return (nonstreamArguments, streamArguments)
     }
 
+    private func launchStreams(streamIds: [String], clientStreams: [any AsyncSequence]) {
+        for i in 0 ..< streamIds.count {
+            Task {
+                let stream = clientStreams[i]
+                var err: String? = nil
+                do {
+                    for try await item in stream {
+                        let streamItem = StreamItemMessage(invocationId: streamIds[i], item: AnyEncodable(item), headers: nil)
+                        let data = try hubProtocol.writeMessage(message: streamItem)
+                        try await sendMessageInternal(data)
+                    }
+                } catch {
+                    err = "\(error)"
+                    logger.log(level: .error, message: "Fail to send client stream message :\(error)")
+                }
+                do {
+                    let completionMessage = CompletionMessage(invocationId: streamIds[i], error: err, result: AnyEncodable(nil), headers: nil)
+                    let data = try hubProtocol.writeMessage(message: completionMessage)
+                    try await sendMessageInternal(data)
+                } catch {
+                    logger.log(level: .error, message: "Fail to send client stream complete message :\(error)")
+                }
+            }
+        }
+    }
+    
     public func invoke(method: String, arguments: Any...) async throws -> Void {
+        let (nonstreamArguments, streamArguments) = splitStreamArguments(arguments: arguments)
+        let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
         let (invocationId, tcs) = await invocationHandler.create()
-        let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil, invocationId: invocationId)
+        let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil, invocationId: invocationId)
         let data = try hubProtocol.writeMessage(message: invocationMessage)
         logger.log(level: .debug, message: "Invoke message to target: \(method), invocationId: \(invocationId)")
         try await sendMessageInternal(data)
+        launchStreams(streamIds: streamIds, clientStreams: streamArguments)
         _ = try await tcs.task()
     }
 
     public func invoke<TReturn>(method: String, arguments: Any...) async throws -> TReturn {
+        let (nonstreamArguments, streamArguments) = splitStreamArguments(arguments: arguments)
+        let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
         let (invocationId, tcs) = await invocationHandler.create()
         invocationBinder.registerReturnValueType(invocationId: invocationId, types: TReturn.self)
-        let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil, invocationId: invocationId)
+        let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil, invocationId: invocationId)
         do {
             let data = try hubProtocol.writeMessage(message: invocationMessage)
             logger.log(level: .debug, message: "Invoke message to target: \(method), invocationId: \(invocationId)")
             try await sendMessageInternal(data)
+            launchStreams(streamIds: streamIds, clientStreams: streamArguments)
         } catch {
             await invocationHandler.cancel(invocationId: invocationId, error: error)
             invocationBinder.removeReturnValueType(invocationId: invocationId)
@@ -144,13 +198,16 @@ public actor HubConnection {
     }
 
     public func stream<Element>(method: String, arguments: Any...) async throws -> any StreamResult<Element> {
+        let (nonstreamArguments, streamArguments) = splitStreamArguments(arguments: arguments)
+        let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
         let (invocationId, stream) = await invocationHandler.createStream()
         invocationBinder.registerReturnValueType(invocationId: invocationId, types: Element.self)
-        let StreamInvocationMessage = StreamInvocationMessage(invocationId: invocationId, target: method, arguments: AnyEncodableArray(arguments), streamIds: nil, headers: nil)
+        let StreamInvocationMessage = StreamInvocationMessage(invocationId: invocationId, target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil)
         do {
             let data = try hubProtocol.writeMessage(message: StreamInvocationMessage)
             logger.log(level: .debug, message: "Stream message to target: \(method), invocationId: \(invocationId)")
             try await sendMessageInternal(data)
+            launchStreams(streamIds: streamIds, clientStreams: streamArguments)
         } catch {
             await invocationHandler.cancel(invocationId: invocationId, error: error)
             invocationBinder.removeReturnValueType(invocationId: invocationId)
@@ -671,6 +728,14 @@ public actor HubConnection {
                 invocations[id] = .Stream(continuation)
             }
             return (id, stream)
+        }
+        
+        func createClientStreamIds(count: Int) -> [String] {
+            var streamIds: [String] = []
+            for _ in 0 ..< count {
+                streamIds.append(nextId())
+            }
+            return streamIds
         }
 
         func setResult(message: CompletionMessage) async {

@@ -21,7 +21,7 @@ import PackageDescription
 let package = Package(
     name: "signalr-client-app",
     dependencies: [
-        .package(url: "https://github.com/dotnet/signalr-client-swift", .upToNextMinor(from: "1.0.0-preview.3"))
+        .package(url: "https://github.com/dotnet/signalr-client-swift", .upToNextMinor(from: "1.0.0-preview.4"))
     ],
     targets: [
         .executableTarget(name: "YourTargetName", dependencies: [.product(name: "SignalRClient", package: "signalr-client-swift")])
@@ -113,6 +113,18 @@ for try await item in stream.stream {
 }
 ```
 
+## Client-to-server streaming
+To send a stream of data from the client to the server, use the `AsyncStream`:
+
+```swift
+let (clientStream, continuation) = AsyncStream.makeStream(of: Int.self)
+try await connection.send("UploadStream", arguments: clientStream)
+for i in 1...100 {
+    continuation.yield(i)
+}
+continuation.finish()
+``` 
+
 ## Handle lost connection
 
 ### Automatic reconnect
@@ -201,7 +213,7 @@ let connection = HubConnectionBuilder()
 | Automatic Reconnection          |✅|
 | Stateful Reconnect              ||
 | Server to Client Streaming      |✅|
-| Client to Server Streaming      ||
+| Client to Server Streaming      |✅|
 | Long Polling                    |✅|
 | Server-Sent Events              |✅|
 | WebSockets                      |✅|
