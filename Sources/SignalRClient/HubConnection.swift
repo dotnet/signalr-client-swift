@@ -69,8 +69,14 @@ public actor HubConnection {
 
         startTask = Task {
             do {
-                await self.connection.onClose(handleConnectionClose)
-                await self.connection.onReceive(processIncomingData)
+                await self.connection.onClose { [weak self] error in
+                    guard let self else { return }
+                    await self.handleConnectionClose(error: error)
+                }
+                await self.connection.onReceive { [weak self] prehandledData in
+                    guard let self else { return }
+                    await self.processIncomingData(prehandledData)
+                }
 
                 try await startInternal()
                 logger.log(level: .debug, message: "HubConnection started")
