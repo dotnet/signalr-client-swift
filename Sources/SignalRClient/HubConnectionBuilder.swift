@@ -103,7 +103,7 @@ public class HubConnectionBuilder {
         return HubConnection(connection: connection,
                              logger: logger,
                              hubProtocol: hubProtocol,
-                             retryPolicy: retryPolicy,
+                             reconnectPolicy: retryPolicy,
                              serverTimeout: serverTimeout,
                              keepAliveInterval: keepAliveInterval,
                              statefulReconnectBufferSize: statefulReconnectBufferSize)

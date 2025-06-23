@@ -6,7 +6,7 @@ import Foundation
 public actor HubConnection {
     private static let defaultTimeout: TimeInterval = 30
     private static let defaultPingInterval: TimeInterval = 15
-    private static let defaultStatefulReconnectBufferSize: Int = 100_000_000 // bytes of messages
+    private static let defaultStatefulReconnectBufferSize: Int = 100_000_000  // bytes of messages
 
     private var invocationBinder: DefaultInvocationBinder
     private var invocationHandler: InvocationHandler
@@ -16,7 +16,7 @@ public actor HubConnection {
     private let logger: Logger
     private let hubProtocol: HubProtocol
     private let connection: ConnectionProtocol
-    private let retryPolicy: RetryPolicy
+    private let reconnectPolicy: RetryPolicy
     private let keepAliveScheduler: TimeScheduler
     private let serverTimeoutScheduler: TimeScheduler
     private let statefulReconnectBufferSize: Int
@@ -24,8 +24,8 @@ public actor HubConnection {
     private var connectionStarted: Bool = false
     private var receivedHandshakeResponse: Bool = false
     private var invocationId: Int = 0
+    private var messageBuffer: MessageBuffer? = nil
     private var connectionStatus: HubConnectionState = .Stopped
-    private var stopping: Bool = false
     private var stopDuringStartError: Error?
     private nonisolated(unsafe) var handshakeResolver: ((HandshakeResponseMessage) -> Void)?
     private nonisolated(unsafe) var handshakeRejector: ((Error) -> Void)?
@@ -40,16 +40,17 @@ public actor HubConnection {
     internal init(connection: ConnectionProtocol,
                   logger: Logger,
                   hubProtocol: HubProtocol,
-                  retryPolicy: RetryPolicy,
+                  reconnectPolicy: RetryPolicy,
                   serverTimeout: TimeInterval?,
                   keepAliveInterval: TimeInterval?,
                   statefulReconnectBufferSize: Int?) {
         self.serverTimeout = serverTimeout ?? HubConnection.defaultTimeout
         self.keepAliveInterval = keepAliveInterval ?? HubConnection.defaultPingInterval
-        self.statefulReconnectBufferSize = statefulReconnectBufferSize ?? HubConnection.defaultStatefulReconnectBufferSize
+        self.statefulReconnectBufferSize =
+            statefulReconnectBufferSize ?? HubConnection.defaultStatefulReconnectBufferSize
 
         self.logger = logger
-        self.retryPolicy = retryPolicy
+        self.reconnectPolicy = reconnectPolicy
 
         self.connection = connection
         self.hubProtocol = hubProtocol
@@ -58,10 +59,12 @@ public actor HubConnection {
         self.invocationHandler = InvocationHandler()
         self.keepAliveScheduler = TimeScheduler(initialInterval: self.keepAliveInterval)
         self.serverTimeoutScheduler = TimeScheduler(initialInterval: self.serverTimeout)
+        self.reconnectedHandlers = []
+        self.reconnectingHandlers = []
     }
 
     public func start() async throws {
-        if (connectionStatus != .Stopped) {
+        if connectionStatus != .Stopped {
             throw SignalRError.invalidOperation("Start client while not in a stopped state.")
         }
 
@@ -77,7 +80,6 @@ public actor HubConnection {
                 startSuccessfully = true
             } catch {
                 connectionStatus = .Stopped
-                stopping = false
                 await keepAliveScheduler.stop()
                 await serverTimeoutScheduler.stop()
                 logger.log(level: .debug, message: "HubConnection start failed \(error)")
@@ -96,13 +98,14 @@ public actor HubConnection {
         }
 
         // 2. Another stop is running, just wait for it
-        if (stopping) {
+        if connectionStatus == .Stopping {
             logger.log(level: .debug, message: "Connection is already stopping")
             await stopTask?.value
             return
         }
 
-        stopping = true
+        connectionStatus = .Stopping
+        await self.connection.setFeature(feature: ConnectionFeature.Reconnect, value: false)
 
         // In this step, there's no other start running
         stopTask = Task {
@@ -291,6 +294,13 @@ public actor HubConnection {
 
     private func stopInternal() async {
         if (connectionStatus == .Stopped) {
+            logger.log(level: .debug,message:"Call to HubConnection.stop ignored because it is already in the disconnected state.")
+            return
+        }
+
+        if connectionStatus == .Stopping {
+            logger.log(level: .debug,message:"Call to HubConnection.stop ignored because it is already in the stopping state.")
+            await stopTask?.value
             return
         }
 
@@ -325,7 +335,7 @@ public actor HubConnection {
             handshakeRejector!(SignalRError.connectionAborted)
         }
 
-        if (stopping) {
+        if connectionStatus == .Connecting {
             await completeClose(error: error)
             return
         }
@@ -335,7 +345,7 @@ public actor HubConnection {
         // 2. Connected: In this case, we should reconnect
         // 3. Reconnecting: In this case, we're in the control of previous reconnect(), let that function handle the reconnection
 
-        if (connectionStatus == .Connected) {
+        if connectionStatus == .Connected {
             do {
                 try await reconnect(error: error)
             } catch {
@@ -351,13 +361,15 @@ public actor HubConnection {
         var lastError: Error? = error
 
         // reconnect
-        while let interval = retryPolicy.nextRetryInterval(retryContext: RetryContext(
-            retryCount: retryCount,
-            elapsed: elapsed,
-            retryReason: lastError
-        )) {
+        while let interval = reconnectPolicy.nextRetryInterval(
+            retryContext: RetryContext(
+                retryCount: retryCount,
+                elapsed: elapsed,
+                retryReason: lastError
+            ))
+        {
             try Task.checkCancellation()
-            if (stopping) {
+            if connectionStatus == .Stopping {
                 break
             }
 
@@ -380,7 +392,7 @@ public actor HubConnection {
                 logger.log(level: .warning, message: "Connection reconnect failed: \(error)")
             }
 
-            if (stopping) {
+            if connectionStatus == .Stopping {
                 break
             }
 
@@ -424,6 +436,17 @@ public actor HubConnection {
         do {
             let hubMessage = try hubProtocol.parseMessages(input: data!, binder: invocationBinder)
             for message in hubMessage {
+                do {
+                    if let messageBuffer = self.messageBuffer {
+                        let shouldProcess = try await messageBuffer.shouldProcessMessage(message)
+                        if !shouldProcess {
+                            // Don't process the message, we are either waiting for a SequenceMessage or received a duplicate message
+                            continue
+                        }
+                    }
+                } catch {
+                    logger.log(level: .error, message: "Error parsing messages: \(error)")
+                }
                 await dispatchMessage(message)
             }
         } catch {
@@ -499,7 +522,6 @@ public actor HubConnection {
 
     private func completeClose(error: Error?) async {
         connectionStatus = .Stopped
-        stopping = false
         await keepAliveScheduler.stop()
         await serverTimeoutScheduler.stop()
 
@@ -513,7 +535,7 @@ public actor HubConnection {
     private func startInternal() async throws {
         try Task.checkCancellation()
 
-        guard stopping == false else {
+        guard connectionStatus != .Stopping else {
             throw SignalRError.invalidOperation("Stopping is called")
         }
 
@@ -532,6 +554,7 @@ public actor HubConnection {
             logger.log(level: .error, message: "Unsupported handshake version: \(version)")
             throw SignalRError.unsupportedHandshakeVersion
         }
+        // TODO: enable version 2 when stateful reconnect is done
 
         receivedHandshakeResponse = false
         let handshakeRequest = HandshakeRequestMessage(protocol: hubProtocol.name, version: version)
@@ -565,6 +588,23 @@ public actor HubConnection {
                         self.handshakeRejector!(error)
                     }
                 }
+            }
+
+            let useStatefulReconnect = await (self.connection.features[ConnectionFeature.Reconnect] as? Bool) == true
+            if useStatefulReconnect {
+                self.messageBuffer = MessageBuffer(
+                    hubProtocol: self.hubProtocol, connection: self.connection,
+                    bufferSize: self.statefulReconnectBufferSize)
+                await self.connection.setFeature(
+                    feature: ConnectionFeature.Disconnected, 
+                    value: { [weak self] () async -> Void in
+                    _ = try? await self?.messageBuffer?.disconnected()
+                })
+                await self.connection.setFeature(
+                    feature: ConnectionFeature.Resend, 
+                    value: { [weak self] () async -> Any? in
+                    return try? await self?.messageBuffer?.resend()
+                })
             }
 
             let inherentKeepAlive = await connection.inherentKeepAlive
@@ -808,6 +848,7 @@ public actor HubConnection {
 public enum HubConnectionState {
     // The connection is stopped. Start can only be called if the connection is in this state.
     case Stopped
+    case Stopping
     case Connecting
     case Connected
     case Reconnecting

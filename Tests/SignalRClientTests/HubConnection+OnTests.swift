@@ -25,7 +25,7 @@ final class HubConnectionOnTests: XCTestCase {
             connection: mockConnection,
             logger: Logger(logLevel: .debug, logHandler: logHandler),
             hubProtocol: hubProtocol,
-            retryPolicy: DefaultRetryPolicy(retryDelays: []), // No retry
+            reconnectPolicy: DefaultRetryPolicy(retryDelays: []), // No retry
             serverTimeout: nil,
             keepAliveInterval: nil,
             statefulReconnectBufferSize: nil

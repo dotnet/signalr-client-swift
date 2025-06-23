@@ -84,7 +84,7 @@ actor HttpConnection: ConnectionProtocol {
     private var accessTokenFactory: (@Sendable () async throws -> String?)?
     private var inherentKeepAlivePrivate: Bool = false
 
-    public var features: [String: Any] = [:]
+    public var features: [ConnectionFeature: Any] = [:]
     public var baseUrl: String
     public var connectionId: String?
     public var inherentKeepAlive: Bool { 
@@ -359,9 +359,31 @@ actor HttpConnection: ConnectionProtocol {
 
     private func startTransport(url: String, transferFormat: TransferFormat) async throws {
         await transport!.onReceive(self.onReceive)
-        await transport!.onClose { [weak self] error in
-            guard let self = self else { return }
-            await self.handleConnectionClose(error: error)
+        if (self.features[ConnectionFeature.Reconnect] as? Bool) == true {
+            await transport!.onClose { [weak self] error in
+                var callStop = false;
+                guard let self = self else { return }
+                if await (self.features[ConnectionFeature.Reconnect] as? Bool) == true {
+                    do {
+                        if let disconnectedHandler = await self.features[ConnectionFeature.Disconnected] as? (Error?) -> Void {
+                            disconnectedHandler(error);
+                        }
+                        try await self.transport?.connect(url: url, transferFormat: transferFormat);
+                        if let resendHandler = await self.features[ConnectionFeature.Resend] as? () -> Void {
+                            resendHandler();
+                        }
+                    } catch {
+                        callStop = true;
+                    }
+                }
+                else {
+                    await self.handleConnectionClose(error: error);
+                    return;
+                }
+                if callStop {
+                    await self.handleConnectionClose(error: error);
+                }
+            }   
         }
 
         do {
@@ -435,6 +457,12 @@ actor HttpConnection: ConnectionProtocol {
         if let useStatefulReconnect = options.useStatefulReconnect, useStatefulReconnect {
             queryItems.append(URLQueryItem(name: "useStatefulReconnect", value: "true"))
         }
+        else {
+            if  (queryItems.first(where: { $0.name == "useStatefulReconnect" })?.value ?? "false") == "true" {
+                options.useStatefulReconnect = true;
+            }
+        }
+               
         negotiateUrlComponents.queryItems = queryItems
         return negotiateUrlComponents.url!.absoluteString
     }
@@ -476,7 +504,7 @@ actor HttpConnection: ConnectionProtocol {
             let transferFormats = endpoint.transferFormats.compactMap { TransferFormat($0) }
             if transferFormats.contains(requestedTransferFormat) {
                 do {
-                    features["reconnect"] = (transportType == .webSockets && useStatefulReconnect) ? true : nil
+                    self.features[ConnectionFeature.Reconnect] = (transportType == .webSockets && useStatefulReconnect) ? true : false;
                     let constructedTransport = try await constructTransport(transport: transportType)
                     return constructedTransport
                 } catch {
@@ -510,5 +538,9 @@ actor HttpConnection: ConnectionProtocol {
             urlRequest.timeoutInterval = timeout
         }
         return urlRequest
+    }
+
+    public func setFeature(feature: ConnectionFeature, value: Any) async {
+        features[feature] = value
     }
 }

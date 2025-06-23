@@ -4,6 +4,9 @@
 import Foundation
 
 actor MessageBuffer {
+    private var hubProtocol: HubProtocol;
+    private var connection: ConnectionProtocol;
+
     private var maxBufferSize: Int
     private var messages: [BufferedItem] = []
     private var bufferedByteCount: Int = 0
@@ -13,8 +16,26 @@ actor MessageBuffer {
     private var dequeueContinuations: [CheckedContinuation<Bool, Never>] = []
     private var closed: Bool = false
 
-    init(bufferSize: Int) {
+    init(hubProtocol: HubProtocol, connection: ConnectionProtocol, bufferSize: Int) {
+        self.hubProtocol = hubProtocol
+        self.connection = connection
         self.maxBufferSize = bufferSize
+    }
+
+    public func send(message: HubMessage) async throws -> Void {
+        throw SignalRError.invalidOperation("Send is not implemented")
+    }
+
+    public func resend() async throws -> Void {
+        throw SignalRError.invalidOperation("Resend is not implemented")
+    }
+
+    public func disconnected() async throws -> Void {
+        throw SignalRError.invalidOperation("Disconnected is not implemented")
+    }
+
+    public func shouldProcessMessage(_ message: HubMessage) throws -> Bool {
+        throw SignalRError.invalidOperation("ShouldProcessMessage is not implemented")
     }
 
     public func enqueue(content: StringOrData) async throws -> Void {
