@@ -391,6 +391,14 @@ actor HttpConnection: ConnectionProtocol {
                 await self.handleConnectionClose(error: error)
             }
         }
+
+        do {
+            try await transport!.connect(url: url, transferFormat: transferFormat)
+        } catch {
+            await transport!.onReceive(nil)
+            await transport!.onClose(nil)
+            throw error
+        }
     }
 
     private func handleConnectionClose(error: Error?) async {
