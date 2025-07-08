@@ -385,13 +385,11 @@ actor HttpConnection: ConnectionProtocol {
                 }
             }   
         }
-
-        do {
-            try await transport!.connect(url: url, transferFormat: transferFormat)
-        } catch {
-            await transport!.onReceive(nil)
-            await transport!.onClose(nil)
-            throw error
+        else { 
+            await transport!.onClose { [weak self] error in
+                guard let self = self else { return }
+                await self.handleConnectionClose(error: error)
+            }
         }
     }
 

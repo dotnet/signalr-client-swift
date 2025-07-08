@@ -13,6 +13,7 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
     var onSend: ((StringOrData) -> Void)?
     var onStart: (() -> Void)?
     var onStop: ((Error?) -> Void)?
+    var features: [ConnectionFeature : Any] = [:]
 
     private(set) var startCalled = false
     private(set) var sendCalled = false
@@ -41,6 +42,10 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
 
     func onClose(_ handler: @escaping @Sendable ((any Error)?) async -> Void) async {
         onClose = handler
+    }
+
+    func setFeature(feature: SignalRClient.ConnectionFeature, value: Any) async {
+        features[feature] = value
     }
 }
 

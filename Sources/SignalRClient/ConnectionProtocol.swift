@@ -5,7 +5,6 @@ enum ConnectionFeature: String, CaseIterable {
     case Reconnect = "reconnect"
     case Resend = "resend"
     case Disconnected = "disconnected"
-    // Add more feature keys as needed
 }
 
 protocol ConnectionProtocol: AnyObject, Sendable {

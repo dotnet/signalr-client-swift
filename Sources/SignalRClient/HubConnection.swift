@@ -16,7 +16,7 @@ public actor HubConnection {
     private let logger: Logger
     private let hubProtocol: HubProtocol
     private let connection: ConnectionProtocol
-    private let reconnectPolicy: RetryPolicy
+    private let retryPolicy: RetryPolicy
     private let keepAliveScheduler: TimeScheduler
     private let serverTimeoutScheduler: TimeScheduler
     private let statefulReconnectBufferSize: Int
@@ -40,17 +40,16 @@ public actor HubConnection {
     internal init(connection: ConnectionProtocol,
                   logger: Logger,
                   hubProtocol: HubProtocol,
-                  reconnectPolicy: RetryPolicy,
+                  retryPolicy: RetryPolicy,
                   serverTimeout: TimeInterval?,
                   keepAliveInterval: TimeInterval?,
                   statefulReconnectBufferSize: Int?) {
         self.serverTimeout = serverTimeout ?? HubConnection.defaultTimeout
         self.keepAliveInterval = keepAliveInterval ?? HubConnection.defaultPingInterval
-        self.statefulReconnectBufferSize =
-            statefulReconnectBufferSize ?? HubConnection.defaultStatefulReconnectBufferSize
+        self.statefulReconnectBufferSize = statefulReconnectBufferSize ?? HubConnection.defaultStatefulReconnectBufferSize
 
         self.logger = logger
-        self.reconnectPolicy = reconnectPolicy
+        self.retryPolicy = retryPolicy
 
         self.connection = connection
         self.hubProtocol = hubProtocol
@@ -64,7 +63,7 @@ public actor HubConnection {
     }
 
     public func start() async throws {
-        if connectionStatus != .Stopped {
+        if (connectionStatus != .Stopped) {
             throw SignalRError.invalidOperation("Start client while not in a stopped state.")
         }
 
@@ -345,7 +344,7 @@ public actor HubConnection {
         // 2. Connected: In this case, we should reconnect
         // 3. Reconnecting: In this case, we're in the control of previous reconnect(), let that function handle the reconnection
 
-        if connectionStatus == .Connected {
+        if (connectionStatus == .Connected) {
             do {
                 try await reconnect(error: error)
             } catch {
@@ -361,13 +360,11 @@ public actor HubConnection {
         var lastError: Error? = error
 
         // reconnect
-        while let interval = reconnectPolicy.nextRetryInterval(
-            retryContext: RetryContext(
-                retryCount: retryCount,
-                elapsed: elapsed,
-                retryReason: lastError
-            ))
-        {
+        while let interval = retryPolicy.nextRetryInterval(retryContext: RetryContext(
+            retryCount: retryCount,
+            elapsed: elapsed,
+            retryReason: lastError
+        )) {
             try Task.checkCancellation()
             if connectionStatus == .Stopping {
                 break
@@ -436,16 +433,11 @@ public actor HubConnection {
         do {
             let hubMessage = try hubProtocol.parseMessages(input: data!, binder: invocationBinder)
             for message in hubMessage {
-                do {
-                    if let messageBuffer = self.messageBuffer {
-                        let shouldProcess = try await messageBuffer.shouldProcessMessage(message)
-                        if !shouldProcess {
-                            // Don't process the message, we are either waiting for a SequenceMessage or received a duplicate message
-                            continue
-                        }
+                if let messageBuffer = self.messageBuffer {
+                    if !(try await messageBuffer.shouldProcessMessage(message)) {
+                        // Don't process the message, we are either waiting for a SequenceMessage or received a duplicate message
+                        continue
                     }
-                } catch {
-                    logger.log(level: .error, message: "Error parsing messages: \(error)")
                 }
                 await dispatchMessage(message)
             }
@@ -482,11 +474,18 @@ public actor HubConnection {
         case _ as CloseMessage:
             // Close
             break
-        case _ as AckMessage:
-            // TODO: In stateful reconnect
+        case let message as AckMessage:
+            let result = await self.messageBuffer?.ack(sequenceId: message.sequenceId);
+            if (result == false) {
+                logger.log(level: .warning, message: "Ack message received for sequenceId: \(message.sequenceId), but failed.")
+            }
             break
-        case _ as SequenceMessage:
-            // TODO: In stateful reconnect
+        case let message as SequenceMessage:
+            if let messageBuffer = self.messageBuffer {
+                await messageBuffer.resetSequenceMessage(message: message)
+            } else {
+                logger.log(level: .warning, message: "Sequence message received but no message buffer is available.")
+            }
             break
         default:
             logger.log(level: .warning, message: "Unknown message type: \(message)")
@@ -554,7 +553,7 @@ public actor HubConnection {
             logger.log(level: .error, message: "Unsupported handshake version: \(version)")
             throw SignalRError.unsupportedHandshakeVersion
         }
-        // TODO: enable version 2 when stateful reconnect is done
+        // TODO: enable version 2 when stateful reconnect is ready
 
         receivedHandshakeResponse = false
         let handshakeRequest = HandshakeRequestMessage(protocol: hubProtocol.name, version: version)
@@ -593,17 +592,19 @@ public actor HubConnection {
             let useStatefulReconnect = await (self.connection.features[ConnectionFeature.Reconnect] as? Bool) == true
             if useStatefulReconnect {
                 self.messageBuffer = MessageBuffer(
-                    hubProtocol: self.hubProtocol, connection: self.connection,
-                    bufferSize: self.statefulReconnectBufferSize)
+                    bufferSize: self.statefulReconnectBufferSize,
+                    hubProtocol: self.hubProtocol,
+                    connection: self.connection
+                )
                 await self.connection.setFeature(
                     feature: ConnectionFeature.Disconnected, 
                     value: { [weak self] () async -> Void in
-                    _ = try? await self?.messageBuffer?.disconnected()
+                        _ = await self?.messageBuffer?.disconnected()
                 })
                 await self.connection.setFeature(
                     feature: ConnectionFeature.Resend, 
                     value: { [weak self] () async -> Any? in
-                    return try? await self?.messageBuffer?.resend()
+                        return try? await self?.messageBuffer?.resend()
                 })
             }
 

@@ -4,38 +4,131 @@
 import Foundation
 
 actor MessageBuffer {
-    private var hubProtocol: HubProtocol;
-    private var connection: ConnectionProtocol;
-
     private var maxBufferSize: Int
     private var messages: [BufferedItem] = []
     private var bufferedByteCount: Int = 0
     private var totalMessageCount: Int = 0
     private var lastSendSequenceId: Int = 0
     private var nextSendIdx = 0
+    private var nextReceivingIdx: Int64 = 1
+    private var lastReceivedSequenceId: Int64 = 0
     private var dequeueContinuations: [CheckedContinuation<Bool, Never>] = []
     private var closed: Bool = false
+    private var reconnectInprogress: Bool = false;
+    private var waitForSequenceMessage: Bool = false;
 
-    init(hubProtocol: HubProtocol, connection: ConnectionProtocol, bufferSize: Int) {
+    private var ackTimerHandle: DispatchWorkItem?
+
+    private var hubProtocol: HubProtocol;
+    private var connection: ConnectionProtocol;
+
+    init(bufferSize: Int, hubProtocol: HubProtocol, connection: ConnectionProtocol) {
+        self.maxBufferSize = bufferSize
         self.hubProtocol = hubProtocol
         self.connection = connection
-        self.maxBufferSize = bufferSize
     }
 
     public func send(message: HubMessage) async throws -> Void {
-        throw SignalRError.invalidOperation("Send is not implemented")
+        let serializedMessage = try self.hubProtocol.writeMessage(message: message);
+
+        try await self.enqueue(content: serializedMessage);
+
+        if (!self.reconnectInprogress) {
+            do {
+                try await self.connection.send(serializedMessage);
+            }
+            catch {
+                self.disconnected();
+            }
+        }
     }
 
     public func resend() async throws -> Void {
-        throw SignalRError.invalidOperation("Resend is not implemented")
+        let sequenceId = Int64(self.messages.count > 0 ? self.messages[0].id : self.totalMessageCount + 1);
+        let serializedMessage = try self.hubProtocol.writeMessage(message: SequenceMessage(sequenceId: sequenceId));
+        try await self.connection.send(serializedMessage);
+        
+        let messages = self.messages;
+        for element in messages {
+            try await self.connection.send(element.content);
+        }
+
+        self.reconnectInprogress = false;
     }
 
-    public func disconnected() async throws -> Void {
-        throw SignalRError.invalidOperation("Disconnected is not implemented")
+    public func disconnected() -> Void {
+        self.reconnectInprogress = true;
+        self.waitForSequenceMessage = true;
+    }
+
+    private func ackTimer() {
+        guard ackTimerHandle == nil else {
+            return
+        }
+        
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            
+            Task {
+                await self.performScheduledAck()
+            }
+        }
+        
+        ackTimerHandle = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+    }
+
+    private func performScheduledAck() async {
+        defer {
+            // 在方法结束时清理定时器
+            ackTimerHandle = nil
+        }
+        
+        do {
+            if !reconnectInprogress {
+                let ackMessage = AckMessage(
+                    sequenceId: lastReceivedSequenceId
+                )
+                
+                let serializedMessage = try hubProtocol.writeMessage(message: ackMessage)
+                try await connection.send(serializedMessage)
+            }
+        } catch {
+            // 忽略错误，连接关闭时不需要发送ACK
+        }
     }
 
     public func shouldProcessMessage(_ message: HubMessage) throws -> Bool {
-        throw SignalRError.invalidOperation("ShouldProcessMessage is not implemented")
+        if (self.waitForSequenceMessage) {
+            if (message.type != .sequence) {
+                return false;
+            } else {
+                self.waitForSequenceMessage = false;
+                return true;
+            }
+        }
+
+        if !self.isInvocationMessage(message: message) {
+            return true
+        }
+
+        let currentId = self.nextReceivingIdx;
+        self.nextReceivingIdx += 1;
+        if currentId <= self.lastReceivedSequenceId{
+            if currentId == self.lastReceivedSequenceId{
+                // Should only hit this if we just reconnected and the server is sending
+                // Messages it has buffered, which would mean it hasn't seen an Ack for these messages
+                self.ackTimer();
+            }
+            // Ignore, this is a duplicate message
+            return false;
+        }
+        self.lastReceivedSequenceId = currentId;
+
+        // Only start the timer for sending an Ack message when we have a message to ack. This also conveniently solves
+        // timer throttling by not having a recursive timer, and by starting the timer via a network call (recv)
+        self.ackTimer();
+        return true;     
     }
 
     public func enqueue(content: StringOrData) async throws -> Void {
@@ -71,7 +164,7 @@ actor MessageBuffer {
         }
     }
 
-    public func ack(sequenceId: Int) throws -> Bool {
+    public func ack(sequenceId: Int64) -> Bool {
         // It might be wrong ack or the ack of previous connection
         if (sequenceId <= 0 || sequenceId > lastSendSequenceId) {
             return false
@@ -135,6 +228,17 @@ actor MessageBuffer {
             let continuation = dequeueContinuations.removeFirst()
             continuation.resume(returning: false)
         }
+    }
+
+    public func resetSequenceMessage(message: SequenceMessage) async {
+        if message.sequenceId > self.nextReceivingIdx {
+            // do not await stop
+            Task {
+                await self.connection.stop(error: SignalRError.invalidOperation("Received sequence message with sequenceId \(message.sequenceId) greater than nextReceivingIdx \(self.nextReceivingIdx)"))
+            }
+            return 
+        }
+        self.nextReceivingIdx = message.sequenceId;
     }
 
     private func isInvocationMessage(message: HubMessage) -> Bool {
