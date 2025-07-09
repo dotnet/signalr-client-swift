@@ -18,7 +18,7 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
     private(set) var startCalled = false
     private(set) var sendCalled = false
     private(set) var stopCalled = false
-    private(set) var sentData: StringOrData?
+    private(set) var sentData: [StringOrData?] = []
 
     func start(transferFormat: TransferFormat) async throws {
         startCalled = true
@@ -27,7 +27,7 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
 
     func send(_ data: StringOrData) async throws {
         sendCalled = true
-        sentData = data
+        sentData.append(data)
         onSend?(data)
     }
 
@@ -533,6 +533,46 @@ final class HubConnectionTests: XCTestCase {
 
         // Send keepalive after connect
         await fulfillment(of: [pingExpectations[0], pingExpectations[1], pingExpectations[2]], timeout: 1.0)
+    }
+
+    func testStatefulReconnect() async throws {
+        let bufferSize = 10
+        let expectation = XCTestExpectation(description: "send() should be called")
+
+        mockConnection.onSend = { data in
+            expectation.fulfill()
+            Task { await self.hubConnection.processIncomingData(.string(self.successHandshakeResponse)) }
+        }
+        await mockConnection.setFeature(feature: ConnectionFeature.Reconnect, value: true);
+
+        hubConnection = HubConnection(
+            connection: mockConnection,
+            logger: Logger(logLevel: .debug, logHandler: logHandler),
+            hubProtocol: hubProtocol,
+            retryPolicy: DefaultRetryPolicy(retryDelays: [0, 1, 2]), 
+            serverTimeout: nil,
+            keepAliveInterval: nil,
+            statefulReconnectBufferSize: bufferSize
+        )
+        
+        let startTask = Task { try await hubConnection.start() }
+        defer { startTask.cancel() }
+        await fulfillment(of: [expectation], timeout: 1.0)
+        await whenTaskWithTimeout(startTask, timeout: 1.0)
+
+        XCTAssertNotNil(mockConnection.features[ConnectionFeature.Disconnected]);
+        XCTAssertNotNil(mockConnection.features[ConnectionFeature.Resend]);
+
+        if let disconnectedClosure = mockConnection.features[ConnectionFeature.Disconnected] as? () async -> Void {
+            await disconnectedClosure()
+            print("called disconnected closure")
+        }
+
+        if let resendClosure = mockConnection.features[ConnectionFeature.Resend] as? () async -> Any? {
+            let _ = await resendClosure()
+        }
+
+        print(mockConnection.sentData.count, mockConnection.sentData)
     }
 
     func serverTimeoutTest() async throws {
