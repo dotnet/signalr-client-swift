@@ -118,9 +118,8 @@ public actor HubConnection {
         let (nonstreamArguments, streamArguments) = splitStreamArguments(arguments: arguments)
         let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil, invocationId: nil)
-        let data = try hubProtocol.writeMessage(message: invocationMessage)
         logger.log(level: .debug, message: "Sending message to target: \(method)")
-        try await sendMessageInternal(data)
+        try await sendWithProtocol(invocationMessage)
         launchStreams(streamIds: streamIds, clientStreams: streamArguments)
     }
     
@@ -145,8 +144,7 @@ public actor HubConnection {
                 do {
                     for try await item in stream {
                         let streamItem = StreamItemMessage(invocationId: streamIds[i], item: AnyEncodable(item), headers: nil)
-                        let data = try hubProtocol.writeMessage(message: streamItem)
-                        try await sendMessageInternal(data)
+                        try await sendWithProtocol(streamItem)
                     }
                 } catch {
                     err = "\(error)"
@@ -154,8 +152,7 @@ public actor HubConnection {
                 }
                 do {
                     let completionMessage = CompletionMessage(invocationId: streamIds[i], error: err, result: AnyEncodable(nil), headers: nil)
-                    let data = try hubProtocol.writeMessage(message: completionMessage)
-                    try await sendMessageInternal(data)
+                    try await sendWithProtocol(completionMessage)
                 } catch {
                     logger.log(level: .error, message: "Fail to send client stream complete message :\(error)")
                 }
@@ -168,9 +165,8 @@ public actor HubConnection {
         let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
         let (invocationId, tcs) = await invocationHandler.create()
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil, invocationId: invocationId)
-        let data = try hubProtocol.writeMessage(message: invocationMessage)
         logger.log(level: .debug, message: "Invoke message to target: \(method), invocationId: \(invocationId)")
-        try await sendMessageInternal(data)
+        try await sendWithProtocol(invocationMessage)
         launchStreams(streamIds: streamIds, clientStreams: streamArguments)
         _ = try await tcs.task()
     }
@@ -182,9 +178,8 @@ public actor HubConnection {
         invocationBinder.registerReturnValueType(invocationId: invocationId, types: TReturn.self)
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil, invocationId: invocationId)
         do {
-            let data = try hubProtocol.writeMessage(message: invocationMessage)
             logger.log(level: .debug, message: "Invoke message to target: \(method), invocationId: \(invocationId)")
-            try await sendMessageInternal(data)
+            try await sendWithProtocol(invocationMessage)
             launchStreams(streamIds: streamIds, clientStreams: streamArguments)
         } catch {
             await invocationHandler.cancel(invocationId: invocationId, error: error)
@@ -206,9 +201,8 @@ public actor HubConnection {
         invocationBinder.registerReturnValueType(invocationId: invocationId, types: Element.self)
         let StreamInvocationMessage = StreamInvocationMessage(invocationId: invocationId, target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil)
         do {
-            let data = try hubProtocol.writeMessage(message: StreamInvocationMessage)
             logger.log(level: .debug, message: "Stream message to target: \(method), invocationId: \(invocationId)")
-            try await sendMessageInternal(data)
+            try await sendWithProtocol(StreamInvocationMessage)
             launchStreams(streamIds: streamIds, clientStreams: streamArguments)
         } catch {
             await invocationHandler.cancel(invocationId: invocationId, error: error)
@@ -236,9 +230,8 @@ public actor HubConnection {
         streamResult.onCancel = {
             do {
                 let cancelInvocation = CancelInvocationMessage(invocationId: invocationId, headers: nil)
-                let data = try self.hubProtocol.writeMessage(message: cancelInvocation)
                 await self.invocationHandler.cancel(invocationId: invocationId, error: SignalRError.streamCancelled)
-                try await self.sendMessageInternal(data)
+                try await self.sendWithProtocol(cancelInvocation)
             } catch {}
         }
 
@@ -498,8 +491,7 @@ public actor HubConnection {
             if let invocationId = message.invocationId {
                 logger.log(level: .warning, message: "No result given for method: \(message.target), and invocationId: \(invocationId)")
                 let completionMessage = CompletionMessage(invocationId: invocationId, error: "No handler registered for method: \(message.target)", result: AnyEncodable(nil), headers: nil)
-                let data = try hubProtocol.writeMessage(message: completionMessage)
-                try await sendMessageInternal(data)
+                try await sendWithProtocol(completionMessage)
             }
             return            
         }
@@ -512,8 +504,7 @@ public actor HubConnection {
                 result = nil
             }
             let completionMessage = CompletionMessage(invocationId: message.invocationId!, error: nil, result: AnyEncodable(result), headers: nil)
-            let data = try hubProtocol.writeMessage(message: completionMessage)
-            try await sendMessageInternal(data)
+            try await sendWithProtocol(completionMessage)
         } else {
             _ = try await handler(message.arguments.value ?? [])
         }
@@ -547,13 +538,12 @@ public actor HubConnection {
         try await connection.start(transferFormat: hubProtocol.transferFormat)
 
         // After connection open, perform handshake
-        let version = hubProtocol.version
-        // As we only support 1 now
-        guard version == 1 else {
-            logger.log(level: .error, message: "Unsupported handshake version: \(version)")
-            throw SignalRError.unsupportedHandshakeVersion
+        var version = hubProtocol.version
+        if !(await connection.features[ConnectionFeature.Reconnect] as? Bool ?? false) {
+            // Stateful Reconnect starts with HubProtocol version 2, newer clients connecting to older servers will fail to connect due to
+            // the handshake only supporting version 1, so we will try to send version 1 during the handshake to keep old servers working.
+            version = 1;
         }
-        // TODO: enable version 2 when stateful reconnect is ready
 
         receivedHandshakeResponse = false
         let handshakeRequest = HandshakeRequestMessage(protocol: hubProtocol.name, version: version)
@@ -647,6 +637,16 @@ public actor HubConnection {
         try await connection.send(content)
     }
 
+    private func sendWithProtocol(_ message: HubMessage) async throws {
+        if self.messageBuffer != nil {
+            try await self.messageBuffer?.send(message: message)
+        }
+        else {
+            let data = try hubProtocol.writeMessage(message: message)
+            try await sendMessageInternal(data)
+        }
+    }
+
     private func processHandshakeResponse(_ content: StringOrData) throws -> StringOrData? {
         var remainingData: StringOrData?
         var handshakeResponse: HandshakeResponseMessage
@@ -684,8 +684,7 @@ public actor HubConnection {
 
     private func sendPing() async throws {
         let pingMessage = PingMessage()
-        let data = try hubProtocol.writeMessage(message: pingMessage)
-        try await sendMessageInternal(data)
+        try await sendWithProtocol(pingMessage)
     }
 
     private class SubscriptionEntity {
