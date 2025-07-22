@@ -598,8 +598,7 @@ public actor HubConnection {
                 })
             }
 
-            let inherentKeepAlive = await connection.inherentKeepAlive
-            if (!inherentKeepAlive) {
+            if (!(await connection.inherentKeepAlive)) {
                 await keepAliveScheduler.start {
                     do {
                         let state = self.state()
