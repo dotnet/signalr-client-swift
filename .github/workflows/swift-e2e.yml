@@ -1,0 +1,61 @@
+# This workflow will build a Swift project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
+
+name: Swift E2E Test
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+  build:
+    name: Swift on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest]
+    steps:
+    - uses: actions/checkout@v4
+    - uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "5.10"
+    - name: Get swift version
+      run: swift --version
+    - name: Build and Run tests
+      run: swift test --filter SignalRClientTests
+
+  integrationTest:
+    name: Integration Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest]
+    steps:
+    - uses: actions/checkout@v4
+    - uses: swift-actions/setup-swift@v2
+      with:
+        swift-version: "5.10"
+    - name: Get swift version
+      run: swift --version
+    - name: Install .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.x'
+    - name: Build .NET server
+      working-directory: ./Tests/IntegrationTestServer
+      run: dotnet build
+    - name: Start IntegrationTestServer
+      working-directory: ./Tests/IntegrationTestServer
+      env:
+        Azure__SignalR__ConnectionString: ${{ secrets.E2E_CONNECTION_STRING }}
+      run: |
+        dotnet run &
+      continue-on-error: false
+    - name: Wait for server to start
+      run: sleep 5
+    - name: Run integration tests
+      env:
+        SIGNALR_INTEGRATION_TEST_URL: ${{ secrets.E2E_ENDPOINT }}
+      run: swift test --filter SignalRClientIntegrationTests
