@@ -51,7 +51,7 @@ jobs:
       env:
         Azure__SignalR__ConnectionString: ${{ secrets.E2E_CONNECTION_STRING }}
       run: |
-        dotnet run &
+        dotnet run -p:DefineConstants="USE_AZURE_SIGNALR" &
       continue-on-error: false
     - name: Wait for server to start
       run: sleep 5
