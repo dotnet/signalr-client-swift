@@ -16,11 +16,20 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest]
+
     steps:
     - uses: actions/checkout@v4
     - uses: swift-actions/setup-swift@v2
       with:
         swift-version: "5.10"
+
+    - name: Check Connection String
+      run: |
+        echo "Testing secret access..."
+        echo "Secret value length: ${#MY_SECRET}"
+        echo "Secret starts with: ${MY_SECRET:0:5}..."
+      env:
+        MY_SECRET: ${{ secrets.E2E_CONNECTION_STRING }}
 
     - name: Get swift version
       run: swift --version
