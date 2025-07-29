@@ -57,5 +57,5 @@ jobs:
       run: sleep 5
     - name: Run integration tests
       env:
-        SIGNALR_INTEGRATION_TEST_URL: ${{ secrets.E2E_ENDPOINT }}
+        SIGNALR_INTEGRATION_TEST_URL: http://localhost:8080/test
       run: swift test --filter SignalRClientIntegrationTests
