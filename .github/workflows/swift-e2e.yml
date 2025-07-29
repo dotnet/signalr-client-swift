@@ -25,9 +25,14 @@ jobs:
 
     - name: Check Connection String
       run: |
-        echo "Testing secret access..."
-        echo "Secret value length: ${#MY_SECRET}"
-        echo "Secret starts with: ${MY_SECRET:0:5}..."
+        echo "Connection string length: ${#CONNECTION_STRING}"
+        if [ ${#CONNECTION_STRING} -gt 20 ]; then
+          echo "✅ Connection string looks valid"
+          echo "Starts with: ${CONNECTION_STRING:0:20}..."
+        else
+          echo "❌ Connection string still too short or empty"
+          exit 1
+        fi
       env:
         MY_SECRET: ${{ secrets.E2E_CONNECTION_STRING }}
 
@@ -43,13 +48,10 @@ jobs:
       working-directory: ./Tests/IntegrationTestServer
       run: dotnet build -p:DefineConstants="USE_AZURE_SIGNALR"
 
-    - name: Set connection string 
-      working-directory: ./Tests/IntegrationTestServer
-      run: dotnet user-secrets set Azure:SignalR:ConnectionString "${{ secrets.E2E_CONNECTION_STRING }}"
-      continue-on-error: false
-
     - name: Start IntegrationTestServer
       working-directory: ./Tests/IntegrationTestServer
+      env:
+        Azure__SignalR__ConnectionString: ${{ secrets.E2E_CONNECTION_STRING }}
       run: dotnet run -p:DefineConstants="USE_AZURE_SIGNALR" &
       continue-on-error: false
 
