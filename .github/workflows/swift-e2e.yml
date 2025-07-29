@@ -26,8 +26,8 @@ jobs:
     - name: Build and Run tests
       run: swift test --filter SignalRClientTests
 
-  integrationTest:
-    name: Integration Test on ${{ matrix.os }}
+  E2ETest:
+    name: E2E Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
