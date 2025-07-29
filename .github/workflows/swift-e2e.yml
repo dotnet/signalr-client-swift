@@ -27,6 +27,9 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '8.x'
+    - name: Build .NET server
+      working-directory: ./Tests/IntegrationTestServer
+      run: dotnet build -p:DefineConstants="USE_AZURE_SIGNALR"
     - name: Start IntegrationTestServer
       working-directory: ./Tests/IntegrationTestServer
       env:
