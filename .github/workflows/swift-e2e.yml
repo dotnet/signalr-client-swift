@@ -10,22 +10,6 @@ on:
     branches: [ "main", "dev" ]
 
 jobs:
-  build:
-    name: Swift on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest]
-    steps:
-    - uses: actions/checkout@v4
-    - uses: swift-actions/setup-swift@v2
-      with:
-        swift-version: "5.10"
-    - name: Get swift version
-      run: swift --version
-    - name: Build and Run tests
-      run: swift test --filter SignalRClientTests
-
   E2ETest:
     name: E2E Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -43,9 +27,6 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '8.x'
-    - name: Build .NET server
-      working-directory: ./Tests/IntegrationTestServer
-      run: dotnet build
     - name: Start IntegrationTestServer
       working-directory: ./Tests/IntegrationTestServer
       env:
@@ -55,7 +36,7 @@ jobs:
       continue-on-error: false
     - name: Wait for server to start
       run: sleep 5
-    - name: Run integration tests
+    - name: Run E2E tests
       env:
         SIGNALR_INTEGRATION_TEST_URL: http://localhost:8080/test
       run: swift test --filter SignalRClientIntegrationTests

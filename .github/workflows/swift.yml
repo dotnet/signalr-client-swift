@@ -10,7 +10,7 @@ on:
     branches: [ "main", "dev" ]
 
 jobs:
-  build:
+  buildAndUnitTest:
     name: Swift on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
