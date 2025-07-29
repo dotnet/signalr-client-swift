@@ -34,7 +34,7 @@ jobs:
           exit 1
         fi
       env:
-        MY_SECRET: ${{ secrets.E2E_CONNECTION_STRING }}
+        CONNECTION_STRING: ${{ secrets.E2E_CONNECTION_STRING }}
 
     - name: Get swift version
       run: swift --version
