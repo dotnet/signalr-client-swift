@@ -680,6 +680,95 @@ final class HubConnectionTests: XCTestCase {
         XCTAssertTrue((sentHubMessage[7] as! InvocationMessage).arguments.value?[0] as? Int == 11)
     }
 
+    func testStatefulReconnect_resendsMessagesWhileDisconnectedOnReconnect() async throws {
+        let pingExpectations = [XCTestExpectation(description: "ping should be called")]
+        let disconnectExpectation = XCTestExpectation(description: "disconnect should be called")
+        let resendExpectation = XCTestExpectation(description: "reconnect should be called")
+        var sentPingCount = 0
+    
+        mockConnection.onSend = { data in
+            do {
+                let messages = try self.hubProtocol.parseMessages(input: data, binder: TestInvocationBinder(binderTypes: [Int.self]))
+                for message in messages {
+                    if message is PingMessage {
+                        if sentPingCount < pingExpectations.count {
+                            pingExpectations[sentPingCount].fulfill()
+                        }
+                        sentPingCount += 1
+                        return
+                    }
+                }
+                Task { await self.hubConnectionForStatefulReconnect.processIncomingData(.string(self.successHandshakeResponse)) }
+            } catch {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+        
+        await mockConnection.setFeature(feature: ConnectionFeature.Reconnect, value: true)
+    
+        let startTask = Task { try await hubConnectionForStatefulReconnect.start() }
+        defer { startTask.cancel() }
+        await whenTaskWithTimeout(startTask, timeout: 1)
+        await fulfillment(of: [pingExpectations[0]], timeout: 1)
+        
+        XCTAssertNotNil(mockConnection.features[ConnectionFeature.Disconnected])
+        XCTAssertNotNil(mockConnection.features[ConnectionFeature.Resend])
+    
+        // Send first message before disconnect
+        await whenTaskWithTimeout(Task { try await hubConnectionForStatefulReconnect.send(method: "test", arguments: 13) }, timeout: 0.1)
+    
+        // Pretend TestConnection disconnected
+        if let disconnectedClosure = mockConnection.features[ConnectionFeature.Disconnected] as? () async -> Void {
+            await disconnectedClosure()
+            disconnectExpectation.fulfill()
+        }
+    
+        // Send while disconnected, should wait until resend completes
+        let sendTask = Task { try await hubConnectionForStatefulReconnect.send(method: "test", arguments: 22) }
+        var sendDone = false
+        let monitorTask = Task {
+            try await sendTask.value
+            sendDone = true
+        }
+    
+        // Give a small delay to ensure send is waiting
+        try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        XCTAssertFalse(sendDone)
+    
+        if let resendClosure = mockConnection.features[ConnectionFeature.Resend] as? () async -> Any? {
+            let _ = await resendClosure()
+            resendExpectation.fulfill()
+        }
+    
+        await whenTaskWithTimeout(monitorTask, timeout: 1)
+        XCTAssertTrue(sendDone)
+    
+        await fulfillment(of: [disconnectExpectation, resendExpectation], timeout: 1)
+    
+        /* Expected mockConnection.sentData = [
+            0 {"protocol":"json","version":2}
+            1 {"type":6}  // ping
+            2 {"target":"test","arguments":[13],"type":1}  // first send
+            3 {"type":9,"sequenceId":1}  // sequence message
+            4 {"target":"test","arguments":[13],"type":1}  // resend first message
+            5 {"target":"test","arguments":[22],"type":1}  // send message that waited
+        ]*/
+        
+        let parsedSentData = try getParsedData(data: mockConnection.sentData, binder: TestInvocationBinder(binderTypes: [Int.self]))
+        let sentHubMessage = removeAllPingMessagesButFirst(messages: parsedSentData)
+        
+        XCTAssertEqual(sentHubMessage.count, 5)
+        XCTAssertTrue(sentHubMessage[0] is PingMessage)
+        XCTAssertTrue(sentHubMessage[2] is SequenceMessage)
+        XCTAssertEqual((sentHubMessage[2] as! SequenceMessage).sequenceId, 1)
+        XCTAssertTrue(sentHubMessage[3] is InvocationMessage)
+        XCTAssertEqual((sentHubMessage[3] as! InvocationMessage).target, "test")
+        XCTAssertEqual((sentHubMessage[3] as! InvocationMessage).arguments.value?[0] as? Int, 13)
+        XCTAssertTrue(sentHubMessage[4] is InvocationMessage)
+        XCTAssertEqual((sentHubMessage[4] as! InvocationMessage).target, "test")
+        XCTAssertEqual((sentHubMessage[4] as! InvocationMessage).arguments.value?[0] as? Int, 22)
+    }
+
     func serverTimeoutTest() async throws {
         hubConnection = HubConnection(
             connection: mockConnection,
