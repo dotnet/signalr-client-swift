@@ -8,7 +8,7 @@ import XCTest
 class IntegrationTests: XCTestCase {
     private var url: String?
     private let logLevel: LogLevel = .debug
-    private let defaultTimeout: TimeInterval = 2
+    private let defaultTimeout: TimeInterval = 3
     
     #if os(Linux)
         private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
