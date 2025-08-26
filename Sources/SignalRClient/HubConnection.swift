@@ -805,7 +805,7 @@ public actor HubConnection {
     }
 }
 
-public enum HubConnectionState {
+public enum HubConnectionState: Sendable {
     // The connection is stopped. Start can only be called if the connection is in this state.
     case Stopped
     case Connecting
