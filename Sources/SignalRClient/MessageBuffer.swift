@@ -80,7 +80,6 @@ actor MessageBuffer {
 
     private func performScheduledAck() async {
         defer {
-            // 在方法结束时清理定时器
             ackTimerHandle = nil
         }
         
@@ -94,7 +93,7 @@ actor MessageBuffer {
                 try await connection.send(serializedMessage)
             }
         } catch {
-            // 忽略错误，连接关闭时不需要发送ACK
+            // Ignore exception, no need to send ACK when reconnecting
         }
     }
 
