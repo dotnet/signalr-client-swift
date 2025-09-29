@@ -36,6 +36,7 @@ public actor HubConnection {
     private var stopTask: Task<Void, Never>?
     private var startTask: Task<Void, Error>?
     private var startSuccessfully = false
+    private var reconnectDelayTask: Task<Void, Never>?
 
     internal init(connection: ConnectionProtocol,
                   logger: Logger,
@@ -68,6 +69,7 @@ public actor HubConnection {
         }
 
         connectionStatus = .Connecting
+        logger.log(level: .debug, message: "HubConnection starting")
 
         startTask = Task {
             do {
@@ -90,20 +92,6 @@ public actor HubConnection {
     }
 
     public func stop() async {
-        // 1. Before the start, it should be Stopped. Just return
-        if (connectionStatus == .Stopped) {
-            logger.log(level: .debug, message: "Connection is already stopped")
-            return
-        }
-
-        // 2. Another stop is running, just wait for it
-        if connectionStatus == .Stopping {
-            logger.log(level: .debug, message: "Connection is already stopping")
-            await stopTask?.value
-            return
-        }
-
-        connectionStatus = .Stopping
         await self.connection.setFeature(feature: ConnectionFeature.Reconnect, value: false)
 
         // In this step, there's no other start running
@@ -296,11 +284,35 @@ public actor HubConnection {
             return
         }
 
+        let previousStatus = connectionStatus
+        connectionStatus = .Stopping
+        logger.log(level: .debug,message:"Stopping HubConnection.")
+
         let startTask = self.startTask
+
+        if (previousStatus == .Connected) {
+            Task {
+                do {
+                    let closeMessage = CloseMessage(error: nil, allowReconnect: nil)
+                    try await sendWithProtocol(closeMessage)
+                } catch {
+                    // Ignore, this is a best effort attempt to let the server know the client closed gracefully.
+                }
+            }
+        }
 
         stopDuringStartError = SignalRError.connectionAborted
         if (handshakeRejector != nil) {
             handshakeRejector!(SignalRError.connectionAborted)
+        }
+
+        // If currently waiting in a reconnect delay, cancel it and complete close immediately (TS parity)
+        if let delayTask = reconnectDelayTask {
+            logger.log(level: .debug, message: "Connection stopped during reconnect delay. Done reconnecting.")
+            delayTask.cancel()
+            reconnectDelayTask = nil
+            await completeClose(error: nil)
+            return
         }
 
         await connection.stop(error: nil)
@@ -386,11 +398,16 @@ public actor HubConnection {
                 break
             }
 
-            do {
-                try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000)) // interval in seconds to ns
-            } catch {
-                break
+            // Sleep for next retry, but keep a handle so stop() can cancel immediately
+            reconnectDelayTask = Task {
+                do {
+                    try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                } catch {
+                    // cancellation expected
+                }
             }
+            await reconnectDelayTask?.value
+            reconnectDelayTask = nil
 
             retryCount += 1
             elapsed = Double(DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds) / 1_000_000_000
@@ -464,9 +481,22 @@ public actor HubConnection {
         case _ as PingMessage:
             // Don't care about the content of ping
             break
-        case _ as CloseMessage:
-            // Close
-            break
+        case let message as CloseMessage:
+            logger.log(level: .information, message: "Close message received from server.")
+            let error = message.error != nil ? SignalRError.invalidOperation("Server returned an error on close: " + message.error!) : nil
+            // See https://github.com/dotnet/aspnetcore/blob/v9.0.9/src/SignalR/clients/ts/signalr/src/HubConnection.ts#L645
+            if message.allowReconnect == true {
+                Task {
+                    await connection.stop(error: error)
+                }
+            } else {
+                // We cannot await stopInternal() here, but subsequent calls to stop() will await this if stopInternal() is still ongoing.
+                self.stopTask = Task {
+                    await stopInternal()
+                }
+            }
+
+            break;
         case let message as AckMessage:
             let result = await self.messageBuffer?.ack(sequenceId: message.sequenceId);
             if (result == false) {
@@ -514,6 +544,11 @@ public actor HubConnection {
         connectionStatus = .Stopped
         await keepAliveScheduler.stop()
         await serverTimeoutScheduler.stop()
+
+        if (self.messageBuffer != nil) {
+            await self.messageBuffer?.close()
+            self.messageBuffer = nil
+        }
 
         // Either throw from start(), either call close handlers
         if (startSuccessfully) {
@@ -586,6 +621,7 @@ public actor HubConnection {
                     hubProtocol: self.hubProtocol,
                     connection: self.connection
                 )
+                try await self.messageBuffer?.ResetDequeue();
                 await self.connection.setFeature(
                     feature: ConnectionFeature.Disconnected, 
                     value: { [weak self] () async -> Void in

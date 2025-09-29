@@ -1,4 +1,5 @@
 @testable import SignalRClient
+import XCTest
 
 // Remove all ping messages from the message array but keep the first one.
 func removeAllPingMessagesButFirst(messages: [HubMessage]) -> [HubMessage] {
@@ -11,6 +12,17 @@ func removeAllPingMessagesButFirst(messages: [HubMessage]) -> [HubMessage] {
             }
             result.append(pingMessage)
             containsPing = true
+        } else {
+            result.append(message)
+        }
+    }
+    return result
+}
+
+func removeAllPingMessages(messages: [HubMessage]) -> [HubMessage] {
+    var result = [HubMessage]()
+    for message in messages {
+        if let pingMessage = message as? PingMessage {
         } else {
             result.append(message)
         }
@@ -31,4 +43,20 @@ func getParsedData(data: [StringOrData?], binder: InvocationBinder) throws -> [H
         }
     }
     return parsedData
+}
+
+public enum TestError: Error {
+    case TimeoutError
+}
+
+func delayUntil(timeout: TimeInterval, condition: @escaping () -> Bool) async throws-> Void {
+    let startTime = Date()
+    
+    while Date().timeIntervalSince(startTime) < timeout {
+        if condition() {
+            return 
+        }
+        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+    }
+    throw TestError.TimeoutError
 }

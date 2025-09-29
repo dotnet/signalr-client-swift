@@ -106,7 +106,8 @@ class MessageBufferTest: XCTestCase {
         // Enqueue but not send
         try await buffer.enqueue(content: .string("abc"))
         let rst2 = try await buffer.ack(sequenceId: 1)
-        XCTAssertEqual(false, rst2)
+        // Note: See comment on MessageBuffer.ack()
+        XCTAssertEqual(true, rst2)
     }
 
     func testWaitToDequeueReturnsImmediatelyIfAvailable() async throws {

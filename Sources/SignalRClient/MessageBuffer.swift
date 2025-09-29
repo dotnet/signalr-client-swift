@@ -31,15 +31,29 @@ actor MessageBuffer {
     public func send(message: HubMessage) async throws -> Void {
         let serializedMessage = try self.hubProtocol.writeMessage(message: message);
 
-        try await self.enqueue(content: serializedMessage);
+        var backpressurePromise: Task<Void, Never>? = nil
 
-        if (!self.reconnectInprogress) {
-            do {
+        // Only count invocation messages. Acks, pings, etc. don't need to be resent on reconnect
+        if (self.isInvocationMessage(message: message)) {
+            backpressurePromise = Task {
+                try? await self.enqueue(content: serializedMessage)
+            }
+        }
+
+        do {
+            // If this is set it means we are reconnecting or resending
+            // We don't want to send on a disconnected connection
+            // And we don't want to send if resend is running since that would mean sending
+            // this message twice
+            if (!self.reconnectInprogress) {
                 try await self.connection.send(serializedMessage);
             }
-            catch {
-                self.disconnected();
-            }
+        } catch {
+            self.disconnected();
+        }
+        
+        if let backpressureTask = backpressurePromise {
+            await backpressureTask.value
         }
     }
 
@@ -48,9 +62,10 @@ actor MessageBuffer {
         let serializedMessage = try self.hubProtocol.writeMessage(message: SequenceMessage(sequenceId: sequenceId));
         try await self.connection.send(serializedMessage);
         
-        let messages = self.messages;
-        for element in messages {
-            try await self.connection.send(element.content);
+        // Get a local variable to the messages, just in case messages are acked while resending
+        // Which would slice the messages array (which creates a new copy)
+        while let element = try self.TryDequeue() {
+            try await self.connection.send(element);
         }
 
         self.reconnectInprogress = false;
@@ -164,8 +179,10 @@ actor MessageBuffer {
     }
 
     public func ack(sequenceId: Int64) -> Bool {
-        // It might be wrong ack or the ack of previous connection
-        if (sequenceId <= 0 || sequenceId > lastSendSequenceId) {
+        // It might be wrong ack
+        // Question: sequenceId > lastSendSequenceId shall be acceptable for the sequenceIds may not be continous?
+        // See https://github.com/dotnet/aspnetcore/blob/v9.0.9/src/SignalR/clients/ts/signalr/tests/HubConnection.test.ts#L2007
+        if (sequenceId <= 0) {
             return false
         }
 
@@ -186,10 +203,14 @@ actor MessageBuffer {
             }
         }
 
-        messages = Array(messages.dropFirst(ackedCount))
-        // sending idx will change because we changes the array
-        nextSendIdx = nextSendIdx - ackedCount
-        return true
+        if (ackedCount > 0) {
+            messages = Array(messages.dropFirst(ackedCount))
+            // sending idx will change because we changes the array
+            // Why max: example: self.messages.length is 3, sequenceId is 2, nextSendIdx is 0, ackedCount is 2
+            nextSendIdx = max(0, nextSendIdx - ackedCount)
+            return true
+        }
+        return false
     }
 
     public func WaitToDequeue() async throws -> Bool {
@@ -223,6 +244,21 @@ actor MessageBuffer {
 
     public func close() {
         closed = true
+        while !dequeueContinuations.isEmpty {
+            let continuation = dequeueContinuations.removeFirst()
+            continuation.resume(returning: false)
+        }
+    }
+
+    public func dispose(error: Error? = nil) {
+        // Unblock backpressure if any
+        for element in messages {
+            if let continuation = element.continuation {
+                continuation.resume()
+            }
+        }
+        
+        // Clear all dequeue continuations
         while !dequeueContinuations.isEmpty {
             let continuation = dequeueContinuations.removeFirst()
             continuation.resume(returning: false)
