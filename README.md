@@ -12,7 +12,7 @@ SignalR Swift is a client library for connecting to SignalR servers from Swift a
 
 ### Swift Package Manager
 
-Add the project as a dependency to your Package.swift from a verion:
+Add the project as a dependency to your Package.swift from a version:
 
 ```swift
 // swift-tools-version: 5.10
