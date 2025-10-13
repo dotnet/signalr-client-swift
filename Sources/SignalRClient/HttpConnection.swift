@@ -365,8 +365,10 @@ actor HttpConnection: ConnectionProtocol {
                 guard let self = self else { return }
                 if await (self.features[ConnectionFeature.Reconnect] as? Bool) == true {
                     do {
-                        if let disconnectedHandler = await self.features[ConnectionFeature.Disconnected] as? (Error?) -> Void {
-                            disconnectedHandler(error);
+                        if let disconnectedHandler = await self.features[ConnectionFeature.Disconnected] as? () async -> Void {
+                            Task {
+                                await disconnectedHandler();
+                            }
                         }
                         try await self.transport?.connect(url: url, transferFormat: transferFormat);
                         if let resendHandler = await self.features[ConnectionFeature.Resend] as? () -> Void {

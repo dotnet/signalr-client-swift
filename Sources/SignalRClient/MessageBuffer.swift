@@ -58,6 +58,9 @@ actor MessageBuffer {
     }
 
     public func resend() async throws -> Void {
+        // Reset nextSendIdx to ensure resending from the beginning of the message queue
+        self.nextSendIdx = 0;
+        
         let sequenceId = Int64(self.messages.count > 0 ? self.messages[0].id : self.totalMessageCount + 1);
         let serializedMessage = try self.hubProtocol.writeMessage(message: SequenceMessage(sequenceId: sequenceId));
         try await self.connection.send(serializedMessage);
@@ -244,21 +247,14 @@ actor MessageBuffer {
 
     public func close() {
         closed = true
-        while !dequeueContinuations.isEmpty {
-            let continuation = dequeueContinuations.removeFirst()
-            continuation.resume(returning: false)
-        }
-    }
 
-    public func dispose(error: Error? = nil) {
         // Unblock backpressure if any
         for element in messages {
             if let continuation = element.continuation {
                 continuation.resume()
             }
         }
-        
-        // Clear all dequeue continuations
+
         while !dequeueContinuations.isEmpty {
             let continuation = dequeueContinuations.removeFirst()
             continuation.resume(returning: false)

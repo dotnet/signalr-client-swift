@@ -26,6 +26,7 @@ public actor HubConnection {
     private var invocationId: Int = 0
     private var messageBuffer: MessageBuffer? = nil
     private var connectionStatus: HubConnectionState = .Stopped
+    private var stopping: Bool = false
     private var stopDuringStartError: Error?
     private nonisolated(unsafe) var handshakeResolver: ((HandshakeResponseMessage) -> Void)?
     private nonisolated(unsafe) var handshakeRejector: ((Error) -> Void)?
@@ -81,6 +82,7 @@ public actor HubConnection {
                 startSuccessfully = true
             } catch {
                 connectionStatus = .Stopped
+                stopping = false
                 await keepAliveScheduler.stop()
                 await serverTimeoutScheduler.stop()
                 logger.log(level: .debug, message: "HubConnection start failed \(error)")
@@ -92,6 +94,20 @@ public actor HubConnection {
     }
 
     public func stop() async {
+        // 1. Before the start, it should be Stopped. Just return
+        if (connectionStatus == .Stopped) {
+            logger.log(level: .debug,message:"Call to HubConnection.stop ignored because it is already in the disconnected state.")
+            return
+        }
+
+        // 2. Another stop is running, just wait for it
+        if stopping {
+            logger.log(level: .debug,message:"Call to HubConnection.stop ignored because it is already in the stopping state.")
+            await stopTask?.value
+            return
+        }
+
+        stopping = true
         await self.connection.setFeature(feature: ConnectionFeature.Reconnect, value: false)
 
         // In this step, there's no other start running
@@ -273,19 +289,11 @@ public actor HubConnection {
     }
 
     private func stopInternal() async {
-        if (connectionStatus == .Stopped) {
+        let previousStatus = connectionStatus
+        if (previousStatus == .Stopped) {
             logger.log(level: .debug,message:"Call to HubConnection.stop ignored because it is already in the disconnected state.")
             return
         }
-
-        if connectionStatus == .Stopping {
-            logger.log(level: .debug,message:"Call to HubConnection.stop ignored because it is already in the stopping state.")
-            await stopTask?.value
-            return
-        }
-
-        let previousStatus = connectionStatus
-        connectionStatus = .Stopping
         logger.log(level: .debug,message:"Stopping HubConnection.")
 
         let startTask = self.startTask
@@ -339,7 +347,7 @@ public actor HubConnection {
             handshakeRejector!(SignalRError.connectionAborted)
         }
 
-        if connectionStatus == .Connecting {
+        if (stopping) {
             await completeClose(error: error)
             return
         }
@@ -371,7 +379,7 @@ public actor HubConnection {
             retryReason: lastError
         )) {
             try Task.checkCancellation()
-            if connectionStatus == .Stopping {
+            if (stopping) {
                 break
             }
 
@@ -394,7 +402,7 @@ public actor HubConnection {
                 logger.log(level: .warning, message: "Connection reconnect failed: \(error)")
             }
 
-            if connectionStatus == .Stopping {
+            if (stopping) {
                 break
             }
 
@@ -560,7 +568,7 @@ public actor HubConnection {
     private func startInternal() async throws {
         try Task.checkCancellation()
 
-        guard connectionStatus != .Stopping else {
+        guard stopping == false else {
             throw SignalRError.invalidOperation("Stopping is called")
         }
 
@@ -883,7 +891,6 @@ public actor HubConnection {
 public enum HubConnectionState {
     // The connection is stopped. Start can only be called if the connection is in this state.
     case Stopped
-    case Stopping
     case Connecting
     case Connected
     case Reconnecting
