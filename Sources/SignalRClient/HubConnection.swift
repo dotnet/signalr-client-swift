@@ -6,7 +6,7 @@ import Foundation
 public actor HubConnection {
     private static let defaultTimeout: TimeInterval = 30
     private static let defaultPingInterval: TimeInterval = 15
-    private static let defaultStatefulReconnectBufferSize: Int = 100_000_000  // bytes of messages
+    private static let defaultStatefulReconnectBufferSize: Int = 100_000_000 // bytes of messages
 
     private var invocationBinder: DefaultInvocationBinder
     private var invocationHandler: InvocationHandler
@@ -102,13 +102,13 @@ public actor HubConnection {
     public func stop() async {
         // 1. Before the start, it should be Stopped. Just return
         if (connectionStatus == .Stopped) {
-            logger.log(level: .debug,message:"Call to HubConnection.stop ignored because it is already in the disconnected state.")
+            logger.log(level: .debug, message:"Call to HubConnection.stop ignored because it is already in the disconnected state.")
             return
         }
 
         // 2. Another stop is running, just wait for it
         if stopping {
-            logger.log(level: .debug,message:"Call to HubConnection.stop ignored because it is already in the stopping state.")
+            logger.log(level: .debug, message:"Call to HubConnection.stop ignored because it is already in the stopping state.")
             await stopTask?.value
             return
         }
@@ -552,6 +552,7 @@ public actor HubConnection {
 
     private func completeClose(error: Error?) async {
         connectionStatus = .Stopped
+        stopping = false
         await keepAliveScheduler.stop()
         await serverTimeoutScheduler.stop()
 
