@@ -65,6 +65,12 @@ public class HubConnectionBuilder {
         return self
     }
 
+    public func withStatefulReconnect(bufferSize: Int) -> HubConnectionBuilder {
+        self.httpConnectionOptions.useStatefulReconnect = true
+        self.statefulReconnectBufferSize = bufferSize
+        return self
+    }
+
     public func withAutomaticReconnect() -> HubConnectionBuilder {
         self.retryPolicy = DefaultRetryPolicy(retryDelays: [0, 2, 10, 30])
         return self
