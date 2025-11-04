@@ -15,7 +15,7 @@ private enum ConnectionState: String {
     case disconnecting = "Disconnecting"
 }
 
-public struct HttpConnectionOptions {
+public struct HttpConnectionOptions: Sendable {
     public var logHandler: LogHandler?
     public var logLevel: LogLevel = .information
     public var accessTokenFactory: (@Sendable () async throws -> String?)?
@@ -25,7 +25,8 @@ public struct HttpConnectionOptions {
     public var headers: [String: String]?
     public var timeout: TimeInterval?
     public var logMessageContent: Bool?
-    var webSocket: AnyObject? // Placeholder for WebSocket type
+    // comment this to make the struct Sendable
+    // var webSocket: AnyObject? // Placeholder for WebSocket type
     var eventSource: EventSourceAdaptor?
     var useStatefulReconnect: Bool? // Not supported yet
     
@@ -68,7 +69,7 @@ struct AvailableTransport: Decodable {
 
 // MARK: - HttpConnection Class
 
-actor HttpConnection: ConnectionProtocol {
+actor HttpConnection: ConnectionProtocol, @unchecked Sendable {
     // MARK: - Properties
     private let negotiationRedirectionLimit = 100
 
@@ -84,7 +85,7 @@ actor HttpConnection: ConnectionProtocol {
     private var accessTokenFactory: (@Sendable () async throws -> String?)?
     private var inherentKeepAlivePrivate: Bool = false
 
-    public var features: [ConnectionFeature: Any] = [:]
+    public var features: [ConnectionFeature: Any & Sendable] = [:]
     public var baseUrl: String
     public var connectionId: String?
     public var inherentKeepAlive: Bool { 
@@ -548,7 +549,7 @@ actor HttpConnection: ConnectionProtocol {
         return urlRequest
     }
 
-    public func setFeature(feature: ConnectionFeature, value: Any) async {
+    public func setFeature(feature: ConnectionFeature, value: Any & Sendable) async {
         features[feature] = value
     }
 }

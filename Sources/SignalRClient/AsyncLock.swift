@@ -3,7 +3,7 @@
 
 import Foundation
 
-class AsyncLock {
+class AsyncLock: @unchecked Sendable {
     let lock = DispatchSemaphore(value: 1)
     private var isLocked = false
     private var waitQueue: [CheckedContinuation<Void, Never>] = []

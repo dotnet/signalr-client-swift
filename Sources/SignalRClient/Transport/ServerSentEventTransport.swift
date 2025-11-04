@@ -47,12 +47,13 @@ actor ServerSentEventTransport: Transport {
 
         await eventSource.onClose(closeHandler: self.close)
 
+        let logMessageContent = options.logMessageContent ?? false
         await eventSource.onMessage { data in
             let message = StringOrData.string(data)
             self.logger.log(
                 level: .debug,
                 message:
-                "(SSE) data received. \(message.getDataDetail(includeContent: self.options.logMessageContent ?? false))"
+                "(SSE) data received. \(message.getDataDetail(includeContent: logMessageContent))"
             )
             await self.receiveHandler?(message)
         }
@@ -215,5 +216,5 @@ protocol EventSourceAdaptor: Sendable {
     func start(url: String, headers: [String: String]) async throws
     func stop(err: Error?) async
     func onClose(closeHandler: @escaping (Error?) async -> Void) async
-    func onMessage(messageHandler: @escaping (String) async -> Void) async
+    func onMessage(messageHandler: @Sendable @escaping (String) async -> Void) async
 }

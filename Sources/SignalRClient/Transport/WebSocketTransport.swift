@@ -69,7 +69,7 @@ actor WebSocketTransport: Transport {
         try await webSocketConnection.stop(error: error)
     }
 
-    protocol WebSocketConnection {
+    protocol WebSocketConnection: Sendable{
         func connect(request: URLRequest, transferFormat: TransferFormat) async throws
         func send(_ data: StringOrData) async throws
         func stop(error: Error?) async throws

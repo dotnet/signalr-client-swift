@@ -15,7 +15,7 @@ class AsyncLockTests: XCTestCase {
         let expectation = XCTestExpectation(description: "wait() should be called")
         let asyncLock = AsyncLock()
         await asyncLock.wait()
-        let t = Task {
+        let t = Task { @Sendable in
             await asyncLock.wait()
             defer {
                 asyncLock.release()

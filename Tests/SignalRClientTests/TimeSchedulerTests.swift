@@ -28,12 +28,13 @@ class TimeSchedulerrTests: XCTestCase {
             self.expectation(description: "sendAction called")
         ]
         
-        var counter = 0
-        await scheduler.start {
-            if counter <= 2 {
-                expectations[counter].fulfill()
+        let counter = Counter(value: 0)
+        await scheduler.start { @Sendable in
+            let current = await counter.getValue()
+            if current <= 2 {
+                expectations[current].fulfill()
             }
-            counter += 1
+            _ = await counter.increase(delta: 1)
         }
         
         await fulfillment(of: [expectations[0], expectations[1], expectations[2]], timeout: 1)

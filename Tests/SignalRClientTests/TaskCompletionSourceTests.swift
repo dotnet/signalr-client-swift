@@ -113,10 +113,13 @@ class TaskCompletionSourceTests: XCTestCase {
     }
 }
 
-actor Counter {
+actor Counter: Sendable {
     var value: Int
     init(value: Int) {
         self.value = value
+    }
+    func getValue() -> Int {
+        return value
     }
     func increase(delta: Int) -> Int {
         value += delta

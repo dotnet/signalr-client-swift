@@ -116,7 +116,7 @@ public class HubConnectionBuilder {
     }
 }
 
-public enum HubProtocolType {
+public enum HubProtocolType: Sendable {
     case json
     case messagePack
 }

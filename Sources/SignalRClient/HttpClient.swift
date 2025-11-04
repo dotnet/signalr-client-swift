@@ -44,7 +44,7 @@ public struct HttpRequest: Sendable {
     }
 }
 
-public struct HttpResponse {
+public struct HttpResponse : Sendable{
     public let statusCode: Int
 }
 
@@ -52,7 +52,7 @@ public struct HttpResponse {
 
 public protocol HttpClient: Sendable {
     // Don't throw if the http call returns a status code out of [200, 299]
-    func send(request: HttpRequest) async throws -> (StringOrData, HttpResponse)
+    @preconcurrency func send(request: HttpRequest) async throws -> (StringOrData, HttpResponse)
 }
 
 actor DefaultHttpClient: HttpClient {
@@ -95,7 +95,7 @@ actor DefaultHttpClient: HttpClient {
     }
 }
 
-typealias AccessTokenFactory = () async throws -> String?
+typealias AccessTokenFactory = @Sendable () async throws -> String?
 
 actor AccessTokenHttpClient: HttpClient {
     var accessTokenFactory: AccessTokenFactory?
@@ -110,7 +110,7 @@ actor AccessTokenHttpClient: HttpClient {
         self.accessTokenFactory = accessTokenFactory
     }
 
-    public func setAccessTokenFactory(factory: AccessTokenFactory?) {
+    @preconcurrency public func setAccessTokenFactory(factory: AccessTokenFactory?) {
         self.accessTokenFactory = factory
     }
 

@@ -4,7 +4,7 @@
 import Foundation
 
 // Define error types for better error handling
-public enum SignalRError: Error, Equatable, CustomStringConvertible {
+public enum SignalRError: Error, Equatable, CustomStringConvertible, Sendable {
     case incompleteMessage
     case invalidDataType
     case failedToEncodeHandshakeRequest

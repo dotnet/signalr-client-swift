@@ -14,7 +14,7 @@ import Foundation
 // Below features are not implemented as SignalR doesn't rely on them:
 //  1. Reconnect, last Id
 //  2. event name, event handlers
-class EventSource: NSObject, URLSessionDataDelegate {
+class EventSource: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     private let url: URL
     private let headers: [String: String]
     private let parser: EventParser
@@ -113,7 +113,7 @@ class EventSource: NSObject, URLSessionDataDelegate {
 
 // The parser supports both "\n" and "\r\n" as field separator. "\r" is rarely used practically thus not supported for simplicity.
 // Comments and fields other than "data" are silently dropped.
-class EventParser {
+class EventParser: @unchecked Sendable {
     static let cr = Character("\r").asciiValue!
     static let ln = Character("\n").asciiValue!
     static let dot = Character(":").asciiValue!

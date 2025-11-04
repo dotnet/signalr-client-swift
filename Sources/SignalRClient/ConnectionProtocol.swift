@@ -14,6 +14,6 @@ protocol ConnectionProtocol: AnyObject, Sendable {
     func send(_ data: StringOrData) async throws
     func stop(error: Error?) async
     var inherentKeepAlive: Bool { get async }
-    var features: [ConnectionFeature: Any] { get async }
-    func setFeature(feature: ConnectionFeature, value: Any) async
+    var features: [ConnectionFeature: Any & Sendable] { get async }
+    func setFeature(feature: ConnectionFeature, value: Any & Sendable) async
 }

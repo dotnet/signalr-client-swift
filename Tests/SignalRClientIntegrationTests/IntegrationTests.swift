@@ -5,7 +5,7 @@
 import XCTest
 @testable import SignalRClient
 
-class IntegrationTests: XCTestCase {
+class IntegrationTests: XCTestCase, @unchecked Sendable {
     private var url: String?
     private let logLevel: LogLevel = .debug
     private let defaultTimeout: TimeInterval = 3
@@ -92,7 +92,7 @@ class IntegrationTests: XCTestCase {
         }
     }
 
-    func testSendAndOnCore<T: Equatable>(transport: HttpTransportType, hubProtocol: HubProtocolType, item: T) async throws {
+    func testSendAndOnCore<T: Equatable & Sendable>(transport: HttpTransportType, hubProtocol: HubProtocolType, item: T) async throws {
         let connection = HubConnectionBuilder()
             .withUrl(url: url!, transport: transport)
             .withHubProtocol(hubProtocol: hubProtocol)
@@ -134,7 +134,7 @@ class IntegrationTests: XCTestCase {
         }
     }
 
-    private func testInvokeCore<T: Equatable>(transport: HttpTransportType, hubProtocol: HubProtocolType, item: T) async throws {
+    private func testInvokeCore<T: Equatable & Sendable>(transport: HttpTransportType, hubProtocol: HubProtocolType, item: T) async throws {
         let connection = HubConnectionBuilder()
             .withUrl(url: url!, transport: transport)
             .withHubProtocol(hubProtocol: hubProtocol)
@@ -313,7 +313,7 @@ class IntegrationTests: XCTestCase {
         }
     }
 
-    class CustomClass: Codable, Equatable {
+    class CustomClass: Codable, Equatable, @unchecked Sendable {
         static func == (lhs: IntegrationTests.CustomClass, rhs: IntegrationTests.CustomClass) -> Bool {
             return lhs.str == rhs.str && lhs.arr == rhs.arr
         }
@@ -327,7 +327,7 @@ class IntegrationTests: XCTestCase {
         }
     }
 
-    func whenTaskTimeout(_ task: @escaping () async throws -> Void, timeout: TimeInterval) async throws -> Void {
+    func whenTaskTimeout(_ task: @escaping @Sendable () async throws -> Void, timeout: TimeInterval) async throws -> Void {
         let expectation = XCTestExpectation(description: "Task should finish")
         let wrappedTask = Task {
             try await task()
