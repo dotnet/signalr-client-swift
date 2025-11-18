@@ -30,8 +30,8 @@ public class HubConnectionBuilder {
 
     public func withHubProtocol(hubProtocol: HubProtocolType) -> HubConnectionBuilder {
         switch hubProtocol {
-        case .json:
-            self.hubProtocol = JsonHubProtocol()
+        case let .json(encoder, decoder):
+            self.hubProtocol = JsonHubProtocol(encoder: encoder, decoder: decoder)
         case .messagePack:
             self.hubProtocol = MessagePackHubProtocol()
         }
@@ -117,6 +117,6 @@ public class HubConnectionBuilder {
 }
 
 public enum HubProtocolType {
-    case json
+    case json(JSONEncoder = .init(), JSONDecoder = .init())
     case messagePack
 }

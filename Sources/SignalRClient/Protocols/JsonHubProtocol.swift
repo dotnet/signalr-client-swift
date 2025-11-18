@@ -7,6 +7,14 @@ struct JsonHubProtocol: HubProtocol {
     let name = "json"
     let version = 2
     let transferFormat: TransferFormat = .text
+    
+    let encoder: JSONEncoder
+    let decoder: JSONDecoder    
+    
+    init(encoder: JSONEncoder = .init(), decoder: JSONDecoder = .init()) {
+        self.decoder = decoder
+        self.encoder = encoder
+    }
 
     func parseMessages(input: StringOrData, binder: InvocationBinder) throws -> [HubMessage] {
         let inputString: String
@@ -69,7 +77,7 @@ struct JsonHubProtocol: HubProtocol {
     }
 
     func writeMessage(message: HubMessage) throws -> StringOrData {
-        let jsonData = try JSONEncoder().encode(message)
+        let jsonData = try encoder.encode(message)
         guard let jsonString = String(data: jsonData, encoding: .utf8) else {
             throw SignalRError.invalidData("Failed to convert JSON data to string.")
         }
@@ -205,7 +213,6 @@ struct JsonHubProtocol: HubProtocol {
                 throw SignalRError.invalidData("Failed to serialize to JSON data.")
             }
 
-            let decoder = JSONDecoder()
             let decodedObject = try decoder.decode(decodableType, from: jsonData)
             return decodedObject
         }
