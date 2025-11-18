@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 import XCTest
 
 @testable import SignalRClient
@@ -65,22 +68,22 @@ class MessageBufferTest: XCTestCase {
         let expect3 = XCTestExpectation(description: "Should not release 3")
         expect3.isInverted = true
 
-        try await buffer.enqueue(content: .string("1234567890")) //10
+        try await buffer.enqueue(content: .string("1234567890")) // 10
         try await Task.sleep(for: .microseconds(10)) 
         let t1 = Task { 
             try await buffer.enqueue(content: .string("1"))
             expect1.fulfill()
-        }// 11
+        } // 11
         try await Task.sleep(for: .microseconds(10))
         let t2 = Task { 
             try await buffer.enqueue(content: .string("2")) 
             expect2.fulfill()
-        }// 12
+        } // 12
         try await Task.sleep(for: .microseconds(10))
         let t3 = Task {
             try await buffer.enqueue(content: .string("123456789")) 
             expect3.fulfill()
-        }// 21
+        } // 21
         try await Task.sleep(for: .microseconds(10))
 
         try await buffer.TryDequeue() // 1234567890
@@ -181,7 +184,7 @@ class MessageBufferTest: XCTestCase {
     func testContinuousBackPressure() async throws {
         let buffer = getTestMessageBuffer(bufferSize: 5)
         var tasks: [Task<Void, any Error>] = []
-        for i in 0..<100 {
+        for i in 0 ..< 100 {
             let task = Task {
                 try await buffer.enqueue(content: .string("123456"))
             }
@@ -194,7 +197,7 @@ class MessageBufferTest: XCTestCase {
             }
         }
 
-        for i in 0..<100 {
+        for i in 0 ..< 100 {
             await tasks[i]
         }
 

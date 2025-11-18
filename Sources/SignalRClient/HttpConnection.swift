@@ -361,29 +361,29 @@ actor HttpConnection: ConnectionProtocol {
         await transport!.onReceive(self.onReceive)
         if (self.features[ConnectionFeature.Reconnect] as? Bool) == true {
             await transport!.onClose { [weak self] error in
-                var callStop = false;
+                var callStop = false
                 guard let self = self else { return }
                 if await (self.features[ConnectionFeature.Reconnect] as? Bool) == true {
                     do {
                         if let disconnectedHandler = await self.features[ConnectionFeature.Disconnected] as? () async -> Void {
                             Task {
-                                await disconnectedHandler();
+                                await disconnectedHandler()
                             }
                         }
-                        try await self.transport?.connect(url: url, transferFormat: transferFormat);
+                        try await self.transport?.connect(url: url, transferFormat: transferFormat)
                         if let resendHandler = await self.features[ConnectionFeature.Resend] as? () -> Void {
-                            resendHandler();
+                            resendHandler()
                         }
                     } catch {
-                        callStop = true;
+                        callStop = true
                     }
                 }
                 else {
-                    await self.handleConnectionClose(error: error);
-                    return;
+                    await self.handleConnectionClose(error: error)
+                    return
                 }
                 if callStop {
-                    await self.handleConnectionClose(error: error);
+                    await self.handleConnectionClose(error: error)
                 }
             }   
         }
@@ -441,7 +441,7 @@ actor HttpConnection: ConnectionProtocol {
         // We should not call onclose again
         if connectionStartedSuccessfully {
             connectionStartedSuccessfully = false
-                await self.onClose?(error)
+            await self.onClose?(error)
         }
     }
 
@@ -466,8 +466,8 @@ actor HttpConnection: ConnectionProtocol {
             queryItems.append(URLQueryItem(name: "useStatefulReconnect", value: "true"))
         }
         else {
-            if  (queryItems.first(where: { $0.name == "useStatefulReconnect" })?.value ?? "false") == "true" {
-                options.useStatefulReconnect = true;
+            if (queryItems.first(where: { $0.name == "useStatefulReconnect" })?.value ?? "false") == "true" {
+                options.useStatefulReconnect = true
             }
         }
                
@@ -512,7 +512,7 @@ actor HttpConnection: ConnectionProtocol {
             let transferFormats = endpoint.transferFormats.compactMap { TransferFormat($0) }
             if transferFormats.contains(requestedTransferFormat) {
                 do {
-                    self.features[ConnectionFeature.Reconnect] = (transportType == .webSockets && useStatefulReconnect) ? true : false;
+                    self.features[ConnectionFeature.Reconnect] = (transportType == .webSockets && useStatefulReconnect) ? true : false
                     let constructedTransport = try await constructTransport(transport: transportType)
                     return constructedTransport
                 } catch {

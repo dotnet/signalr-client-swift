@@ -280,11 +280,11 @@ class LongPollingTransportTests: XCTestCase {
             )
         }
         await lpt.SetMockId(mockId: "string")
-        do{
+        do {
             try await lpt.send(.string("stringbody"))
             XCTFail("Long polling send should fail when getting 403")
-        }catch{
-            guard let err = error as? SignalRError else{
+        } catch {
+            guard let err = error as? SignalRError else {
                 XCTFail("Long polling send should throw SignalRError when getting 403")
                 return
             }

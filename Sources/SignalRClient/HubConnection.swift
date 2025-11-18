@@ -102,13 +102,13 @@ public actor HubConnection {
     public func stop() async {
         // 1. Before the start, it should be Stopped. Just return
         if (connectionStatus == .Stopped) {
-            logger.log(level: .debug, message:"Call to HubConnection.stop ignored because it is already in the disconnected state.")
+            logger.log(level: .debug, message: "Call to HubConnection.stop ignored because it is already in the disconnected state.")
             return
         }
 
         // 2. Another stop is running, just wait for it
         if stopping {
-            logger.log(level: .debug, message:"Call to HubConnection.stop ignored because it is already in the stopping state.")
+            logger.log(level: .debug, message: "Call to HubConnection.stop ignored because it is already in the stopping state.")
             await stopTask?.value
             return
         }
@@ -297,10 +297,10 @@ public actor HubConnection {
     private func stopInternal() async {
         let previousStatus = connectionStatus
         if (previousStatus == .Stopped) {
-            logger.log(level: .debug,message:"Call to HubConnection.stop ignored because it is already in the disconnected state.")
+            logger.log(level: .debug, message: "Call to HubConnection.stop ignored because it is already in the disconnected state.")
             return
         }
-        logger.log(level: .debug,message:"Stopping HubConnection.")
+        logger.log(level: .debug, message: "Stopping HubConnection.")
 
         let startTask = self.startTask
 
@@ -506,9 +506,9 @@ public actor HubConnection {
                 }
             }
 
-            break;
+            break
         case let message as AckMessage:
-            let result = await self.messageBuffer?.ack(sequenceId: message.sequenceId);
+            let result = await self.messageBuffer?.ack(sequenceId: message.sequenceId)
             if (result == false) {
                 logger.log(level: .warning, message: "Ack message received for sequenceId: \(message.sequenceId), but failed.")
             }
@@ -588,7 +588,7 @@ public actor HubConnection {
         if !(await connection.features[ConnectionFeature.Reconnect] as? Bool ?? false) {
             // Stateful Reconnect starts with HubProtocol version 2, newer clients connecting to older servers will fail to connect due to
             // the handshake only supporting version 1, so we will try to send version 1 during the handshake to keep old servers working.
-            version = 1;
+            version = 1
         }
 
         receivedHandshakeResponse = false
@@ -632,17 +632,19 @@ public actor HubConnection {
                     hubProtocol: self.hubProtocol,
                     connection: self.connection
                 )
-                try await self.messageBuffer?.ResetDequeue();
+                try await self.messageBuffer?.ResetDequeue()
                 await self.connection.setFeature(
                     feature: ConnectionFeature.Disconnected, 
                     value: { [weak self] () async -> Void in
                         _ = await self?.messageBuffer?.disconnected()
-                })
+                    }
+                )
                 await self.connection.setFeature(
                     feature: ConnectionFeature.Resend, 
                     value: { [weak self] () async -> Any? in
                         return try? await self?.messageBuffer?.resend()
-                })
+                    }
+                )
             }
 
             if (!(await connection.inherentKeepAlive)) {

@@ -1,3 +1,6 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
 @testable import SignalRClient
 import XCTest
 
@@ -36,7 +39,7 @@ func getParsedData(data: [StringOrData?], binder: InvocationBinder) throws -> [H
         if item == nil {
             continue
         }
-        let messages = try JsonHubProtocol().parseMessages(input: item!, binder: binder);
+        let messages = try JsonHubProtocol().parseMessages(input: item!, binder: binder)
         // append the messages array as a single element
         if !messages.isEmpty {
             parsedData.append(contentsOf: messages)
@@ -49,7 +52,7 @@ public enum TestError: Error {
     case TimeoutError
 }
 
-func delayUntil(timeout: TimeInterval, condition: @escaping () -> Bool) async throws-> Void {
+func delayUntil(timeout: TimeInterval, condition: @escaping () -> Bool) async throws -> Void {
     let startTime = Date()
     
     while Date().timeIntervalSince(startTime) < timeout {

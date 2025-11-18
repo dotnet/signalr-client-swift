@@ -14,13 +14,13 @@ actor MessageBuffer {
     private var lastReceivedSequenceId: Int64 = 0
     private var dequeueContinuations: [CheckedContinuation<Bool, Never>] = []
     private var closed: Bool = false
-    private var reconnectInprogress: Bool = false;
-    private var waitForSequenceMessage: Bool = false;
+    private var reconnectInprogress: Bool = false
+    private var waitForSequenceMessage: Bool = false
 
     private var ackTimerHandle: DispatchWorkItem?
 
-    private var hubProtocol: HubProtocol;
-    private var connection: ConnectionProtocol;
+    private var hubProtocol: HubProtocol
+    private var connection: ConnectionProtocol
 
     init(bufferSize: Int, hubProtocol: HubProtocol, connection: ConnectionProtocol) {
         self.maxBufferSize = bufferSize
@@ -29,7 +29,7 @@ actor MessageBuffer {
     }
 
     public func send(message: HubMessage) async throws -> Void {
-        let serializedMessage = try self.hubProtocol.writeMessage(message: message);
+        let serializedMessage = try self.hubProtocol.writeMessage(message: message)
 
         var backpressurePromise: Task<Void, Never>? = nil
 
@@ -46,10 +46,10 @@ actor MessageBuffer {
             // And we don't want to send if resend is running since that would mean sending
             // this message twice
             if (!self.reconnectInprogress) {
-                try await self.connection.send(serializedMessage);
+                try await self.connection.send(serializedMessage)
             }
         } catch {
-            self.disconnected();
+            self.disconnected()
         }
         
         if let backpressureTask = backpressurePromise {
@@ -59,24 +59,24 @@ actor MessageBuffer {
 
     public func resend() async throws -> Void {
         // Reset nextSendIdx to ensure resending from the beginning of the message queue
-        self.nextSendIdx = 0;
+        self.nextSendIdx = 0
         
-        let sequenceId = Int64(self.messages.count > 0 ? self.messages[0].id : self.totalMessageCount + 1);
-        let serializedMessage = try self.hubProtocol.writeMessage(message: SequenceMessage(sequenceId: sequenceId));
-        try await self.connection.send(serializedMessage);
+        let sequenceId = Int64(self.messages.count > 0 ? self.messages[0].id : self.totalMessageCount + 1)
+        let serializedMessage = try self.hubProtocol.writeMessage(message: SequenceMessage(sequenceId: sequenceId))
+        try await self.connection.send(serializedMessage)
         
         // Get a local variable to the messages, just in case messages are acked while resending
         // Which would slice the messages array (which creates a new copy)
         while let element = try self.TryDequeue() {
-            try await self.connection.send(element);
+            try await self.connection.send(element)
         }
 
-        self.reconnectInprogress = false;
+        self.reconnectInprogress = false
     }
 
     public func disconnected() -> Void {
-        self.reconnectInprogress = true;
-        self.waitForSequenceMessage = true;
+        self.reconnectInprogress = true
+        self.waitForSequenceMessage = true
     }
 
     private func ackTimer() {
@@ -118,10 +118,10 @@ actor MessageBuffer {
     public func shouldProcessMessage(_ message: HubMessage) throws -> Bool {
         if (self.waitForSequenceMessage) {
             if (message.type != .sequence) {
-                return false;
+                return false
             } else {
-                self.waitForSequenceMessage = false;
-                return true;
+                self.waitForSequenceMessage = false
+                return true
             }
         }
 
@@ -129,23 +129,23 @@ actor MessageBuffer {
             return true
         }
 
-        let currentId = self.nextReceivingIdx;
-        self.nextReceivingIdx += 1;
-        if currentId <= self.lastReceivedSequenceId{
-            if currentId == self.lastReceivedSequenceId{
+        let currentId = self.nextReceivingIdx
+        self.nextReceivingIdx += 1
+        if currentId <= self.lastReceivedSequenceId {
+            if currentId == self.lastReceivedSequenceId {
                 // Should only hit this if we just reconnected and the server is sending
                 // Messages it has buffered, which would mean it hasn't seen an Ack for these messages
-                self.ackTimer();
+                self.ackTimer()
             }
             // Ignore, this is a duplicate message
-            return false;
+            return false
         }
-        self.lastReceivedSequenceId = currentId;
+        self.lastReceivedSequenceId = currentId
 
         // Only start the timer for sending an Ack message when we have a message to ack. This also conveniently solves
         // timer throttling by not having a recursive timer, and by starting the timer via a network call (recv)
-        self.ackTimer();
-        return true;     
+        self.ackTimer()
+        return true     
     }
 
     public func enqueue(content: StringOrData) async throws -> Void {
@@ -164,7 +164,7 @@ actor MessageBuffer {
         bufferedByteCount = bufferedByteCount + size
         totalMessageCount = totalMessageCount + 1
 
-        return await withCheckedContinuation{ continuation in
+        return await withCheckedContinuation { continuation in
             if (bufferedByteCount > maxBufferSize) {
                 // If buffer is full, we're tring to backpressure the sending
                 // id start from 1
@@ -228,7 +228,7 @@ actor MessageBuffer {
 
     public func TryDequeue() throws -> StringOrData? {
         if (nextSendIdx < messages.count) {
-            let item =  messages[nextSendIdx]
+            let item = messages[nextSendIdx]
             nextSendIdx = nextSendIdx + 1
             lastSendSequenceId = item.id
             return item.content
@@ -269,14 +269,14 @@ actor MessageBuffer {
             }
             return 
         }
-        self.nextReceivingIdx = message.sequenceId;
+        self.nextReceivingIdx = message.sequenceId
     }
 
     private func isInvocationMessage(message: HubMessage) -> Bool {
         switch (message.type) {
-            case .invocation, .streamItem, .completion, .streamInvocation, .cancelInvocation:
+        case .invocation, .streamItem, .completion, .streamInvocation, .cancelInvocation:
             return true
-            case .close, .sequence, .ping, .ack:
+        case .close, .sequence, .ping, .ack:
             return false
         }
     }
