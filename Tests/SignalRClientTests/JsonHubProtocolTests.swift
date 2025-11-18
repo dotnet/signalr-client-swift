@@ -467,6 +467,257 @@ final class JsonHubProtocolTests: XCTestCase {
         """)
     }
 
+    // MARK: - Custom Encoder/Decoder Tests
+
+    func testCustomEncoderWithSnakeCaseStrategy() throws {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        
+        let customProtocol = JsonHubProtocol(encoder: encoder, decoder: decoder)
+        
+        let message = InvocationMessage(
+            target: "testTarget",
+            arguments: AnyEncodableArray([CustomEncodableModel(firstName: "John", lastName: "Doe")]),
+            streamIds: nil,
+            headers: nil,
+            invocationId: "123"
+        )
+        
+        let output = try customProtocol.writeMessage(message: message)
+        
+        if case let .string(outputString) = output {
+            let trimmedOutput = String(outputString.dropLast())
+            XCTAssertTrue(trimmedOutput.contains("first_name"), "Expected snake_case encoding")
+            XCTAssertTrue(trimmedOutput.contains("last_name"), "Expected snake_case encoding")
+        } else {
+            XCTFail("Expected string output")
+        }
+    }
+
+    func testCustomDecoderWithSnakeCaseStrategy() throws {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        
+        let customProtocol = JsonHubProtocol(encoder: encoder, decoder: decoder)
+        
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [{\"first_name\": \"Jane\", \"last_name\": \"Smith\"}]}\(TextMessageFormat.recordSeparator)"
+        let binder = TestInvocationBinder(binderTypes: [CustomEncodableModel.self])
+        
+        let messages = try customProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages[0] is InvocationMessage)
+        let msg = messages[0] as! InvocationMessage
+        
+        guard let model = msg.arguments.value![0] as? CustomEncodableModel else {
+            XCTFail("Expected CustomEncodableModel")
+            return
+        }
+        
+        XCTAssertEqual(model.firstName, "Jane")
+        XCTAssertEqual(model.lastName, "Smith")
+    }
+
+    func testCustomEncoderWithDateEncodingStrategy() throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        
+        let customProtocol = JsonHubProtocol(encoder: encoder, decoder: decoder)
+        
+        let date = Date(timeIntervalSince1970: 1_609_459_200) // 2021-01-01 00:00:00 UTC
+        let message = InvocationMessage(
+            target: "testTarget",
+            arguments: AnyEncodableArray([DateModel(timestamp: date)]),
+            streamIds: nil,
+            headers: nil,
+            invocationId: "123"
+        )
+        
+        let output = try customProtocol.writeMessage(message: message)
+        
+        if case let .string(outputString) = output {
+            let trimmedOutput = String(outputString.dropLast())
+            XCTAssertTrue(trimmedOutput.contains("2021-01-01"), "Expected ISO8601 date format")
+        } else {
+            XCTFail("Expected string output")
+        }
+    }
+
+    func testCustomDecoderWithDateDecodingStrategy() throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        
+        let customProtocol = JsonHubProtocol(encoder: encoder, decoder: decoder)
+        
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [{\"timestamp\": \"2021-01-01T00:00:00Z\"}]}\(TextMessageFormat.recordSeparator)"
+        let binder = TestInvocationBinder(binderTypes: [DateModel.self])
+        
+        let messages = try customProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages[0] is InvocationMessage)
+        let msg = messages[0] as! InvocationMessage
+        
+        guard let model = msg.arguments.value![0] as? DateModel else {
+            XCTFail("Expected DateModel")
+            return
+        }
+        
+        let expectedDate = Date(timeIntervalSince1970: 1_609_459_200)
+        XCTAssertEqual(model.timestamp.timeIntervalSince1970, expectedDate.timeIntervalSince1970, accuracy: 1.0)
+    }
+
+    func testCustomEncoderWithPrettyPrintedOutput() throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        let decoder = JSONDecoder()
+        
+        let customProtocol = JsonHubProtocol(encoder: encoder, decoder: decoder)
+        
+        let message = PingMessage()
+        let output = try customProtocol.writeMessage(message: message)
+        
+        if case let .string(outputString) = output {
+            let trimmedOutput = String(outputString.dropLast())
+            XCTAssertTrue(trimmedOutput.contains("\n"), "Expected pretty-printed output with newlines")
+        } else {
+            XCTFail("Expected string output")
+        }
+    }
+
+    func testCustomDecoderWithAllowsJSON5() throws {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+        if #available(macOS 12.0, iOS 15.0, *) {
+            decoder.allowsJSON5 = true
+        }
+        
+        let customProtocol = JsonHubProtocol(encoder: encoder, decoder: decoder)
+        
+        // Test still works with standard JSON even with JSON5 enabled
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [123]}\(TextMessageFormat.recordSeparator)"
+        let binder = TestInvocationBinder(binderTypes: [Int.self])
+        
+        let messages = try customProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages[0] is InvocationMessage)
+    }
+
+    func testStreamItemMessageWithCustomDecoder() throws {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        
+        let customProtocol = JsonHubProtocol(encoder: encoder, decoder: decoder)
+        
+        let input = "{\"type\": 2, \"invocationId\":\"345\", \"item\": {\"first_name\": \"Bob\", \"last_name\": \"Johnson\"}}\(TextMessageFormat.recordSeparator)"
+        let binder = TestInvocationBinder(binderTypes: [CustomEncodableModel.self])
+        
+        let messages = try customProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertTrue(messages[0] is StreamItemMessage)
+        guard let msg = messages[0] as? StreamItemMessage else {
+            XCTFail("Expected StreamItemMessage")
+            return
+        }
+        
+        guard let model = msg.item.value as? CustomEncodableModel else {
+            XCTFail("Expected CustomEncodableModel")
+            return
+        }
+        
+        XCTAssertEqual(model.firstName, "Bob")
+        XCTAssertEqual(model.lastName, "Johnson")
+    }
+
+    func testCompletionMessageWithCustomDecoder() throws {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        
+        let customProtocol = JsonHubProtocol(encoder: encoder, decoder: decoder)
+        
+        let input = "{\"type\": 3, \"invocationId\":\"345\", \"result\": {\"first_name\": \"Alice\", \"last_name\": \"Williams\"}}\(TextMessageFormat.recordSeparator)"
+        let binder = TestInvocationBinder(binderTypes: [CustomEncodableModel.self])
+        
+        let messages = try customProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        guard let msg = messages[0] as? CompletionMessage else {
+            XCTFail("Expected CompletionMessage")
+            return
+        }
+        
+        guard let model = msg.result.value as? CustomEncodableModel else {
+            XCTFail("Expected CustomEncodableModel")
+            return
+        }
+        
+        XCTAssertEqual(model.firstName, "Alice")
+        XCTAssertEqual(model.lastName, "Williams")
+    }
+
+    func testDefaultInitializerUsesStandardEncoderDecoder() throws {
+        let defaultProtocol = JsonHubProtocol()
+        
+        // Test encoding
+        let message = InvocationMessage(
+            target: "testTarget",
+            arguments: AnyEncodableArray([CustomEncodableModel(firstName: "Test", lastName: "User")]),
+            streamIds: nil,
+            headers: nil,
+            invocationId: "123"
+        )
+        
+        let output = try defaultProtocol.writeMessage(message: message)
+        
+        if case let .string(outputString) = output {
+            let trimmedOutput = String(outputString.dropLast())
+            // Should use camelCase (default), not snake_case
+            XCTAssertTrue(trimmedOutput.contains("firstName"), "Expected camelCase with default encoder")
+            XCTAssertFalse(trimmedOutput.contains("first_name"), "Should not have snake_case with default encoder")
+        } else {
+            XCTFail("Expected string output")
+        }
+        
+        // Test decoding
+        let input = "{\"type\": 1, \"target\": \"testTarget\", \"arguments\": [{\"firstName\": \"Default\", \"lastName\": \"Test\"}]}\(TextMessageFormat.recordSeparator)"
+        let binder = TestInvocationBinder(binderTypes: [CustomEncodableModel.self])
+        
+        let messages = try defaultProtocol.parseMessages(input: .string(input), binder: binder)
+        
+        XCTAssertEqual(messages.count, 1)
+        guard let msg = messages[0] as? InvocationMessage,
+              let model = msg.arguments.value![0] as? CustomEncodableModel else {
+            XCTFail("Expected InvocationMessage with CustomEncodableModel")
+            return
+        }
+        
+        XCTAssertEqual(model.firstName, "Default")
+        XCTAssertEqual(model.lastName, "Test")
+    }
+
+    // MARK: - Test Models for Custom Encoder/Decoder
+
+    private struct CustomEncodableModel: Codable {
+        let firstName: String
+        let lastName: String
+    }
+
+    private struct DateModel: Codable {
+        let timestamp: Date
+    }
+
     // Helper function to verify JSON serialization of messages
     private func verifyWriteMessage(message: HubMessage, expectedJson: String) throws {
         let output = try jsonHubProtocol.writeMessage(message: message)
