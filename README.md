@@ -211,7 +211,7 @@ let connection = HubConnectionBuilder()
 |---------------------------------|-----------|
 | Azure SignalR Service Support   |✅|
 | Automatic Reconnection          |✅|
-| Stateful Reconnect              ||
+| Stateful Reconnect              |✅|
 | Server to Client Streaming      |✅|
 | Client to Server Streaming      |✅|
 | Long Polling                    |✅|
