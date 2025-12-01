@@ -124,19 +124,6 @@ for i in 1...100 {
 }
 continuation.finish()
 ``` 
-```
-
-## Client-to-server streaming
-To send a stream of data from the client to the server, use the `AsyncStream`:
-
-```swift
-let (clientStream, continuation) = AsyncStream.makeStream(of: Int.self)
-try await connection.send("UploadStream", arguments: clientStream)
-for i in 1...100 {
-    continuation.yield(i)
-}
-continuation.finish()
-``` 
 
 ## Handle lost connection
 
@@ -227,7 +214,6 @@ let connection = HubConnectionBuilder()
 | Stateful Reconnect              |✅|
 | Server to Client Streaming      |✅|
 | Client to Server Streaming      |✅|
-| Client to Server Streaming      |✅|
 | Long Polling                    |✅|
 | Server-Sent Events              |✅|
 | WebSockets                      |✅|
@@ -245,4 +231,3 @@ For more information, see the [.NET Foundation Code of Conduct](https://dotnetfo
 # License
 
 .NET (including the runtime repo) is licensed under the MIT license.
-
