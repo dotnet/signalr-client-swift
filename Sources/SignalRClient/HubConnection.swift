@@ -170,6 +170,7 @@ public actor HubConnection {
         }
     }
     
+    
     public func invoke(method: String, arguments: Any...) async throws -> Void {
         let (nonstreamArguments, streamArguments) = splitStreamArguments(arguments: arguments)
         let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)

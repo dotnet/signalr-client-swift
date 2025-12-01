@@ -214,6 +214,12 @@ class IntegrationTests: XCTestCase {
             try await whenTaskTimeout({ try await self.testClientToServerStreamCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 5)
         }
     }
+    
+    func testClientToServerStream() async throws {
+        for (transport, hubProtocol) in testCombinations {
+            try await whenTaskTimeout({ try await self.testClientToServerStreamCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 5)
+        }
+    }
 
     private func testClientToServerStreamCore(transport: HttpTransportType, hubProtocol: HubProtocolType) async throws {
         let connection = HubConnectionBuilder()
