@@ -1,7 +1,7 @@
 # This workflow will build a Swift project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
 
-name: Swift
+name: Swift E2E Test
 
 on:
   push:
@@ -10,50 +10,55 @@ on:
     branches: [ "main", "dev" ]
 
 jobs:
-  buildAndUnitTest:
-    name: Swift on ${{ matrix.os }}
+  E2ETest:
+    name: E2E Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [macos-14]
-    steps:
-    - uses: actions/checkout@v4
-    - uses: swift-actions/setup-swift@v2
-      with:
-        swift-version: "5.10"
-    - name: Get swift version
-      run: swift --version
-    - name: Build and Run tests
-      run: swift test --filter SignalRClientTests
 
-  integrationTest:
-    name: Integration Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-14]
     steps:
     - uses: actions/checkout@v4
     - uses: swift-actions/setup-swift@v2
       with:
         swift-version: "5.10"
+
+    - name: Check Connection String
+      run: |
+        echo "Connection string length: ${#CONNECTION_STRING}"
+        if [ ${#CONNECTION_STRING} -gt 20 ]; then
+          echo "✅ Connection string looks valid"
+          echo "Starts with: ${CONNECTION_STRING:0:20}..."
+        else
+          echo "❌ Connection string still too short or empty"
+          exit 1
+        fi
+      env:
+        CONNECTION_STRING: ${{ secrets.E2E_CONNECTION_STRING }}
+
     - name: Get swift version
       run: swift --version
+
     - name: Install .NET
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '8.x'
+
     - name: Build .NET server
       working-directory: ./Tests/IntegrationTestServer
-      run: dotnet build
+      run: dotnet build -p:DefineConstants="USE_AZURE_SIGNALR"
+
     - name: Start IntegrationTestServer
       working-directory: ./Tests/IntegrationTestServer
-      run: |
-        dotnet run &
+      env:
+        Azure__SignalR__ConnectionString: ${{ secrets.E2E_CONNECTION_STRING }}
+      run: dotnet run -p:DefineConstants="USE_AZURE_SIGNALR" &
       continue-on-error: false
+
     - name: Wait for server to start
       run: sleep 5
-    - name: Run integration tests
+    
+    - name: Run E2E tests
       env:
         SIGNALR_INTEGRATION_TEST_URL: http://localhost:8080/test
       run: swift test --filter SignalRClientIntegrationTests

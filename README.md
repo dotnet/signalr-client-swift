@@ -12,7 +12,7 @@ SignalR Swift is a client library for connecting to SignalR servers from Swift a
 
 ### Swift Package Manager
 
-Add the project as a dependency to your Package.swift from a verion:
+Add the project as a dependency to your Package.swift from a version:
 
 ```swift
 // swift-tools-version: 5.10
@@ -21,7 +21,7 @@ import PackageDescription
 let package = Package(
     name: "signalr-client-app",
     dependencies: [
-        .package(url: "https://github.com/dotnet/signalr-client-swift", .upToNextMinor(from: "1.0.0-preview.4"))
+        .package(url: "https://github.com/dotnet/signalr-client-swift", .upToNextMinor(from: "1.0.0"))
     ],
     targets: [
         .executableTarget(name: "YourTargetName", dependencies: [.product(name: "SignalRClient", package: "signalr-client-swift")])
@@ -211,7 +211,7 @@ let connection = HubConnectionBuilder()
 |---------------------------------|-----------|
 | Azure SignalR Service Support   |✅|
 | Automatic Reconnection          |✅|
-| Stateful Reconnect              ||
+| Stateful Reconnect              |✅|
 | Server to Client Streaming      |✅|
 | Client to Server Streaming      |✅|
 | Long Polling                    |✅|
@@ -220,6 +220,13 @@ let connection = HubConnectionBuilder()
 | JSON Protocol                   |✅|
 | MessagePack Protocol            |✅|
 | Client Results                  |✅|
+
+# Code of Conduct
+
+This project has adopted the code of conduct defined by the Contributor Covenant
+to clarify expected behavior in our community.
+
+For more information, see the [.NET Foundation Code of Conduct](https://dotnetfoundation.org/code-of-conduct).
 
 # License
 

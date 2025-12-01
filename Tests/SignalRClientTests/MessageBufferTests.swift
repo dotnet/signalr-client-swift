@@ -3,8 +3,14 @@ import XCTest
 @testable import SignalRClient
 
 class MessageBufferTest: XCTestCase {
+    func getTestMessageBuffer(bufferSize: Int) -> MessageBuffer {
+        return MessageBuffer(bufferSize: bufferSize, 
+                             hubProtocol: JsonHubProtocol(),
+                             connection: MockConnection())
+    }
+
     func testSendWithinBufferSize() async throws {
-        let buffer = MessageBuffer(bufferSize: 100)
+        let buffer = getTestMessageBuffer(bufferSize: 100)
         let expectation = XCTestExpectation(description: "Should enqueue")
         Task {
             try await buffer.enqueue(content: .string("data"))
@@ -14,7 +20,7 @@ class MessageBufferTest: XCTestCase {
     }
 
     func testSendTriggersBackpressure() async throws {
-        let buffer = MessageBuffer(bufferSize: 5)
+        let buffer = getTestMessageBuffer(bufferSize: 5)
         let expectation1 = XCTestExpectation(description: "Should not enqueue")
         expectation1.isInverted = true
         let expectation2 = XCTestExpectation(description: "Should enqueue")
@@ -33,7 +39,7 @@ class MessageBufferTest: XCTestCase {
     }
 
     func testBackPressureAndRelease() async throws {
-        let buffer = MessageBuffer(bufferSize: 10)
+        let buffer = getTestMessageBuffer(bufferSize: 10)
         try await buffer.enqueue(content: .string("1234567890"))
         async let eq1 = buffer.enqueue(content: .string("1"))
         async let eq2 = buffer.enqueue(content: .string("2"))
@@ -51,7 +57,7 @@ class MessageBufferTest: XCTestCase {
     }
 
     func testBackPressureAndRelease2() async throws {
-        let buffer = MessageBuffer(bufferSize: 10)
+        let buffer = getTestMessageBuffer(bufferSize: 10)
         let expect1 = XCTestExpectation(description: "Should not release 1")
         expect1.isInverted = true
         let expect2 = XCTestExpectation(description: "Should not release 2")
@@ -93,18 +99,19 @@ class MessageBufferTest: XCTestCase {
     }
 
     func testAckInvalidSequenceIdIgnored() async throws {
-        let buffer = MessageBuffer(bufferSize: 100)
+        let buffer = getTestMessageBuffer(bufferSize: 100)
         let rst = try await buffer.ack(sequenceId: 1) // without any send
         XCTAssertEqual(false, rst)
         
         // Enqueue but not send
         try await buffer.enqueue(content: .string("abc"))
         let rst2 = try await buffer.ack(sequenceId: 1)
-        XCTAssertEqual(false, rst2)
+        // Note: See comment on MessageBuffer.ack()
+        XCTAssertEqual(true, rst2)
     }
 
     func testWaitToDequeueReturnsImmediatelyIfAvailable() async throws {
-        let buffer = MessageBuffer(bufferSize: 100)
+        let buffer = getTestMessageBuffer(bufferSize: 100)
         _ = try await buffer.enqueue(content: .string("msg"))
         let result = try await buffer.WaitToDequeue()
         XCTAssertTrue(result)
@@ -113,7 +120,7 @@ class MessageBufferTest: XCTestCase {
     }
 
     func testWaitToDequeueFirst() async throws {
-        let buffer = MessageBuffer(bufferSize: 100)
+        let buffer = getTestMessageBuffer(bufferSize: 100)
         async let dqueue: Bool = try await buffer.WaitToDequeue()
         try await Task.sleep(for: .milliseconds(10))
 
@@ -127,7 +134,7 @@ class MessageBufferTest: XCTestCase {
     }
 
     func testMultipleDequeueWait() async throws {
-        let buffer = MessageBuffer(bufferSize: 100)
+        let buffer = getTestMessageBuffer(bufferSize: 100)
         async let dqueue1: Bool = try await buffer.WaitToDequeue()
         async let dqueue2: Bool = try await buffer.WaitToDequeue()
         try await Task.sleep(for: .milliseconds(10))
@@ -143,13 +150,13 @@ class MessageBufferTest: XCTestCase {
     }
 
     func testTryDequeueReturnsNilIfEmpty() async throws {
-        let buffer = MessageBuffer(bufferSize: 100)
+        let buffer = getTestMessageBuffer(bufferSize: 100)
         let result = try await buffer.TryDequeue()
         XCTAssertNil(result)
     }
 
     func testResetDequeueResetsCorrectly() async throws {
-        let buffer = MessageBuffer(bufferSize: 100)
+        let buffer = getTestMessageBuffer(bufferSize: 100)
         try await buffer.enqueue(content: .string("test1"))
         try await buffer.enqueue(content: .string("test2"))
         let t1 = try await buffer.TryDequeue()
@@ -172,7 +179,7 @@ class MessageBufferTest: XCTestCase {
     }
 
     func testContinuousBackPressure() async throws {
-        let buffer = MessageBuffer(bufferSize: 5)
+        let buffer = getTestMessageBuffer(bufferSize: 5)
         var tasks: [Task<Void, any Error>] = []
         for i in 0..<100 {
             let task = Task {

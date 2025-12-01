@@ -1,4 +1,16 @@
 # Release History
+
+## 1.0.0
+
+### Features Added
+- Support stateful reconnect
+- Enable hub protocol version 2
+- Add E2E tests
+
+### Bugs Fixed
+- Make HubConnectionState Sendable
+- Fix address reference cycle between HubConnection and HttpConnection
+
 ## 1.0.0-preview.4
 
 ### Bugs Fixed

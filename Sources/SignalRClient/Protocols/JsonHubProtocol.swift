@@ -5,7 +5,7 @@ import Foundation
 
 struct JsonHubProtocol: HubProtocol {
     let name = "json"
-    let version = 1
+    let version = 2
     let transferFormat: TransferFormat = .text
 
     func parseMessages(input: StringOrData, binder: InvocationBinder) throws -> [HubMessage] {

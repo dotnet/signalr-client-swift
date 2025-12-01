@@ -24,6 +24,7 @@ public actor HubConnection {
     private var connectionStarted: Bool = false
     private var receivedHandshakeResponse: Bool = false
     private var invocationId: Int = 0
+    private var messageBuffer: MessageBuffer? = nil
     private var connectionStatus: HubConnectionState = .Stopped
     private var stopping: Bool = false
     private var stopDuringStartError: Error?
@@ -36,6 +37,7 @@ public actor HubConnection {
     private var stopTask: Task<Void, Never>?
     private var startTask: Task<Void, Error>?
     private var startSuccessfully = false
+    private var reconnectDelayTask: Task<Void, Never>?
 
     internal init(connection: ConnectionProtocol,
                   logger: Logger,
@@ -58,6 +60,8 @@ public actor HubConnection {
         self.invocationHandler = InvocationHandler()
         self.keepAliveScheduler = TimeScheduler(initialInterval: self.keepAliveInterval)
         self.serverTimeoutScheduler = TimeScheduler(initialInterval: self.serverTimeout)
+        self.reconnectedHandlers = []
+        self.reconnectingHandlers = []
     }
 
     public func start() async throws {
@@ -66,11 +70,18 @@ public actor HubConnection {
         }
 
         connectionStatus = .Connecting
+        logger.log(level: .debug, message: "HubConnection starting")
 
         startTask = Task {
             do {
-                await self.connection.onClose(handleConnectionClose)
-                await self.connection.onReceive(processIncomingData)
+                await self.connection.onClose { [weak self] error in
+                    guard let self else { return }
+                    await self.handleConnectionClose(error: error)
+                }
+                await self.connection.onReceive { [weak self] prehandledData in
+                    guard let self else { return }
+                    await self.processIncomingData(prehandledData)
+                }
 
                 try await startInternal()
                 logger.log(level: .debug, message: "HubConnection started")
@@ -91,18 +102,19 @@ public actor HubConnection {
     public func stop() async {
         // 1. Before the start, it should be Stopped. Just return
         if (connectionStatus == .Stopped) {
-            logger.log(level: .debug, message: "Connection is already stopped")
+            logger.log(level: .debug, message:"Call to HubConnection.stop ignored because it is already in the disconnected state.")
             return
         }
 
         // 2. Another stop is running, just wait for it
-        if (stopping) {
-            logger.log(level: .debug, message: "Connection is already stopping")
+        if stopping {
+            logger.log(level: .debug, message:"Call to HubConnection.stop ignored because it is already in the stopping state.")
             await stopTask?.value
             return
         }
 
         stopping = true
+        await self.connection.setFeature(feature: ConnectionFeature.Reconnect, value: false)
 
         // In this step, there's no other start running
         stopTask = Task {
@@ -116,9 +128,8 @@ public actor HubConnection {
         let (nonstreamArguments, streamArguments) = splitStreamArguments(arguments: arguments)
         let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil, invocationId: nil)
-        let data = try hubProtocol.writeMessage(message: invocationMessage)
         logger.log(level: .debug, message: "Sending message to target: \(method)")
-        try await sendMessageInternal(data)
+        try await sendWithProtocol(invocationMessage)
         launchStreams(streamIds: streamIds, clientStreams: streamArguments)
     }
     
@@ -143,8 +154,7 @@ public actor HubConnection {
                 do {
                     for try await item in stream {
                         let streamItem = StreamItemMessage(invocationId: streamIds[i], item: AnyEncodable(item), headers: nil)
-                        let data = try hubProtocol.writeMessage(message: streamItem)
-                        try await sendMessageInternal(data)
+                        try await sendWithProtocol(streamItem)
                     }
                 } catch {
                     err = "\(error)"
@@ -152,8 +162,7 @@ public actor HubConnection {
                 }
                 do {
                     let completionMessage = CompletionMessage(invocationId: streamIds[i], error: err, result: AnyEncodable(nil), headers: nil)
-                    let data = try hubProtocol.writeMessage(message: completionMessage)
-                    try await sendMessageInternal(data)
+                    try await sendWithProtocol(completionMessage)
                 } catch {
                     logger.log(level: .error, message: "Fail to send client stream complete message :\(error)")
                 }
@@ -166,9 +175,8 @@ public actor HubConnection {
         let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
         let (invocationId, tcs) = await invocationHandler.create()
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil, invocationId: invocationId)
-        let data = try hubProtocol.writeMessage(message: invocationMessage)
         logger.log(level: .debug, message: "Invoke message to target: \(method), invocationId: \(invocationId)")
-        try await sendMessageInternal(data)
+        try await sendWithProtocol(invocationMessage)
         launchStreams(streamIds: streamIds, clientStreams: streamArguments)
         _ = try await tcs.task()
     }
@@ -180,9 +188,8 @@ public actor HubConnection {
         invocationBinder.registerReturnValueType(invocationId: invocationId, types: TReturn.self)
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil, invocationId: invocationId)
         do {
-            let data = try hubProtocol.writeMessage(message: invocationMessage)
             logger.log(level: .debug, message: "Invoke message to target: \(method), invocationId: \(invocationId)")
-            try await sendMessageInternal(data)
+            try await sendWithProtocol(invocationMessage)
             launchStreams(streamIds: streamIds, clientStreams: streamArguments)
         } catch {
             await invocationHandler.cancel(invocationId: invocationId, error: error)
@@ -204,9 +211,8 @@ public actor HubConnection {
         invocationBinder.registerReturnValueType(invocationId: invocationId, types: Element.self)
         let StreamInvocationMessage = StreamInvocationMessage(invocationId: invocationId, target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil)
         do {
-            let data = try hubProtocol.writeMessage(message: StreamInvocationMessage)
             logger.log(level: .debug, message: "Stream message to target: \(method), invocationId: \(invocationId)")
-            try await sendMessageInternal(data)
+            try await sendWithProtocol(StreamInvocationMessage)
             launchStreams(streamIds: streamIds, clientStreams: streamArguments)
         } catch {
             await invocationHandler.cancel(invocationId: invocationId, error: error)
@@ -234,9 +240,8 @@ public actor HubConnection {
         streamResult.onCancel = {
             do {
                 let cancelInvocation = CancelInvocationMessage(invocationId: invocationId, headers: nil)
-                let data = try self.hubProtocol.writeMessage(message: cancelInvocation)
                 await self.invocationHandler.cancel(invocationId: invocationId, error: SignalRError.streamCancelled)
-                try await self.sendMessageInternal(data)
+                try await self.sendWithProtocol(cancelInvocation)
             } catch {}
         }
 
@@ -290,15 +295,36 @@ public actor HubConnection {
     }
 
     private func stopInternal() async {
-        if (connectionStatus == .Stopped) {
+        let previousStatus = connectionStatus
+        if (previousStatus == .Stopped) {
+            logger.log(level: .debug,message:"Call to HubConnection.stop ignored because it is already in the disconnected state.")
             return
         }
+        logger.log(level: .debug,message:"Stopping HubConnection.")
 
         let startTask = self.startTask
 
+        if (previousStatus == .Connected) {
+            Task {
+                do {
+                    let closeMessage = CloseMessage(error: nil, allowReconnect: nil)
+                    try await sendWithProtocol(closeMessage)
+                } catch {
+                    // Ignore, this is a best effort attempt to let the server know the client closed gracefully.
+                }
+            }
+        }
+
         stopDuringStartError = SignalRError.connectionAborted
-        if (handshakeRejector != nil) {
-            handshakeRejector!(SignalRError.connectionAborted)
+        handshakeRejector?(SignalRError.connectionAborted)
+
+        // If currently waiting in a reconnect delay, cancel it and complete close immediately (TS parity)
+        if let delayTask = reconnectDelayTask {
+            logger.log(level: .debug, message: "Connection stopped during reconnect delay. Done reconnecting.")
+            delayTask.cancel()
+            reconnectDelayTask = nil
+            await completeClose(error: nil)
+            return
         }
 
         await connection.stop(error: nil)
@@ -321,9 +347,7 @@ public actor HubConnection {
         }
 
         stopDuringStartError = SignalRError.connectionAborted
-        if (handshakeResolver != nil) {
-            handshakeRejector!(SignalRError.connectionAborted)
-        }
+        handshakeRejector?(SignalRError.connectionAborted)
 
         if (stopping) {
             await completeClose(error: error)
@@ -384,11 +408,16 @@ public actor HubConnection {
                 break
             }
 
-            do {
-                try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000)) // interval in seconds to ns
-            } catch {
-                break
+            // Sleep for next retry, but keep a handle so stop() can cancel immediately
+            reconnectDelayTask = Task {
+                do {
+                    try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                } catch {
+                    // cancellation expected
+                }
             }
+            await reconnectDelayTask?.value
+            reconnectDelayTask = nil
 
             retryCount += 1
             elapsed = Double(DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds) / 1_000_000_000
@@ -424,6 +453,12 @@ public actor HubConnection {
         do {
             let hubMessage = try hubProtocol.parseMessages(input: data!, binder: invocationBinder)
             for message in hubMessage {
+                if let messageBuffer = self.messageBuffer {
+                    if !(try await messageBuffer.shouldProcessMessage(message)) {
+                        // Don't process the message, we are either waiting for a SequenceMessage or received a duplicate message
+                        continue
+                    }
+                }
                 await dispatchMessage(message)
             }
         } catch {
@@ -456,14 +491,34 @@ public actor HubConnection {
         case _ as PingMessage:
             // Don't care about the content of ping
             break
-        case _ as CloseMessage:
-            // Close
+        case let message as CloseMessage:
+            logger.log(level: .information, message: "Close message received from server.")
+            let error = message.error != nil ? SignalRError.invalidOperation("Server returned an error on close: " + message.error!) : nil
+            // See https://github.com/dotnet/aspnetcore/blob/v9.0.9/src/SignalR/clients/ts/signalr/src/HubConnection.ts#L645
+            if message.allowReconnect == true {
+                Task {
+                    await connection.stop(error: error)
+                }
+            } else {
+                // We cannot await stopInternal() here, but subsequent calls to stop() will await this if stopInternal() is still ongoing.
+                self.stopTask = Task {
+                    await stopInternal()
+                }
+            }
+
+            break;
+        case let message as AckMessage:
+            let result = await self.messageBuffer?.ack(sequenceId: message.sequenceId);
+            if (result == false) {
+                logger.log(level: .warning, message: "Ack message received for sequenceId: \(message.sequenceId), but failed.")
+            }
             break
-        case _ as AckMessage:
-            // TODO: In stateful reconnect
-            break
-        case _ as SequenceMessage:
-            // TODO: In stateful reconnect
+        case let message as SequenceMessage:
+            if let messageBuffer = self.messageBuffer {
+                await messageBuffer.resetSequenceMessage(message: message)
+            } else {
+                logger.log(level: .warning, message: "Sequence message received but no message buffer is available.")
+            }
             break
         default:
             logger.log(level: .warning, message: "Unknown message type: \(message)")
@@ -476,8 +531,7 @@ public actor HubConnection {
             if let invocationId = message.invocationId {
                 logger.log(level: .warning, message: "No result given for method: \(message.target), and invocationId: \(invocationId)")
                 let completionMessage = CompletionMessage(invocationId: invocationId, error: "No handler registered for method: \(message.target)", result: AnyEncodable(nil), headers: nil)
-                let data = try hubProtocol.writeMessage(message: completionMessage)
-                try await sendMessageInternal(data)
+                try await sendWithProtocol(completionMessage)
             }
             return            
         }
@@ -490,8 +544,7 @@ public actor HubConnection {
                 result = nil
             }
             let completionMessage = CompletionMessage(invocationId: message.invocationId!, error: nil, result: AnyEncodable(result), headers: nil)
-            let data = try hubProtocol.writeMessage(message: completionMessage)
-            try await sendMessageInternal(data)
+            try await sendWithProtocol(completionMessage)
         } else {
             _ = try await handler(message.arguments.value ?? [])
         }
@@ -502,6 +555,11 @@ public actor HubConnection {
         stopping = false
         await keepAliveScheduler.stop()
         await serverTimeoutScheduler.stop()
+
+        if (self.messageBuffer != nil) {
+            await self.messageBuffer?.close()
+            self.messageBuffer = nil
+        }
 
         // Either throw from start(), either call close handlers
         if (startSuccessfully) {
@@ -526,11 +584,11 @@ public actor HubConnection {
         try await connection.start(transferFormat: hubProtocol.transferFormat)
 
         // After connection open, perform handshake
-        let version = hubProtocol.version
-        // As we only support 1 now
-        guard version == 1 else {
-            logger.log(level: .error, message: "Unsupported handshake version: \(version)")
-            throw SignalRError.unsupportedHandshakeVersion
+        var version = hubProtocol.version
+        if !(await connection.features[ConnectionFeature.Reconnect] as? Bool ?? false) {
+            // Stateful Reconnect starts with HubProtocol version 2, newer clients connecting to older servers will fail to connect due to
+            // the handshake only supporting version 1, so we will try to send version 1 during the handshake to keep old servers working.
+            version = 1;
         }
 
         receivedHandshakeResponse = false
@@ -562,13 +620,32 @@ public actor HubConnection {
                         try await self.sendMessageInternal(.string(HandshakeProtocol.writeHandshakeRequest(handshakeRequest: handshakeRequest)))
                         logger.log(level: .debug, message: "Sent handshake request message with version: \(version), protocol: \(hubProtocol.name)")
                     } catch {
-                        self.handshakeRejector!(error)
+                        self.handshakeRejector?(error)
                     }
                 }
             }
 
-            let inherentKeepAlive = await connection.inherentKeepAlive
-            if (!inherentKeepAlive) {
+            let useStatefulReconnect = await (self.connection.features[ConnectionFeature.Reconnect] as? Bool) == true
+            if useStatefulReconnect {
+                self.messageBuffer = MessageBuffer(
+                    bufferSize: self.statefulReconnectBufferSize,
+                    hubProtocol: self.hubProtocol,
+                    connection: self.connection
+                )
+                try await self.messageBuffer?.ResetDequeue();
+                await self.connection.setFeature(
+                    feature: ConnectionFeature.Disconnected, 
+                    value: { [weak self] () async -> Void in
+                        _ = await self?.messageBuffer?.disconnected()
+                })
+                await self.connection.setFeature(
+                    feature: ConnectionFeature.Resend, 
+                    value: { [weak self] () async -> Any? in
+                        return try? await self?.messageBuffer?.resend()
+                })
+            }
+
+            if (!(await connection.inherentKeepAlive)) {
                 await keepAliveScheduler.start {
                     do {
                         let state = self.state()
@@ -606,6 +683,16 @@ public actor HubConnection {
         try await connection.send(content)
     }
 
+    private func sendWithProtocol(_ message: HubMessage) async throws {
+        if self.messageBuffer != nil {
+            try await self.messageBuffer?.send(message: message)
+        }
+        else {
+            let data = try hubProtocol.writeMessage(message: message)
+            try await sendMessageInternal(data)
+        }
+    }
+
     private func processHandshakeResponse(_ content: StringOrData) throws -> StringOrData? {
         var remainingData: StringOrData?
         var handshakeResponse: HandshakeResponseMessage
@@ -614,20 +701,20 @@ public actor HubConnection {
             (remainingData, handshakeResponse) = try HandshakeProtocol.parseHandshakeResponse(data: content)
         } catch {
             logger.log(level: .error, message: "Error parsing handshake response: \(error)")
-            handshakeRejector!(error)
+            handshakeRejector?(error)
             throw error
         }
 
         if (handshakeResponse.error != nil) {
             logger.log(level: .error, message: "Server returned handshake error: \(handshakeResponse.error!)") 
             let error = SignalRError.handshakeError(handshakeResponse.error!)
-            handshakeRejector!(error)
+            handshakeRejector?(error)
             throw error
         } else {
             logger.log(level: .debug, message: "Handshake compeleted")
         }
 
-        handshakeResolver!(handshakeResponse)
+        handshakeResolver?(handshakeResponse)
         return remainingData
     }
 
@@ -643,8 +730,7 @@ public actor HubConnection {
 
     private func sendPing() async throws {
         let pingMessage = PingMessage()
-        let data = try hubProtocol.writeMessage(message: pingMessage)
-        try await sendMessageInternal(data)
+        try await sendWithProtocol(pingMessage)
     }
 
     private class SubscriptionEntity {
@@ -805,7 +891,7 @@ public actor HubConnection {
     }
 }
 
-public enum HubConnectionState {
+public enum HubConnectionState: Sendable {
     // The connection is stopped. Start can only be called if the connection is in this state.
     case Stopped
     case Connecting

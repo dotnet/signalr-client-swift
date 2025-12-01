@@ -8,6 +8,8 @@ import XCTest
 class IntegrationTests: XCTestCase {
     private var url: String?
     private let logLevel: LogLevel = .debug
+    private let defaultTimeout: TimeInterval = 3
+    
     #if os(Linux)
         private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
             (.longPolling, .messagePack),
@@ -33,7 +35,7 @@ class IntegrationTests: XCTestCase {
     func testConnect() async throws {
         for (transport, hubProtocol) in testCombinations {
             do {
-                try await whenTaskTimeout({ try await self.testConnectCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
+                try await whenTaskTimeout({ try await self.testConnectCore(transport: transport, hubProtocol: hubProtocol) }, timeout: defaultTimeout)
             } catch {
                 XCTFail("Failed to connect with transport: \(transport) and hubProtocol: \(hubProtocol)")
             }
@@ -66,7 +68,7 @@ class IntegrationTests: XCTestCase {
                         .withHubProtocol(hubProtocol: hubProtocol)
                         .withLogLevel(logLevel: logLevel)
                         .build()
-                    try await whenTaskTimeout(connection.start, timeout: 1)
+                    try await whenTaskTimeout(connection.start, timeout: defaultTimeout)
                     connections.append(connection)
                 }
             } catch {
@@ -80,13 +82,13 @@ class IntegrationTests: XCTestCase {
 
     func testSendAndOn() async throws {
         for (transport, hubProtocol) in testCombinations {
-            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: "hello") }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: 1) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: 1.2) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: true) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: [1, 2, 3]) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: ["key": "value"]) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: CustomClass(str: "Hello, World!", arr: [1, 2, 3])) }, timeout: 1)
+            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: "hello") }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: 1) }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: 1.2) }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: true) }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: [1, 2, 3]) }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: ["key": "value"]) }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testSendAndOnCore(transport: transport, hubProtocol: hubProtocol, item: CustomClass(str: "Hello, World!", arr: [1, 2, 3])) }, timeout: defaultTimeout)
         }
     }
 
@@ -114,7 +116,7 @@ class IntegrationTests: XCTestCase {
                 XCTFail("Failed to send and receive messages with transport: \(transport) and hubProtocol: \(hubProtocol)")
             }
 
-            await fulfillment(of: [expectation], timeout: 1)
+            await fulfillment(of: [expectation], timeout: defaultTimeout)
         } defer: {
             await connection.stop()
         }
@@ -122,13 +124,13 @@ class IntegrationTests: XCTestCase {
 
     func testInvoke() async throws {
         for (transport, hubProtocol) in testCombinations {
-            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: "hello") }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: 1) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: 1.2) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: true) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: [1, 2, 3]) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: ["key": "value"]) }, timeout: 1)
-            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: CustomClass(str: "Hello, World!", arr: [1, 2, 3])) }, timeout: 1)
+            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: "hello") }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: 1) }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: 1.2) }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: true) }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: [1, 2, 3]) }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: ["key": "value"]) }, timeout: defaultTimeout)
+            try await whenTaskTimeout({ try await self.testInvokeCore(transport: transport, hubProtocol: hubProtocol, item: CustomClass(str: "Hello, World!", arr: [1, 2, 3])) }, timeout: defaultTimeout)
         }
     }
 
@@ -152,7 +154,7 @@ class IntegrationTests: XCTestCase {
 
     func testInvokeWithoutReturn() async throws {
         for (transport, hubProtocol) in testCombinations {
-            try await whenTaskTimeout({ try await self.testInvokeWithoutReturnCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
+            try await whenTaskTimeout({ try await self.testInvokeWithoutReturnCore(transport: transport, hubProtocol: hubProtocol) }, timeout: defaultTimeout)
         }
     }
 
@@ -175,7 +177,7 @@ class IntegrationTests: XCTestCase {
 
     func testStream() async throws {
         for (transport, hubProtocol) in testCombinations {
-            try await whenTaskTimeout({ try await self.testStreamCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
+            try await whenTaskTimeout({ try await self.testStreamCore(transport: transport, hubProtocol: hubProtocol) }, timeout: defaultTimeout)
         }
     }
 
@@ -203,7 +205,7 @@ class IntegrationTests: XCTestCase {
 
     func testClientResult() async throws {
         for (transport, hubProtocol) in testCombinations {
-            try await whenTaskTimeout({ try await self.testClientResultCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
+            try await whenTaskTimeout({ try await self.testClientResultCore(transport: transport, hubProtocol: hubProtocol) }, timeout: defaultTimeout)
         }
     }
     
@@ -271,7 +273,7 @@ class IntegrationTests: XCTestCase {
                 return expectMessage
             }
             try await connection.invoke(method: "InvokeWithClientResult", arguments: expectMessage)
-            await fulfillment(of: [expectation], timeout: 1.0)
+            await fulfillment(of: [expectation], timeout: defaultTimeout)
         } defer: {
             await connection.stop()
         }
@@ -279,7 +281,7 @@ class IntegrationTests: XCTestCase {
 
     func testClientResultWithNull() async throws {
         for (transport, hubProtocol) in testCombinations {
-            try await whenTaskTimeout({ try await self.testClientResultWithNullCore(transport: transport, hubProtocol: hubProtocol) }, timeout: 1)
+            try await whenTaskTimeout({ try await self.testClientResultWithNullCore(transport: transport, hubProtocol: hubProtocol) }, timeout: defaultTimeout)
         }
     }
 
@@ -305,7 +307,7 @@ class IntegrationTests: XCTestCase {
             }
 
             try await connection.invoke(method: "invokeWithEmptyClientResult", arguments: expectMessage)
-            await fulfillment(of: [expectation], timeout: 1.0)
+            await fulfillment(of: [expectation], timeout: defaultTimeout)
         } defer: {
             await connection.stop()
         }

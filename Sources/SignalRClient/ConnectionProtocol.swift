@@ -1,6 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+enum ConnectionFeature: String, CaseIterable {
+    case Reconnect = "reconnect"
+    case Resend = "resend"
+    case Disconnected = "disconnected"
+}
+
 protocol ConnectionProtocol: AnyObject, Sendable {
     func onReceive(_ handler: @escaping Transport.OnReceiveHandler) async
     func onClose(_ handler: @escaping Transport.OnCloseHander) async
@@ -8,4 +14,6 @@ protocol ConnectionProtocol: AnyObject, Sendable {
     func send(_ data: StringOrData) async throws
     func stop(error: Error?) async
     var inherentKeepAlive: Bool { get async }
+    var features: [ConnectionFeature: Any] { get async }
+    func setFeature(feature: ConnectionFeature, value: Any) async
 }

@@ -13,11 +13,12 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
     var onSend: ((StringOrData) -> Void)?
     var onStart: (() -> Void)?
     var onStop: ((Error?) -> Void)?
+    var features: [ConnectionFeature : Any] = [:]
 
     private(set) var startCalled = false
     private(set) var sendCalled = false
     private(set) var stopCalled = false
-    private(set) var sentData: StringOrData?
+    private(set) var sentData: [StringOrData?] = []
 
     func start(transferFormat: TransferFormat) async throws {
         startCalled = true
@@ -26,7 +27,7 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
 
     func send(_ data: StringOrData) async throws {
         sendCalled = true
-        sentData = data
+        sentData.append(data)
         onSend?(data)
     }
 
@@ -42,6 +43,24 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
     func onClose(_ handler: @escaping @Sendable ((any Error)?) async -> Void) async {
         onClose = handler
     }
+
+    func setFeature(feature: SignalRClient.ConnectionFeature, value: Any) async {
+        features[feature] = value
+    }
+
+    func resend(callback: @escaping () async -> Any?) async -> Any? {
+        if let resendClosure = features[ConnectionFeature.Resend] as? () async -> Any? {
+            let _ = await resendClosure()
+        }
+        return await callback()
+    }
+
+    func disconnect(callback: @escaping () async -> Void) async {
+        if let disconnectedClosure = features[ConnectionFeature.Disconnected] as? () async -> Void {
+            let _ = await disconnectedClosure()
+        }
+        return await callback()
+    }
 }
 
 final class HubConnectionTests: XCTestCase {
@@ -56,6 +75,11 @@ final class HubConnectionTests: XCTestCase {
     var logHandler: LogHandler!
     var hubProtocol: HubProtocol!
     var hubConnection: HubConnection!
+    var hubConnectionForStatefulReconnect: HubConnection!
+    var sentCount = 0;
+    var sentPingCount = 0;
+    var sendExpectation = XCTestExpectation(description: "send() should be called");
+
 
     override func setUp() async throws {
         mockConnection = MockConnection()
@@ -70,6 +94,53 @@ final class HubConnectionTests: XCTestCase {
             keepAliveInterval: nil,
             statefulReconnectBufferSize: nil
         )
+        hubConnectionForStatefulReconnect = HubConnection(
+            connection: mockConnection,
+            logger: Logger(logLevel: .debug, logHandler: logHandler),
+            hubProtocol: hubProtocol,
+            retryPolicy: DefaultRetryPolicy(retryDelays: [0, 1, 2]), 
+            serverTimeout: nil,
+            keepAliveInterval: 0.5,
+            statefulReconnectBufferSize: 10000
+        )
+    }
+
+    func initForStatefulReconnect() async {
+        self.sentCount = 0;
+        self.sentPingCount = 0;
+        self.sendExpectation = XCTestExpectation(description: "send() should be called");
+        let pingExpectation = XCTestExpectation(description: "ping should be called")
+
+        self.mockConnection.onSend = { data in
+            do {
+                let messages = try self.hubProtocol.parseMessages(input: data, binder: TestInvocationBinder(binderTypes: [Int.self]))
+                for message in messages {
+                    if message is PingMessage {
+                        self.sentPingCount += 1
+                        pingExpectation.fulfill()
+                        return
+                    }
+                }
+                self.sentCount += 1
+                self.sendExpectation.fulfill()
+                if (self.sentCount == 1) {
+                    Task { await self.hubConnectionForStatefulReconnect.processIncomingData(.string(self.successHandshakeResponse)) } // only success the first time
+                    return
+                }
+            } catch {
+                XCTFail("Unexpected error: \(error)")
+            }
+        }
+
+        await self.mockConnection.setFeature(feature: ConnectionFeature.Reconnect, value: true);
+        let startTask = Task { try await hubConnectionForStatefulReconnect.start() }
+        // defer { startTask.cancel() }
+
+        await whenTaskWithTimeout(startTask, timeout: 1.0)
+        XCTAssertNotNil(mockConnection.features[ConnectionFeature.Disconnected], "Disconnected feature should be set");
+        XCTAssertNotNil(mockConnection.features[ConnectionFeature.Resend], "Resend feature should be set");
+        await fulfillment(of: [sendExpectation], timeout: 1.0)
+        await fulfillment(of: [pingExpectation], timeout: 1.0)
     }
 
     func testStart_CallsStartOnConnection() async throws {
@@ -441,6 +512,9 @@ final class HubConnectionTests: XCTestCase {
             if (retryCount < 3) {
                 retryExpectations[retryCount].fulfill()
             }
+            else {
+                return nil;
+            }
             retryCount += 1
             previousElaped = retryContext.elapsed
             return 0.1
@@ -528,6 +602,343 @@ final class HubConnectionTests: XCTestCase {
 
         // Send keepalive after connect
         await fulfillment(of: [pingExpectations[0], pingExpectations[1], pingExpectations[2]], timeout: 1.0)
+    }
+
+    // Stateful reconnect tests are migrated from https://github.com/dotnet/aspnetcore/blob/v9.0.9/src/SignalR/clients/ts/signalr/tests/HubConnection.test.ts#L1859
+    func testStatefulReconnect_sendsSequenceMessageOnReconnect() async throws {
+        let disconnectExpectation = XCTestExpectation(description: "disconnect should be called")
+        let resendExpectation = XCTestExpectation(description: "reconnect should be called")
+        await self.initForStatefulReconnect();
+
+        await mockConnection.disconnect { disconnectExpectation.fulfill() }
+        await mockConnection.resend { resendExpectation.fulfill() }
+
+        await fulfillment(of: [disconnectExpectation, resendExpectation], timeout: 0.1)
+
+        // expected 3 sent messages: [{"protocol":"json","version":2}, {"type":6}, {"type":9,"sequenceId":1}], ...(maybe contains more ping messages {"type":6})
+
+        XCTAssertEqual(mockConnection.sentData.count, 2 + sentPingCount);
+        let sentHubMessages = try getParsedData(data: mockConnection.sentData, binder: TestInvocationBinder(binderTypes: []))
+        XCTAssertEqual(sentHubMessages.count, 1 + sentPingCount);
+        XCTAssertTrue(sentHubMessages[0] is PingMessage)
+        XCTAssertTrue(sentHubMessages[1] is SequenceMessage)
+        XCTAssertEqual((sentHubMessages[1] as! SequenceMessage).sequenceId, 1)
+    }
+
+    func testStatefulReconnect_resendsMessagesOnReconnect() async throws {
+        let disconnectExpectation = XCTestExpectation(description: "disconnect should be called")
+        let resendExpectation = XCTestExpectation(description: "reconnect should be called")
+        await self.initForStatefulReconnect()
+
+        await whenTaskWithTimeout(Task { try await hubConnectionForStatefulReconnect.send(method: "test", arguments: 13) }, timeout: 0.1);
+        await whenTaskWithTimeout(Task { try await hubConnectionForStatefulReconnect.send(method: "test", arguments: 12) }, timeout: 0.1);
+        await whenTaskWithTimeout(Task { try await hubConnectionForStatefulReconnect.send(method: "test", arguments: 11) }, timeout: 0.1);
+
+        await mockConnection.disconnect { disconnectExpectation.fulfill() }
+        await mockConnection.resend { resendExpectation.fulfill() }
+        await fulfillment(of: [disconnectExpectation], timeout: 1)
+        await fulfillment(of: [resendExpectation], timeout: 1)
+
+        /* Expeceted mockConnection.SentData = [
+                0 {"protocol":"json","version":2}
+                1 {"type":6}
+                2 {"target":"test","arguments":[13],"type":1}
+                3 {"target":"test","arguments":[12],"type":1}
+                4 {"target":"test","arguments":[11],"type":1}
+                ... may contains additional ping messages, ignore them
+                5 {"type":9,"sequenceId":1}
+                6 {"target":"test","arguments":[13],"type":1}
+                7 {"target":"test","arguments":[12],"type":1}
+                8 {"target":"test","arguments":[11],"type":1}
+        ]*/
+        // use hubProtocol to parse the messages
+        let parsedSentData = try getParsedData(data: mockConnection.sentData, binder: TestInvocationBinder(binderTypes: [Int.self]))
+        let sentHubMessage = removeAllPingMessagesButFirst(messages: parsedSentData)
+        XCTAssertEqual(sentHubMessage.count, 8) // the first message for handshake is not a HubMessage
+        XCTAssertTrue(sentHubMessage[0] is PingMessage)
+        XCTAssertTrue(sentHubMessage[4] is SequenceMessage)
+        XCTAssertTrue((sentHubMessage[4] as! SequenceMessage).sequenceId == 1)
+        XCTAssertTrue(sentHubMessage[5] is InvocationMessage)
+        XCTAssertTrue((sentHubMessage[5] as! InvocationMessage).target == "test")
+        XCTAssertTrue((sentHubMessage[5] as! InvocationMessage).arguments.value?[0] as? Int == 13)
+        XCTAssertTrue(sentHubMessage[6] is InvocationMessage)
+        XCTAssertTrue((sentHubMessage[6] as! InvocationMessage).target == "test")
+        XCTAssertTrue((sentHubMessage[6] as! InvocationMessage).arguments.value?[0] as? Int == 12)
+        XCTAssertTrue(sentHubMessage[7] is InvocationMessage)
+        XCTAssertTrue((sentHubMessage[7] as! InvocationMessage).target == "test")
+        XCTAssertTrue((sentHubMessage[7] as! InvocationMessage).arguments.value?[0] as? Int == 11)
+    }
+
+    func testStatefulReconnect_resendsMessagesWhileDisconnectedOnReconnect() async throws {
+        let disconnectExpectation = XCTestExpectation(description: "disconnect should be called")
+        let resendExpectation = XCTestExpectation(description: "reconnect should be called")
+
+        await self.initForStatefulReconnect()
+    
+        // Send first message before disconnect
+        await whenTaskWithTimeout(Task { try await hubConnectionForStatefulReconnect.send(method: "method1", arguments: 111) }, timeout: 0.1)
+    
+        // Pretend TestConnection disconnected
+        await mockConnection.disconnect { disconnectExpectation.fulfill() }
+    
+        // Send while disconnected, should wait until resend completes
+        let sendDoneExpectation = XCTestExpectation(description: "sendDone should be true")
+    
+        await mockConnection.resend { resendExpectation.fulfill() }
+        let sendTask = Task {
+            try await hubConnectionForStatefulReconnect.send(method: "method2", arguments: 222)
+            sendDoneExpectation.fulfill()
+        }
+        await whenTaskWithTimeout(sendTask, timeout: 1)
+        await fulfillment(of: [sendDoneExpectation], timeout: 1)
+    
+        await fulfillment(of: [disconnectExpectation, resendExpectation], timeout: 1)
+    
+        /* Expected mockConnection.sentData = [
+            0 {"protocol":"json","version":2}
+            1 {"type":6}  // ping
+            2 {"target":"test","arguments":[13],"type":1}  // first send
+            3 {"type":9,"sequenceId":1}  // sequence message
+            4 {"target":"test","arguments":[13],"type":1}  // resend first message
+            5 {"target":"test","arguments":[22],"type":1}  // send message that waited
+        ]*/
+        
+        let parsedSentData = try getParsedData(data: mockConnection.sentData, binder: TestInvocationBinder(binderTypes: [Int.self]))
+        let sentHubMessage = removeAllPingMessagesButFirst(messages: parsedSentData)
+        
+        XCTAssertEqual(sentHubMessage.count, 5)
+        XCTAssertTrue(sentHubMessage[0] is PingMessage)
+
+        XCTAssertTrue(sentHubMessage[2] is SequenceMessage)
+        XCTAssertEqual((sentHubMessage[2] as! SequenceMessage).sequenceId, 1)
+
+        XCTAssertTrue(sentHubMessage[3] is InvocationMessage)
+        XCTAssertEqual((sentHubMessage[3] as! InvocationMessage).target, "method1")
+        XCTAssertEqual((sentHubMessage[3] as! InvocationMessage).arguments.value?[0] as? Int, 111)
+
+        XCTAssertTrue(sentHubMessage[4] is InvocationMessage)
+        XCTAssertEqual((sentHubMessage[4] as! InvocationMessage).target, "method2")
+        XCTAssertEqual((sentHubMessage[4] as! InvocationMessage).arguments.value?[0] as? Int, 222)
+    }
+
+
+    func testStatefulReconnect_receivingAckRemovesBufferedMessages() async throws {
+        // Setup stateful reconnect
+        await initForStatefulReconnect()
+
+        await whenTaskWithTimeout(Task { try await hubConnectionForStatefulReconnect.send(method: "test", arguments: 13) }, timeout: 0.1)
+        await whenTaskWithTimeout(Task { try await hubConnectionForStatefulReconnect.send(method: "test", arguments: 14) }, timeout: 0.1)
+        await whenTaskWithTimeout(Task { try await hubConnectionForStatefulReconnect.send(method: "test", arguments: 15) }, timeout: 0.1)
+
+        
+        let ackMessage = AckMessage(sequenceId: Int64(2))
+        let s = try hubProtocol.writeMessage(message: ackMessage)
+        await hubConnectionForStatefulReconnect.processIncomingData(s)
+
+        // Simulate disconnect and resend
+        let disconnectExpectation = XCTestExpectation(description: "disconnect should be called")
+        let resendExpectation = XCTestExpectation(description: "reconnect should be called")
+
+        await mockConnection.disconnect { disconnectExpectation.fulfill() }
+        await mockConnection.resend { resendExpectation.fulfill() }
+        await fulfillment(of: [disconnectExpectation, resendExpectation], timeout: 1)
+
+        // Now only the last message should be resent, and a new SequenceMessage should be sent
+        let parsedSentData = try getParsedData(data: mockConnection.sentData, binder: TestInvocationBinder(binderTypes: [Int.self]))
+        let sentHubMessage = removeAllPingMessagesButFirst(messages: parsedSentData)
+ 
+        // {"protocol":"json","version":2}
+        // {"type":6}
+        // {"target":"test","arguments":[13],"type":1}
+        // {"target":"test","arguments":[14],"type":1}
+        // {"target":"test","arguments":[15],"type":1}
+        // {"type":9,"sequenceId":3}
+        // {"target":"test","arguments":[15],"type":1}
+
+        // The last two messages should be SequenceMessage (with sequenceId 3) and InvocationMessage (with argument 15)
+        XCTAssertTrue(sentHubMessage[sentHubMessage.count - 2] is SequenceMessage)
+        XCTAssertEqual((sentHubMessage[sentHubMessage.count - 2] as! SequenceMessage).sequenceId, 3)
+        XCTAssertTrue(sentHubMessage.last is InvocationMessage)
+        XCTAssertEqual((sentHubMessage.last as! InvocationMessage).target, "test")
+        XCTAssertEqual((sentHubMessage.last as! InvocationMessage).arguments.value?[0] as? Int, 15)
+    }
+
+    func testStatefulReconnect_sendsAckAfterReceivingMessage() async throws {
+        // Setup stateful reconnect
+        await initForStatefulReconnect()
+        
+        // Send an InvocationMessage to simulate receiving a message from server
+        let invocationMessage = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        let messageData = try hubProtocol.writeMessage(message: invocationMessage)
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData)
+        
+        // Wait for Ack message to be sent using delayUntil
+        try await delayUntil(timeout: 2.0) {
+            return self.mockConnection.sentData.count == self.sentPingCount + 2;
+        }
+
+        let parsedSentData = try getParsedData(data: mockConnection.sentData, binder: TestInvocationBinder(binderTypes: [Int.self]))
+        let messages = removeAllPingMessages(messages: parsedSentData)
+        
+        XCTAssertNotNil(messages, "Ack message should be sent")
+        XCTAssertTrue(messages.last is AckMessage);
+        XCTAssertEqual((messages.last as! AckMessage).sequenceId, 1)
+    }
+
+    func testStatefulReconnect_sendsAckAfterReceivingManyMessages() async throws {
+        // Setup stateful reconnect
+        await initForStatefulReconnect()
+        
+        // Send multiple InvocationMessages to simulate receiving multiple messages from server
+        let invocationMessage1 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        let invocationMessage2 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        let invocationMessage3 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        let invocationMessage4 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        
+        let messageData1 = try hubProtocol.writeMessage(message: invocationMessage1)
+        let messageData2 = try hubProtocol.writeMessage(message: invocationMessage2)
+        let messageData3 = try hubProtocol.writeMessage(message: invocationMessage3)
+        let messageData4 = try hubProtocol.writeMessage(message: invocationMessage4)
+        
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData1)
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData2)
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData3)
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData4)
+        
+        // Wait for Ack message to be sent using delayUntil
+        try await delayUntil(timeout: 2.0) {
+            // `sentData` contains {"protocol":"json","version":2} and {"type":8,"sequenceId":4} at least.
+            return self.mockConnection.sentData.count == self.sentPingCount + 2;
+        }
+
+        let parsedSentData = try getParsedData(data: mockConnection.sentData, binder: TestInvocationBinder(binderTypes: [Int.self]))
+        let messages = removeAllPingMessages(messages: parsedSentData)
+
+        let ackMessage = messages.last { $0 is AckMessage } as? AckMessage
+        XCTAssertNotNil(ackMessage, "Ack message should be sent")
+        XCTAssertEqual(ackMessage?.sequenceId, 4)
+    }
+
+    func testStatefulReconnect_messagesIgnoredAfterReconnectIfAlreadyReceived() async throws {
+        // Setup stateful reconnect
+        await initForStatefulReconnect()
+        
+        var methodCalled = 0
+        let methodExpectation = XCTestExpectation(description: "Method should be called")
+        methodExpectation.expectedFulfillmentCount = 2
+        
+        // Register method handler
+        await hubConnectionForStatefulReconnect.on(method: "t", types: []) { _ in
+            methodCalled += 1
+            methodExpectation.fulfill()
+        }
+        
+        // Send two InvocationMessages to simulate receiving messages from server
+        let invocationMessage1 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        let invocationMessage2 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        
+        let messageData1 = try hubProtocol.writeMessage(message: invocationMessage1)
+        let messageData2 = try hubProtocol.writeMessage(message: invocationMessage2)
+        
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData1)
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData2)
+        
+        // Wait for both method calls
+        await fulfillment(of: [methodExpectation], timeout: 1.0)
+        XCTAssertEqual(methodCalled, 2)
+        
+        // Verify that HubConnection set the features
+        XCTAssertNotNil(mockConnection.features[ConnectionFeature.Disconnected], "Disconnected feature should be set")
+        XCTAssertNotNil(mockConnection.features[ConnectionFeature.Resend], "Resend feature should be set")
+        
+        // Simulate disconnect and resend
+        let disconnectExpectation = XCTestExpectation(description: "disconnect should be called")
+        let resendExpectation = XCTestExpectation(description: "resend should be called")
+        
+        await mockConnection.disconnect { disconnectExpectation.fulfill() }
+        await mockConnection.resend { resendExpectation.fulfill() }
+        
+        await fulfillment(of: [disconnectExpectation, resendExpectation], timeout: 1.0)
+        
+        // Send Sequence message to indicate we're resuming from sequenceId 1
+        let sequenceMessage = SequenceMessage(sequenceId: 1)
+        let sequenceData = try hubProtocol.writeMessage(message: sequenceMessage)
+        await hubConnectionForStatefulReconnect.processIncomingData(sequenceData)
+        
+        // Send the same two messages again - they should be ignored
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData1)
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData2)
+        
+        // Method should still be called only 2 times (no additional calls)
+        XCTAssertEqual(methodCalled, 2)
+        
+        // Send a new message - this should be processed
+        let invocationMessage3 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        let messageData3 = try hubProtocol.writeMessage(message: invocationMessage3)
+        
+        let newMethodExpectation = XCTestExpectation(description: "New method should be called")
+        await hubConnectionForStatefulReconnect.on(method: "t", types: []) { _ in
+            methodCalled += 1
+            newMethodExpectation.fulfill()
+        }
+        
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData3)
+        await fulfillment(of: [newMethodExpectation], timeout: 1.0)
+        XCTAssertEqual(methodCalled, 3)
+    }
+
+    func testStatefulReconnect_messagesIgnoredAfterReconnectIfSequenceMessageNotReceived() async throws {
+        // Setup stateful reconnect
+        await initForStatefulReconnect()
+        
+        var methodCalled = 0
+        let methodExpectation = XCTestExpectation(description: "Method should be called")
+        methodExpectation.expectedFulfillmentCount = 1
+        
+        // Register method handler
+        await hubConnectionForStatefulReconnect.on(method: "t", types: []) { _ in
+            methodCalled += 1
+            methodExpectation.fulfill()
+        }
+        
+        // Verify that HubConnection set the features
+        XCTAssertNotNil(mockConnection.features[ConnectionFeature.Disconnected], "Disconnected feature should be set")
+        XCTAssertNotNil(mockConnection.features[ConnectionFeature.Resend], "Resend feature should be set")
+        
+        // Simulate disconnect and resend
+        let disconnectExpectation = XCTestExpectation(description: "disconnect should be called")
+        let resendExpectation = XCTestExpectation(description: "resend should be called")
+        
+        await mockConnection.disconnect { disconnectExpectation.fulfill() }
+        await mockConnection.resend { resendExpectation.fulfill() }
+        
+        await fulfillment(of: [disconnectExpectation, resendExpectation], timeout: 1.0)
+        
+        // Send two InvocationMessages - they should be ignored without sequence message
+        let invocationMessage1 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        let invocationMessage2 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        
+        let messageData1 = try hubProtocol.writeMessage(message: invocationMessage1)
+        let messageData2 = try hubProtocol.writeMessage(message: invocationMessage2)
+        
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData1)
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData2)
+        
+        // Method should not be called yet (messages ignored)
+        XCTAssertEqual(methodCalled, 0)
+        
+        // Send Sequence message to indicate we're resuming from sequenceId 1
+        let sequenceMessage = SequenceMessage(sequenceId: 1)
+        let sequenceData = try hubProtocol.writeMessage(message: sequenceMessage)
+        await hubConnectionForStatefulReconnect.processIncomingData(sequenceData)
+        
+        // Send a new message - this should be processed
+        let invocationMessage3 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
+        let messageData3 = try hubProtocol.writeMessage(message: invocationMessage3)
+        
+        await hubConnectionForStatefulReconnect.processIncomingData(messageData3)
+        await fulfillment(of: [methodExpectation], timeout: 1.0)
+        XCTAssertEqual(methodCalled, 1)
     }
 
     func serverTimeoutTest() async throws {
