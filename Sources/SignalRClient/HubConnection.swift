@@ -25,7 +25,11 @@ public actor HubConnection {
     private var receivedHandshakeResponse: Bool = false
     private var invocationId: Int = 0
     private var messageBuffer: MessageBuffer? = nil
-    private var connectionStatus: HubConnectionState = .Stopped
+    nonisolated public let connectionStatusUpdates: AsyncStream<HubConnectionState>
+    private let statusUpdateContinuation: AsyncStream<HubConnectionState>.Continuation
+    private var connectionStatus: HubConnectionState = .Stopped {
+        didSet { statusUpdateContinuation.yield(connectionStatus) }
+    }
     private var stopping: Bool = false
     private var stopDuringStartError: Error?
     private nonisolated(unsafe) var handshakeResolver: ((HandshakeResponseMessage) -> Void)?
@@ -62,6 +66,12 @@ public actor HubConnection {
         self.serverTimeoutScheduler = TimeScheduler(initialInterval: self.serverTimeout)
         self.reconnectedHandlers = []
         self.reconnectingHandlers = []
+
+        (connectionStatusUpdates, statusUpdateContinuation) = AsyncStream.makeStream(of: HubConnectionState.self)
+    }
+
+    deinit {
+        statusUpdateContinuation.finish()
     }
 
     public func start() async throws {

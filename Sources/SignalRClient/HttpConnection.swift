@@ -8,7 +8,7 @@ import Foundation
 
 // MARK: - Enums and Protocols
 
-private enum ConnectionState: String {
+public enum ConnectionState: String, Sendable {
     case connecting = "Connecting"
     case connected = "Connected"
     case disconnected = "Disconnected"
@@ -72,7 +72,12 @@ actor HttpConnection: ConnectionProtocol {
     // MARK: - Properties
     private let negotiationRedirectionLimit = 100
 
-    private var connectionState: ConnectionState = .disconnected
+    nonisolated public let connectionStateUpdates: AsyncStream<ConnectionState>
+    private let stateUpdateContinuation: AsyncStream<ConnectionState>.Continuation
+    private var connectionState: ConnectionState = .disconnected {
+        didSet { stateUpdateContinuation.yield(connectionState) }
+    }
+
     private var connectionStartedSuccessfully: Bool = false
     private let httpClient: AccessTokenHttpClient
     private let logger: Logger
@@ -92,7 +97,7 @@ actor HttpConnection: ConnectionProtocol {
             return inherentKeepAlivePrivate
         }
     }
-
+    
     private var onReceive: Transport.OnReceiveHandler?
     private var onClose: Transport.OnCloseHander?
     private let negotiateVersion = 1
@@ -112,6 +117,12 @@ actor HttpConnection: ConnectionProtocol {
 
         self.accessTokenFactory = options.accessTokenFactory
         self.httpClient = AccessTokenHttpClient(innerClient: options.httpClient ?? DefaultHttpClient(logger: logger), accessTokenFactory: options.accessTokenFactory)
+
+        (connectionStateUpdates, stateUpdateContinuation) = AsyncStream.makeStream(of: ConnectionState.self)
+    }
+
+    deinit {
+        stateUpdateContinuation.finish()
     }
 
     // MARK: - Public Methods
