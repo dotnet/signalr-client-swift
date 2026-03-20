@@ -4,16 +4,16 @@
 import Foundation
 
 public class HubConnectionBuilder {
-    var connection: HttpConnection?
-    var logHandler: LogHandler?
-    var logLevel: LogLevel?
-    var hubProtocol: HubProtocol?
-    var serverTimeout: TimeInterval?
-    var keepAliveInterval: TimeInterval?
-    var url: String?
-    var retryPolicy: RetryPolicy?
-    var statefulReconnectBufferSize: Int?
-    var httpConnectionOptions: HttpConnectionOptions = HttpConnectionOptions()
+    private var connection: HttpConnection?
+    private var logHandler: LogHandler?
+    private var logLevel: LogLevel?
+    private var hubProtocol: HubProtocol?
+    private var serverTimeout: TimeInterval?
+    private var keepAliveInterval: TimeInterval?
+    private var url: String?
+    private var retryPolicy: RetryPolicy?
+    private var statefulReconnectBufferSize: Int?
+    private var httpConnectionOptions: HttpConnectionOptions = HttpConnectionOptions()
 
     public init() {}
 

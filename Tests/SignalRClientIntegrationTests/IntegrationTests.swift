@@ -17,9 +17,9 @@ class IntegrationTests: XCTestCase {
         ]
     #else
         private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.webSockets, .json),
-            (.serverSentEvents, .json),
-            (.longPolling, .json),
+            (.webSockets, .json()),
+            (.serverSentEvents, .json()),
+            (.longPolling, .json()),
             (.webSockets, .messagePack),
             (.longPolling, .messagePack),
         ]
