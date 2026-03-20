@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+
 import XCTest
 @testable import SignalRClient
 
@@ -12,13 +13,13 @@ class IntegrationTests: XCTestCase {
     #if os(Linux)
         private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
             (.longPolling, .messagePack),
-            (.longPolling, .json()),
+            (.longPolling, .json),
         ]
     #else
         private let testCombinations: [(transport: HttpTransportType, hubProtocol: HubProtocolType)] = [
-            (.webSockets, .json()),
-            (.serverSentEvents, .json()),
-            (.longPolling, .json()),
+            (.webSockets, .json),
+            (.serverSentEvents, .json),
+            (.longPolling, .json),
             (.webSockets, .messagePack),
             (.longPolling, .messagePack),
         ]
@@ -235,7 +236,7 @@ class IntegrationTests: XCTestCase {
             return stream
         }
 
-        try await run() {
+        try await run(){
             try await connection.send(method: "AddNumbers", arguments: 10, createClientStream())
             try await connection.invoke(method: "AddNumbers", arguments: 10, createClientStream())
             let result: Int = try await connection.invoke(method: "AddNumbers", arguments: 10, createClientStream())
