@@ -92,6 +92,56 @@ class MsgpackEncoderTests: XCTestCase {
         }
     }
 
+    func testEncodeStringNonAsciiUsesUtf8ByteLength() throws {
+        // The str header carries the UTF-8 byte count, which differs from the
+        // grapheme-cluster count for any non-ASCII string.
+        let cases: [(String, Data)] = [
+            ("\u{e9}", Data([0xa2])), // é: 1 grapheme, 2 bytes
+            ("\u{2014}", Data([0xa3])), // em dash: 1 grapheme, 3 bytes
+            ("\u{1f680}", Data([0xa4])), // rocket emoji: 1 grapheme, 4 bytes
+            ("👨‍👩‍👧‍👦", Data([0xb9])), // family emoji: 1 grapheme, 25 bytes
+            ("MyApp \u{2014} MyApp.xcworkspace", Data([0xbb])), // 25 graphemes, 27 bytes
+        ]
+        for (string, expectedHeader) in cases {
+            let result = try MsgpackElement.string(string).marshall()
+            XCTAssertEqual(result, expectedHeader + Data(string.utf8))
+        }
+    }
+
+    func testEncodeStringFormatSelectionUsesUtf8ByteLength() throws {
+        // Format selection must also use bytes: 30 em dashes are 30 graphemes
+        // but 90 UTF-8 bytes, so str8 is required, not fixstr.
+        let thirty = String(repeating: "\u{2014}", count: 30)
+        XCTAssertEqual(
+            try MsgpackElement.string(thirty).marshall(),
+            [0xd9, 0x5a] + Data(thirty.utf8)
+        )
+
+        // 100 em dashes are 300 UTF-8 bytes, so str16 is required, not str8.
+        let hundred = String(repeating: "\u{2014}", count: 100)
+        XCTAssertEqual(
+            try MsgpackElement.string(hundred).marshall(),
+            [0xda, 0x01, 0x2c] + Data(hundred.utf8)
+        )
+    }
+
+    func testEncodeStringNonAsciiRoundTrip() throws {
+        let strings = [
+            "MyApp \u{2014} MyApp.xcworkspace",
+            "Fran\u{e7}ois M\u{fc}ller",
+            "Pull requests \u{b7} example/repo",
+            "Good night team 🌙",
+            "caf\u{e9} \u{2014} na\u{ef}ve 👨‍👩‍👧‍👦",
+        ]
+        for string in strings {
+            let msgpackElement = MsgpackElement.string(string)
+            let binary = try msgpackElement.marshall()
+            let (decodedType, remaining) = try MsgpackElement.parse(data: binary)
+            XCTAssertEqual(remaining.count, 0)
+            XCTAssertEqual(decodedType, msgpackElement)
+        }
+    }
+
     func testEncodeBool() throws {
         var data: [Bool: Data] = [:]
         data[true] = Data([0xc3])
