@@ -9,6 +9,10 @@ on:
   pull_request:
     branches: [ "main", "dev" ]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   E2ETest:
     name: E2E Test on ${{ matrix.os }}
@@ -23,18 +27,12 @@ jobs:
       with:
         swift-version: "5.10"
 
-    - name: Check Connection String
-      run: |
-        echo "Connection string length: ${#CONNECTION_STRING}"
-        if [ ${#CONNECTION_STRING} -gt 20 ]; then
-          echo "✅ Connection string looks valid"
-          echo "Starts with: ${CONNECTION_STRING:0:20}..."
-        else
-          echo "❌ Connection string still too short or empty"
-          exit 1
-        fi
-      env:
-        CONNECTION_STRING: ${{ secrets.E2E_CONNECTION_STRING }}
+    - name: Azure login (OIDC)
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     - name: Get swift version
       run: swift --version
@@ -51,7 +49,7 @@ jobs:
     - name: Start IntegrationTestServer
       working-directory: ./Tests/IntegrationTestServer
       env:
-        Azure__SignalR__ConnectionString: ${{ secrets.E2E_CONNECTION_STRING }}
+        Azure__SignalR__ConnectionString: "Endpoint=${{ secrets.AZURE_SIGNALR_ENDPOINT }};AuthType=azure;Version=1.0;"
       run: dotnet run -p:DefineConstants="USE_AZURE_SIGNALR" &
       continue-on-error: false
 
