@@ -395,8 +395,10 @@ extension MsgpackElement: MsgpackElementConvertable {
     }
 
     private static func encodeString(_ v: String) throws -> Data {
-        let length = v.count
-        let content = v.data(using: .utf8)!
+        // The msgpack str header carries the UTF-8 byte length, not the
+        // grapheme-cluster count; the two differ for any non-ASCII string.
+        let content = Data(v.utf8)
+        let length = content.count
         if length < 1 << 5 {
             return [0xa0 | UInt8(length)] + content
         }

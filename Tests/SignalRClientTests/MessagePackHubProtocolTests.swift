@@ -154,6 +154,41 @@ class MessagePackHubProtocolTests: XCTestCase {
         }
     }
 
+    func testCompletionMessageResultNonAsciiRoundTrip() throws {
+        // Strings whose UTF-8 byte count exceeds their grapheme count must
+        // survive a full write/parse round trip (msgpack str headers carry
+        // the byte count).
+        struct Window: Codable, Equatable {
+            let id: String
+            let title: String
+        }
+        let windows = [
+            Window(id: "win-0", title: "MyApp \u{2014} MyApp.xcworkspace"),
+            Window(id: "win-1", title: "Pull requests \u{b7} example/repo"),
+            Window(id: "win-2", title: "Good night team 🌙"),
+        ]
+        let msgpack = MessagePackHubProtocol()
+        let written = try msgpack.writeMessage(
+            message: CompletionMessage(
+                invocationId: "xyz", error: nil,
+                result: AnyEncodable(windows), headers: nil
+            )
+        )
+        guard case .data(let framed) = written else {
+            XCTFail("Wrong encoded typed")
+            return
+        }
+        let binder = TestInvocationBinder(binderTypes: [[Window].self])
+        let messages = try msgpack.parseMessages(
+            input: .data(framed), binder: binder
+        )
+        XCTAssertEqual(messages.count, 1)
+        let message = try XCTUnwrap(messages.first as? CompletionMessage)
+        XCTAssertEqual(message.invocationId, "xyz")
+        XCTAssertNil(message.error)
+        XCTAssertEqual(message.result.value as? [Window], windows)
+    }
+
     func testCompletionMessageResultNoBinder() throws {
         let data = Data([
             0x95, 0x03, 0x80, 0xa3, 0x78, 0x79, 0x7a, 0x03, 0x2a,
