@@ -1,26 +1,91 @@
 ﻿using OpenAI.Chat;
-using System.Collections.Concurrent;
 
 namespace AIStreaming
 {
     public class GroupHistoryStore
     {
-        private readonly ConcurrentDictionary<string, IList<ChatMessage>> _store = new();
+        public const int MaxGroups = 1_000;
+        public const int MaxMessagesPerGroup = 100;
+        public const int MaxGroupNameLength = 256;
+        public const int MaxUserNameLength = 100;
+        public const int MaxMessageLength = 4_096;
+
+        private readonly Dictionary<string, List<ChatMessage>> _store = new();
+        private readonly object _lock = new();
 
         public IReadOnlyList<ChatMessage> GetOrAddGroupHistory(string groupName, string userName, string message)
         {
-            var chatMessages = _store.GetOrAdd(groupName, _ => InitiateChatMessages());
-            chatMessages.Add(new UserChatMessage(GenerateUserChatMessage(userName, message)));
-            return chatMessages.AsReadOnly();
+            ValidateInput(groupName, userName, message);
+
+            lock (_lock)
+            {
+                if (!_store.TryGetValue(groupName, out var chatMessages))
+                {
+                    if (_store.Count >= MaxGroups)
+                    {
+                        throw new InvalidOperationException("The maximum number of group histories has been reached.");
+                    }
+
+                    chatMessages = InitiateChatMessages();
+                    _store.Add(groupName, chatMessages);
+                }
+
+                chatMessages.Add(new UserChatMessage(GenerateUserChatMessage(userName, message)));
+                TrimHistory(chatMessages);
+                return chatMessages.ToArray();
+            }
         }
 
         public void UpdateGroupHistoryForAssistant(string groupName, string message)
         {
-            var chatMessages = _store.GetOrAdd(groupName, _ => InitiateChatMessages());
-            chatMessages.Add(new AssistantChatMessage(message));
+            ValidateInput(groupName, "assistant", message);
+
+            lock (_lock)
+            {
+                if (!_store.TryGetValue(groupName, out var chatMessages))
+                {
+                    if (_store.Count >= MaxGroups)
+                    {
+                        throw new InvalidOperationException("The maximum number of group histories has been reached.");
+                    }
+
+                    chatMessages = InitiateChatMessages();
+                    _store.Add(groupName, chatMessages);
+                }
+
+                chatMessages.Add(new AssistantChatMessage(message));
+                TrimHistory(chatMessages);
+            }
         }
 
-        private IList<ChatMessage> InitiateChatMessages()
+        private static void TrimHistory(List<ChatMessage> chatMessages)
+        {
+            var messagesToRemove = chatMessages.Count - MaxMessagesPerGroup;
+            if (messagesToRemove > 0)
+            {
+                chatMessages.RemoveRange(1, messagesToRemove);
+            }
+        }
+
+        private static void ValidateInput(string groupName, string userName, string message)
+        {
+            if (string.IsNullOrWhiteSpace(groupName) || groupName.Length > MaxGroupNameLength)
+            {
+                throw new ArgumentException($"Group name must be between 1 and {MaxGroupNameLength} characters.", nameof(groupName));
+            }
+
+            if (string.IsNullOrWhiteSpace(userName) || userName.Length > MaxUserNameLength)
+            {
+                throw new ArgumentException($"User name must be between 1 and {MaxUserNameLength} characters.", nameof(userName));
+            }
+
+            if (string.IsNullOrWhiteSpace(message) || message.Length > MaxMessageLength)
+            {
+                throw new ArgumentException($"Message must be between 1 and {MaxMessageLength} characters.", nameof(message));
+            }
+        }
+
+        private List<ChatMessage> InitiateChatMessages()
         {
             var messages = new List<ChatMessage>
             {
