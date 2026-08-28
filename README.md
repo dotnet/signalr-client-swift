@@ -189,6 +189,63 @@ let connection = HubConnectionBuilder()
 |withKeepAliveInterval| 15 (seconds)|Determines the interval at which the client sends ping messages and is set directly on HubConnectionBuilder. This setting allows the server to detect hard disconnects, such as when a client unplugs their computer from the network. Sending any message from the client resets the timer to the start of the interval. If the client hasn't sent a message in the ClientTimeoutInterval set on the server, the server considers the client disconnected.|
 |withServerTimeout| 30 (seconds)|Determines the interval at which the client waits for a response from the server before it considers the server disconnected. This setting is set directly on HubConnectionBuilder.|
 
+## Configure Hub Protocol
+
+### JSON Protocol with Custom Encoder/Decoder
+
+The SignalR Swift client uses JSON as the default protocol. You can customize the JSON encoding and decoding behavior by providing custom `JSONEncoder` and `JSONDecoder` instances. This is useful when you need to customize serialization strategies such as date formatting, key encoding/decoding strategies, or other JSON-specific options.
+
+```swift
+// Create a custom encoder with snake_case key encoding
+let encoder = JSONEncoder()
+encoder.keyEncodingStrategy = .convertToSnakeCase
+encoder.dateEncodingStrategy = .iso8601
+
+// Create a custom decoder with snake_case key decoding
+let decoder = JSONDecoder()
+decoder.keyDecodingStrategy = .convertFromSnakeCase
+decoder.dateDecodingStrategy = .iso8601
+
+let connection = HubConnectionBuilder()
+    .withUrl(url: "https://your-signalr-server")
+    .withHubProtocol(hubProtocol: .json(encoder, decoder))
+    .build()
+```
+
+You can also provide just a custom encoder or decoder, using default instances for the other:
+
+```swift
+// Custom encoder only
+let encoder = JSONEncoder()
+encoder.outputFormatting = .prettyPrinted
+
+let connection = HubConnectionBuilder()
+    .withUrl(url: "https://your-signalr-server")
+    .withHubProtocol(hubProtocol: .json(encoder))
+    .build()
+```
+
+If you don't specify a custom encoder or decoder, the default `JSONEncoder()` and `JSONDecoder()` instances will be used:
+
+```swift
+// Uses default encoder and decoder
+let connection = HubConnectionBuilder()
+    .withUrl(url: "https://your-signalr-server")
+    .withHubProtocol(hubProtocol: .json())
+    .build()
+```
+
+### MessagePack Protocol
+
+You can also use MessagePack as the hub protocol:
+
+```swift
+let connection = HubConnectionBuilder()
+    .withUrl(url: "https://your-signalr-server")
+    .withHubProtocol(hubProtocol: .messagePack)
+    .build()
+```
+
 ## Configure transport
 
 The SignalR Swift client supports three transports: LongPolling, ServerSentEvents, and WebSockets. By default, the client will use WebSockets if the server supports it, and fall back to ServerSentEvents and LongPolling if it doesn't. You can configure the client to use a specific transport by calling `withUrl(url:transport:)` while building the connection.
