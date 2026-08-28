@@ -22,6 +22,14 @@ namespace AIStreaming.Hubs
 
         public async Task JoinGroup(string groupName)
         {
+            ValidateGroupName(groupName);
+
+            if (_groupAccessor.TryGetGroup(Context.ConnectionId, out var previousGroupName) &&
+                previousGroupName is not null && previousGroupName != groupName)
+            {
+                await Groups.RemoveFromGroupAsync(Context.ConnectionId, previousGroupName);
+            }
+
             await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
             _groupAccessor.Join(Context.ConnectionId, groupName);
         }
@@ -34,15 +42,28 @@ namespace AIStreaming.Hubs
 
         public async Task Chat(string userName, string message)
         {
+            ValidateUserName(userName);
+            ValidateMessage(message);
+
             if (!_groupAccessor.TryGetGroup(Context.ConnectionId, out var groupName))
             {
                 throw new InvalidOperationException("Not in a group.");
+            }
+
+            if (groupName is null)
+            {
+                throw new InvalidOperationException("The group name is invalid.");
             }
 
             if (message.StartsWith("@gpt"))
             {
                 var id = Guid.NewGuid().ToString();
                 var actualMessage = message.Substring(4).Trim();
+                if (string.IsNullOrWhiteSpace(actualMessage))
+                {
+                    throw new HubException("The @gpt command must include a message.");
+                }
+
                 var messagesIncludeHistory = _history.GetOrAddGroupHistory(groupName, userName, actualMessage);
                 await Clients.OthersInGroup(groupName).SendAsync("NewMessage", userName, message);
 
@@ -53,12 +74,26 @@ namespace AIStreaming.Hubs
                 {
                     foreach (var content in completion.ContentUpdate)
                     {
-                        totalCompletion.Append(content);
+                        var remainingLength = GroupHistoryStore.MaxMessageLength - totalCompletion.Length;
+                        if (remainingLength == 0)
+                        {
+                            break;
+                        }
+
+                        var contentText = content.Text ?? string.Empty;
+                        totalCompletion.Append(contentText.Length <= remainingLength
+                            ? contentText
+                            : contentText[..remainingLength]);
                         if (totalCompletion.Length - lastSentTokenLength > 20)
                         {
                             await Clients.Group(groupName).SendAsync("newMessageWithId", "ChatGPT", id, totalCompletion.ToString());
                             lastSentTokenLength = totalCompletion.Length;
                         }
+                    }
+
+                    if (totalCompletion.Length == GroupHistoryStore.MaxMessageLength)
+                    {
+                        break;
                     }
                 }
                 _history.UpdateGroupHistoryForAssistant(groupName, totalCompletion.ToString());
@@ -68,6 +103,30 @@ namespace AIStreaming.Hubs
             {
                 _history.GetOrAddGroupHistory(groupName, userName, message);
                 await Clients.OthersInGroup(groupName).SendAsync("NewMessage", userName, message);
+            }
+        }
+
+        private static void ValidateGroupName(string groupName)
+        {
+            if (string.IsNullOrWhiteSpace(groupName) || groupName.Length > GroupHistoryStore.MaxGroupNameLength)
+            {
+                throw new HubException($"Group name must be between 1 and {GroupHistoryStore.MaxGroupNameLength} characters.");
+            }
+        }
+
+        private static void ValidateUserName(string userName)
+        {
+            if (string.IsNullOrWhiteSpace(userName) || userName.Length > GroupHistoryStore.MaxUserNameLength)
+            {
+                throw new HubException($"User name must be between 1 and {GroupHistoryStore.MaxUserNameLength} characters.");
+            }
+        }
+
+        private static void ValidateMessage(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message) || message.Length > GroupHistoryStore.MaxMessageLength)
+            {
+                throw new HubException($"Message must be between 1 and {GroupHistoryStore.MaxMessageLength} characters.");
             }
         }
     }
