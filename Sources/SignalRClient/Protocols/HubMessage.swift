@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 /// Defines properties common to all Hub messages.
-protocol HubMessage: Encodable {
+protocol HubMessage: Encodable, Sendable {
     /// A value indicating the type of this message.
     var type: MessageType { get }
 }
@@ -48,7 +48,7 @@ struct StreamInvocationMessage: HubInvocationMessage {
 }
 
 /// A hub message representing a single item produced as part of a result stream.
-struct StreamItemMessage: HubInvocationMessage {
+struct StreamItemMessage: HubInvocationMessage, @unchecked Sendable {
     /// The type of this message.
     let type: MessageType = .streamItem
     /// The invocation ID.
@@ -60,7 +60,7 @@ struct StreamItemMessage: HubInvocationMessage {
 }
 
 /// A hub message representing the result of an invocation.
-struct CompletionMessage: HubInvocationMessage {
+struct CompletionMessage: HubInvocationMessage, @unchecked Sendable {
     /// The type of this message.
     let type: MessageType = .completion
     /// The invocation ID.
@@ -154,7 +154,7 @@ struct AnyEncodable: Encodable {
     }
 }
 
-struct AnyEncodableArray: Encodable {
+struct AnyEncodableArray: Encodable, @unchecked Sendable {
     public let value: [Any?]?
 
     init(_ array: [Any?]?) {

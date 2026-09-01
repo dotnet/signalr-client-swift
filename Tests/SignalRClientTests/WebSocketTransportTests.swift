@@ -87,7 +87,7 @@ class WebSocketTransportTests: XCTestCase {
     }
 }
 
-class MockWebSocketConnection: WebSocketTransport.WebSocketConnection {
+class MockWebSocketConnection: WebSocketTransport.WebSocketConnection, @unchecked Sendable {
     var connectCalled = false
     var sentData: StringOrData?
     var stopCalled = false

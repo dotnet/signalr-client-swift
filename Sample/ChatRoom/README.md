@@ -4,7 +4,7 @@ A simple chat application built using SwiftUI and SignalR for real-time messagin
 
 ## Prerequests
 
-- Swift >= 5.10
+- Swift >= 6.1.0
 - macOS >= 11.0
 - Dotnet >= 8 (Server needs dotnet)
 

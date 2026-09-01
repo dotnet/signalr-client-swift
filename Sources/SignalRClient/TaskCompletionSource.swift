@@ -3,7 +3,7 @@
 
 import Foundation
 
-actor TaskCompletionSource<T> {
+actor TaskCompletionSource<T: Sendable> {
     private var continuation: CheckedContinuation<(), Never>?
     private var result: Result<T, Error>?
 

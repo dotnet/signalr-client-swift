@@ -4,7 +4,7 @@
 import XCTest
 @testable import SignalRClient
 
-final class HubConnectionOnTests: XCTestCase {
+final class HubConnectionOnTests: XCTestCase, @unchecked Sendable {
     let successHandshakeResponse = """
         {}\u{1e}
     """

@@ -3,7 +3,8 @@
 
 import Foundation
 
-public actor HubConnection {
+
+public actor HubConnection: @unchecked Sendable {
     private static let defaultTimeout: TimeInterval = 30
     private static let defaultPingInterval: TimeInterval = 15
     private static let defaultStatefulReconnectBufferSize: Int = 100_000_000 // bytes of messages
@@ -124,7 +125,7 @@ public actor HubConnection {
         await stopTask!.value
     }
 
-    public func send(method: String, arguments: Any...) async throws {
+    public func send(method: String, arguments: (Any & Sendable)...) async throws {
         let (nonstreamArguments, streamArguments) = splitStreamArguments(arguments: arguments)
         let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
         let invocationMessage = InvocationMessage(target: method, arguments: AnyEncodableArray(nonstreamArguments), streamIds: streamIds, headers: nil, invocationId: nil)
@@ -170,7 +171,7 @@ public actor HubConnection {
         }
     }
     
-    public func invoke(method: String, arguments: Any...) async throws -> Void {
+    public func invoke(method: String, arguments: (Any & Sendable)...) async throws -> Void {
         let (nonstreamArguments, streamArguments) = splitStreamArguments(arguments: arguments)
         let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
         let (invocationId, tcs) = await invocationHandler.create()
@@ -204,7 +205,7 @@ public actor HubConnection {
         }
     }
 
-    public func stream<Element>(method: String, arguments: Any...) async throws -> any StreamResult<Element> {
+    public func stream<Element>(method: String, arguments: (Any&Sendable)...) async throws -> any StreamResult<Element> {
         let (nonstreamArguments, streamArguments) = splitStreamArguments(arguments: arguments)
         let streamIds = await invocationHandler.createClientStreamIds(count: streamArguments.count)
         let (invocationId, stream) = await invocationHandler.createStream()
@@ -538,7 +539,7 @@ public actor HubConnection {
 
         let expectResponse = message.invocationId != nil
         if (expectResponse) {
-            var result: Any? = try await handler(message.arguments.value ?? [])
+            var result: Any? = try await handler((message.arguments.value ?? []) as! [(Any & Sendable)?])
             if (result is Void) {
                 // Void is not encodeable
                 result = nil
@@ -546,7 +547,7 @@ public actor HubConnection {
             let completionMessage = CompletionMessage(invocationId: message.invocationId!, error: nil, result: AnyEncodable(result), headers: nil)
             try await sendWithProtocol(completionMessage)
         } else {
-            _ = try await handler(message.arguments.value ?? [])
+            _ = try await handler((message.arguments.value ?? []) as! [(Any & Sendable)?])
         }
     }
 
@@ -637,18 +638,18 @@ public actor HubConnection {
                     feature: ConnectionFeature.Disconnected, 
                     value: { [weak self] () async -> Void in
                         _ = await self?.messageBuffer?.disconnected()
-                })
+                } as! any Sendable)
                 await self.connection.setFeature(
                     feature: ConnectionFeature.Resend, 
                     value: { [weak self] () async -> Any? in
                         return try? await self?.messageBuffer?.resend()
-                })
+                } as! any Sendable)
             }
 
             if (!(await connection.inherentKeepAlive)) {
                 await keepAliveScheduler.start {
                     do {
-                        let state = self.state()
+                        let state = await self.state()
                         if (state == .Connected) {
                             try await self.sendPing()
                         }
@@ -657,7 +658,7 @@ public actor HubConnection {
                     }
                 }
             }
-            await serverTimeoutScheduler.start {
+            await serverTimeoutScheduler.start { @Sendable in 
                 self.logger.log(level: .warning, message: "Server timeout")
                 await self.connection.stop(error: SignalRError.serverTimeout(self.serverTimeout))
             }
@@ -801,19 +802,21 @@ public actor HubConnection {
         private var invocations: [String: InvocationType] = [:]
         private var id = 0
 
-        func create() async -> (String, TaskCompletionSource<Any?>) {
+        func create() async -> (String, TaskCompletionSource<(Any & Sendable)?>) {
             let id = nextId()
-            let tcs = TaskCompletionSource<Any?>()
+            let tcs = TaskCompletionSource<(Any & Sendable)?>()
             invocations[id] = .Invocation(tcs)
             return (id, tcs)
         }
 
-        func createStream() async -> (String, AsyncThrowingStream<Any, Error>) {
+        func createStream() async -> (String, AsyncThrowingStream<Any & Sendable, Error>) {
             let id = nextId()
-            let stream = AsyncThrowingStream<Any, Error> { continuation in
-                invocations[id] = .Stream(continuation)
+            let stream = AsyncThrowingStream<Any, Error> { @Sendable continuation in
+                Task{
+                    await self.updateInvocation(id: id, type: .Stream(continuation))
+                }
             }
-            return (id, stream)
+            return (id, stream as! AsyncThrowingStream<Any & Sendable, Error>)
         }
         
         func createClientStreamIds(count: Int) -> [String] {
@@ -832,7 +835,7 @@ public actor HubConnection {
                     if (message.error != nil) {
                         _ = await tcs.trySetResult(.failure(SignalRError.invocationError(message.error!)))
                     } else {
-                        _ = await tcs.trySetResult(.success(message.result.value))
+                        _ = await tcs.trySetResult(.success((message.result.value) as! (Any & Sendable)?))
                     }
                 } else if case .Stream(let continuation) = invocation {
                     if (message.error != nil) {
@@ -871,13 +874,17 @@ public actor HubConnection {
             return String(id)
         }
 
+        private func updateInvocation(id: String, type: InvocationType) async {
+            invocations[id] = type
+        }
+
         private enum InvocationType {
-            case Invocation(TaskCompletionSource<Any?>)
+            case Invocation(TaskCompletionSource<(Any & Sendable)?>)
             case Stream(AsyncThrowingStream<Any, Error>.Continuation)
         }
     }
 
-    private class DefaultStreamResult<Element>: StreamResult {
+    private class DefaultStreamResult<Element>: StreamResult, @unchecked Sendable {
         internal var onCancel: (() async -> Void)?
         public var stream: AsyncThrowingStream<Element, Error>
 

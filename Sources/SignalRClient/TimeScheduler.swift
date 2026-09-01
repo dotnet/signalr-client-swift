@@ -12,7 +12,7 @@ actor TimeScheduler {
         self.interval = initialInterval
     }
     
-    func start(sendAction: @escaping () async -> Void) {
+    func start(sendAction: @escaping @Sendable () async -> Void) {
         stop()
         timer = DispatchSource.makeTimerSource(queue: queue)
         guard let timer = timer else { return }

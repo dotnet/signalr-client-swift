@@ -2,7 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 /// Defines the type of a Hub Message.
-public enum MessageType: Int, Codable {
+public enum MessageType: Int, Codable, Sendable {
     /// Indicates the message is an Invocation message.
     case invocation = 1
     /// Indicates the message is a StreamItem message.

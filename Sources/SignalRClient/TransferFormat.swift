@@ -4,7 +4,7 @@
 import Foundation
 
 /// Specifies a specific HTTP transport type.
-public struct HttpTransportType: OptionSet {
+public struct HttpTransportType: OptionSet, Sendable {
     public let rawValue: Int
 
     public static let none = HttpTransportType([])

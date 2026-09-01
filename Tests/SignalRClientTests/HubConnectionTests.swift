@@ -13,7 +13,7 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
     var onSend: ((StringOrData) -> Void)?
     var onStart: (() -> Void)?
     var onStop: ((Error?) -> Void)?
-    var features: [ConnectionFeature : Any] = [:]
+    var features: [ConnectionFeature : Any & Sendable] = [:]
 
     private(set) var startCalled = false
     private(set) var sendCalled = false
@@ -44,7 +44,7 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
         onClose = handler
     }
 
-    func setFeature(feature: SignalRClient.ConnectionFeature, value: Any) async {
+    func setFeature(feature: SignalRClient.ConnectionFeature, value: Any & Sendable) async {
         features[feature] = value
     }
 
@@ -63,7 +63,7 @@ class MockConnection: ConnectionProtocol, @unchecked Sendable {
     }
 }
 
-final class HubConnectionTests: XCTestCase {
+final class HubConnectionTests: XCTestCase, @unchecked Sendable {
     let successHandshakeResponse = """
         {}\u{1e}
     """
@@ -823,15 +823,15 @@ final class HubConnectionTests: XCTestCase {
         // Setup stateful reconnect
         await initForStatefulReconnect()
         
-        var methodCalled = 0
+        let methodCalled = Counter(value: 0)
         let methodExpectation = XCTestExpectation(description: "Method should be called")
         methodExpectation.expectedFulfillmentCount = 2
         
         // Register method handler
-        await hubConnectionForStatefulReconnect.on(method: "t", types: []) { _ in
-            methodCalled += 1
+        await hubConnectionForStatefulReconnect.on(method: "t", types: [], handler: { @Sendable _ in
+            await methodCalled.increase(delta: 1)
             methodExpectation.fulfill()
-        }
+        })
         
         // Send two InvocationMessages to simulate receiving messages from server
         let invocationMessage1 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
@@ -845,7 +845,8 @@ final class HubConnectionTests: XCTestCase {
         
         // Wait for both method calls
         await fulfillment(of: [methodExpectation], timeout: 1.0)
-        XCTAssertEqual(methodCalled, 2)
+        var currentCalledvalue = await methodCalled.getValue()
+        XCTAssertEqual(currentCalledvalue, 2)
         
         // Verify that HubConnection set the features
         XCTAssertNotNil(mockConnection.features[ConnectionFeature.Disconnected], "Disconnected feature should be set")
@@ -870,7 +871,8 @@ final class HubConnectionTests: XCTestCase {
         await hubConnectionForStatefulReconnect.processIncomingData(messageData2)
         
         // Method should still be called only 2 times (no additional calls)
-        XCTAssertEqual(methodCalled, 2)
+        currentCalledvalue = await methodCalled.getValue()
+        XCTAssertEqual(currentCalledvalue, 2)
         
         // Send a new message - this should be processed
         let invocationMessage3 = InvocationMessage(target: "t", arguments: AnyEncodableArray([]), streamIds: nil, headers: nil, invocationId: nil)
@@ -878,26 +880,28 @@ final class HubConnectionTests: XCTestCase {
         
         let newMethodExpectation = XCTestExpectation(description: "New method should be called")
         await hubConnectionForStatefulReconnect.on(method: "t", types: []) { _ in
-            methodCalled += 1
+            await methodCalled.increase(delta: 1)
             newMethodExpectation.fulfill()
         }
         
         await hubConnectionForStatefulReconnect.processIncomingData(messageData3)
         await fulfillment(of: [newMethodExpectation], timeout: 1.0)
-        XCTAssertEqual(methodCalled, 3)
+
+        currentCalledvalue = await methodCalled.getValue()
+        XCTAssertEqual(currentCalledvalue, 3)
     }
 
     func testStatefulReconnect_messagesIgnoredAfterReconnectIfSequenceMessageNotReceived() async throws {
         // Setup stateful reconnect
         await initForStatefulReconnect()
-        
-        var methodCalled = 0
+
+        var methodCalled = Counter(value: 0)
         let methodExpectation = XCTestExpectation(description: "Method should be called")
         methodExpectation.expectedFulfillmentCount = 1
         
         // Register method handler
         await hubConnectionForStatefulReconnect.on(method: "t", types: []) { _ in
-            methodCalled += 1
+            await methodCalled.increase(delta: 1)
             methodExpectation.fulfill()
         }
         
@@ -925,7 +929,8 @@ final class HubConnectionTests: XCTestCase {
         await hubConnectionForStatefulReconnect.processIncomingData(messageData2)
         
         // Method should not be called yet (messages ignored)
-        XCTAssertEqual(methodCalled, 0)
+        var currentCalledvalue = await methodCalled.getValue()
+        XCTAssertEqual(currentCalledvalue, 0)
         
         // Send Sequence message to indicate we're resuming from sequenceId 1
         let sequenceMessage = SequenceMessage(sequenceId: 1)
@@ -938,7 +943,8 @@ final class HubConnectionTests: XCTestCase {
         
         await hubConnectionForStatefulReconnect.processIncomingData(messageData3)
         await fulfillment(of: [methodExpectation], timeout: 1.0)
-        XCTAssertEqual(methodCalled, 1)
+        currentCalledvalue = await methodCalled.getValue()
+        XCTAssertEqual(currentCalledvalue, 1)
     }
 
     func serverTimeoutTest() async throws {
@@ -1343,7 +1349,7 @@ final class HubConnectionTests: XCTestCase {
         return await whenTaskWithTimeout({ await task.value }, timeout: timeout)
     }
 
-    func whenTaskWithTimeout(_ task: @escaping () async throws -> Void, timeout: TimeInterval) async -> Void {
+    func whenTaskWithTimeout(_ task: @escaping @Sendable() async throws -> Void, timeout: TimeInterval) async -> Void {
         let expectation = XCTestExpectation(description: "Task should complete")
         let wrappedTask = Task {
             _ = try await task()
@@ -1358,7 +1364,7 @@ final class HubConnectionTests: XCTestCase {
         return await whenTaskThrowsTimeout({ try await task.value }, timeout: timeout)
     }
 
-    func whenTaskThrowsTimeout(_ task: @escaping () async throws -> Void, timeout: TimeInterval) async -> Error? {
+    func whenTaskThrowsTimeout(_ task: @escaping @Sendable () async throws -> Void, timeout: TimeInterval) async -> Error? {
         let returnErr: ValueContainer<Error> = ValueContainer()
         let expectation = XCTestExpectation(description: "Task should throw")
         let wrappedTask = Task {

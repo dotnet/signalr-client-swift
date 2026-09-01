@@ -3,7 +3,7 @@
 
 import Foundation
 
-struct JsonHubProtocol: HubProtocol {
+struct JsonHubProtocol: HubProtocol, @unchecked Sendable {
     let name = "json"
     let version = 2
     let transferFormat: TransferFormat = .text
@@ -162,7 +162,7 @@ struct JsonHubProtocol: HubProtocol {
     }
 
     private func DecodeArguments(_ jsonObject: [String: Any], types: [Any.Type]) throws -> AnyEncodableArray {
-        let arguments = jsonObject["arguments"] as? [Any] ?? []
+        let arguments = jsonObject["arguments"] as? [Any & Sendable] ?? []
         guard arguments.count == types.count else {
             throw SignalRError.invalidData("Invocation provides \(arguments.count) argument(s) but target expects \(types.count).")
         }
