@@ -1,0 +1,84 @@
+# Caller for the shared supply-chain gates.
+#
+# Deliberately thin. Everything it does lives in the shared workflow it calls,
+# so this file states only which gates apply and with what policy — the part
+# that legitimately differs between repositories. Improving a gate then reaches
+# every repository at once instead of being re-applied by hand to each.
+#
+# Keep this separate from a build or test workflow. That one answers "does this
+# repository work"; these gates answer "is this change safe to merge", and they
+# apply to repositories with no build to hang off.
+
+name: compliance
+
+on:
+  pull_request:
+  # On demand, so a full scan can be run without waiting for the schedule —
+  # after a fix, or to establish where a repository stands before the gates are
+  # required of it.
+  workflow_dispatch:
+    inputs:
+      full-history:
+        description: "Scan all history rather than the pull request's range"
+        type: boolean
+        default: true
+  schedule:
+    # Mondays at 05:00 UTC. The weekly run is the one that scans full history:
+    # a pull request only sees its own range, so nothing would otherwise
+    # re-examine commits that a force-push rewrote after they were reviewed.
+    #
+    # Change the minute if this repository is one of many — every repository
+    # firing on the hour queues against the same runners.
+    - cron: "0 5 * * 1"
+
+# A second push to the same pull request makes the first run's answer
+# irrelevant, so cancel it rather than paying for both. Never cancel the
+# scheduled run — it has no successor to replace it.
+concurrency:
+  group: compliance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  supply-chain:
+    # This job's key is half of every status check's name: they report as
+    # `supply-chain / <gate>`, for example `supply-chain / secrets`. Those are
+    # the names a branch ruleset must require, so keep the key as it is — every
+    # SpringTree repository uses the same one, which lets a single ruleset
+    # definition work org-wide.
+    #
+    # Renaming it turns a required check into one that never reports, and a
+    # check that never reports does not fail the pull request — it leaves it
+    # waiting forever.
+    #
+    # Tracking main rather than pinning a commit: a security gate improving
+    # without being asked is the behaviour we want, and that repository's main
+    # is protected and code-owner reviewed. Pin a SHA here if this repository
+    # needs a reproducible pipeline more than it needs the newest gate.
+    #
+    # Never run on a pull request from a fork: in a public repository that would
+    # execute a stranger's code on our runners. Harmless in a private one. See
+    # the springtree-ci-workflows README, "Public repositories and forks".
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    uses: SpringTree/springtree-ci-workflows/.github/workflows/supply-chain.yml@main
+    # The shared workflow's licences job asks for id-token: write to read
+    # private packages from the springtree-labs registry. A called workflow
+    # cannot ask for more than this grants, so without it no gate starts. It
+    # is used only where a committed .npmrc points at that registry.
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      # `github.event.inputs` rather than `inputs`: the latter exists only for
+      # workflow_dispatch and workflow_call, so referencing it on a pull request
+      # fails the whole workflow before any job starts. The former is null for
+      # events that carry no inputs, which compares cleanly.
+      full-history: ${{ github.event_name == 'schedule' || github.event.inputs.full-history == 'true' }}
+      #
+      # Other inputs, all optional — see the shared repository's README:
+      #   min-release-age-days    package quarantine window (default 7)
+      #   quarantine-exclude      package.json paths the quarantine gate ignores
+      #   code-scan-rules         Semgrep ruleset
+      #
+      # The licence allow-list is not an input: it is an organisation decision,
+      # fixed in the shared workflow. A package is accepted despite its licence
+      # only through licence-exemptions.json at the repository root.
