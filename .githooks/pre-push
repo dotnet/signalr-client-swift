@@ -1,0 +1,84 @@
+#!/bin/sh
+#
+# Local half of the secrets gate.
+#
+# Runs before the push leaves the machine, which is the whole point: once a
+# commit reaches GitHub the secret in it is leaked, and CI telling us about it
+# afterwards means rotation and a history rewrite rather than an amend.
+#
+# This is feedback, not enforcement — `git push --no-verify` skips it and leaves
+# no trace. The enforcing copy is the secrets gate in CI, which runs the same
+# tool whatever a given machine has installed. Skipping is break-glass.
+#
+# Install it once per clone, no package manager required:
+#
+#   git config core.hooksPath .githooks
+#
+# gitleaks runs in git mode, never `gitleaks dir`: dir mode has no .gitignore
+# support at all, so it flags every local .env on every push. That failure stays
+# invisible in CI, where a fresh checkout has no .env — the enforcing copy would
+# pass while this one cried wolf, and a hook that cries wolf stops being read.
+
+set -eu
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  cat >&2 <<'MESSAGE'
+gitleaks is not installed, so this push was stopped: it could not be scanned
+for secrets.
+
+  brew install gitleaks
+
+CI scans the same commits, but only after the secret has reached GitHub and is
+leaked. Install it so you find a secret before it leaves the machine.
+MESSAGE
+  exit 1
+fi
+
+EMPTY_SHA="0000000000000000000000000000000000000000"
+status=0
+
+# git feeds one line per ref being pushed: <local ref> <local sha> <remote ref>
+# <remote sha>. Read them rather than guessing at the range, so a push of
+# several branches scans each of them.
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  # Deleting a remote branch pushes no commits.
+  if [ "$local_sha" = "$EMPTY_SHA" ]; then
+    continue
+  fi
+
+  if [ "$remote_sha" = "$EMPTY_SHA" ]; then
+    # New branch: the remote has no counterpart to diff against, so scan back to
+    # whatever it forked from rather than the entire history — the rest has been
+    # through this hook and the weekly full-history scan already.
+    base="$(git merge-base "$local_sha" origin/HEAD 2>/dev/null || true)"
+    if [ -n "$base" ]; then
+      range="${base}..${local_sha}"
+    else
+      # No shared ancestor (a brand new orphan branch); scan everything it has.
+      range="$local_sha"
+    fi
+  else
+    range="${remote_sha}..${local_sha}"
+  fi
+
+  echo "Scanning ${range} for secrets"
+  if ! gitleaks git --redact --no-banner --log-opts="$range"; then
+    status=1
+  fi
+done
+
+if [ "$status" -ne 0 ]; then
+  cat >&2 <<'MESSAGE'
+
+A secret was found in the commits being pushed, so the push was stopped.
+
+Remove it from the commits themselves, not just from the working tree — a
+secret in an earlier commit is still in the history being pushed. If it has
+ever reached a remote, treat it as leaked and rotate it.
+
+A finding that is genuinely not a secret belongs in .gitleaksignore, as a
+reviewed change with a reason, not as a --no-verify push.
+MESSAGE
+fi
+
+exit "$status"
