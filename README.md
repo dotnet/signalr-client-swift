@@ -231,3 +231,86 @@ For more information, see the [.NET Foundation Code of Conduct](https://dotnetfo
 # License
 
 .NET (including the runtime repo) is licensed under the MIT license.
+
+## :twisted_rightwards_arrows: Branch strategy and protection
+
+This repository is SpringTree's fork of
+[`dotnet/signalr-client-swift`](https://github.com/dotnet/signalr-client-swift).
+
+The default branch is `dev`. It has protection enabled against direct pushes,
+through the organisation ruleset "Enforce PR workflow":
+
+- All changes go through a pull request. Merges are squash or rebase only, and
+  the history must stay linear.
+- Force pushes and deleting the branch are blocked.
+- Changes to the policy files (`.github/CODEOWNERS`,
+  `.github/workflows/compliance.yml` and `licence-exemptions.json`) need a
+  review from `@springtreesolutions/springtree-admins` (see
+  `.github/CODEOWNERS`).
+- The four `supply-chain / *` checks (`secrets`, `licences`, `code`,
+  `quarantine`) run on every pull request. An admin makes them required checks
+  for this repository.
+
+Other branches on this fork:
+
+- `feat/swarm`
+- `feature/connection-status`
+- `feature/custom-json-decoder`
+
+This fork has no `main` branch. Upstream uses `main` for releases and `dev` for
+development.
+
+## :lock: Compliance
+
+This repository is gated by SpringTree's shared supply-chain workflow
+(`.github/workflows/compliance.yml`), which runs four checks on every pull
+request and a full-history scan weekly:
+
+| Gate         | Refuses                                                 |
+| ------------ | ------------------------------------------------------- |
+| `secrets`    | a credential committed anywhere in the scanned range    |
+| `licences`   | a dependency whose licence is not on the allow-list     |
+| `code`       | a code pattern the ruleset classes as a security defect |
+| `quarantine` | missing or incorrect package-cooldown configuration     |
+
+A red gate is fixed here, in this repository. What each gate does and which
+inputs it takes is documented in
+[`springtree-ci-workflows`](https://github.com/SpringTree/springtree-ci-workflows).
+
+### :mag: Before you push
+
+```bash
+git config core.hooksPath .githooks   # once per clone
+brew install gitleaks                 # once per machine
+```
+
+The hook scans the commits you are about to push and refuses the push when
+gitleaks is not installed. It is feedback, not enforcement: `--no-verify` skips
+it and CI does not. Skipping is break-glass.
+
+## :up: Deploying
+
+This is a library. Nothing is deployed. Apps consume it as a Swift package
+straight from git: Swift Package Manager resolves a version from a git tag, a
+branch or a commit. There is no package registry.
+
+The workflows in `.github/workflows` come from upstream. What they do on this
+fork today:
+
+- `swift.yml` (Swift): on every push and pull request to `dev` (and `main`),
+  builds the package and runs the unit tests and the integration tests on
+  macOS 14. The integration tests start the .NET test server in
+  `Tests/IntegrationTestServer`. It needs no secrets.
+- `swift-e2e.yml` (Swift E2E Test): same triggers. It runs the integration
+  tests against Azure SignalR Service and needs the secret
+  `E2E_CONNECTION_STRING`. This fork does not have that secret as a repository
+  secret, so this workflow fails unless an organisation secret provides it.
+- `release.yml` (Release version (tag)): started by hand. It checks out `main`,
+  tags the version in `Sources/SignalRClient/Version.swift` as `v<version>`,
+  pushes the tag and opens a pull request that bumps the version. This fork has
+  no `main` branch, so the workflow fails at checkout.
+
+This fork has no release tags of its own. The `v1.0.0` tags belong to
+upstream. Until this fork has a release process, an app that uses this fork
+pins a branch or a commit of
+`https://github.com/springtreesolutions/signalr-client-swift`.
