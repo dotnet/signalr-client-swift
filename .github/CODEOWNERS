@@ -1,0 +1,3 @@
+/.github/CODEOWNERS                 @springtreesolutions/springtree-admins
+/.github/workflows/compliance.yml   @springtreesolutions/springtree-admins
+/licence-exemptions.json            @springtreesolutions/springtree-admins
